@@ -51,6 +51,7 @@ jobs:
       - name: Build Release APK
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleRelease
 
       - name: Upload APK
