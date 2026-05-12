@@ -46,7 +46,7 @@ jobs:
           echo "storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}" > android/keystore.properties
           echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> android/keystore.properties
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> android/keystore.properties
-          echo "storeFile=app/forehand-release-key.jks" >> android/keystore.properties
+          echo "storeFile=forehand-release-key.jks" >> android/keystore.properties
 
       - name: Build Release APK
         run: |
