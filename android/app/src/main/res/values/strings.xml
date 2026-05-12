@@ -3,5 +3,5 @@
     <string name="app_name">Forehand</string>
     <string name="title_activity_main">Forehand</string>
     <string name="package_name">com.forehand.app</string>
-    <string name="custom_url_scheme">forehand</string>
+    <string name="custom_url_scheme">com.forehand.app</string>
 </resources>

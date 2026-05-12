@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "cap:build": "next build && npx cap sync",
-    "apk:debug": "cd android && gradlew.bat assembleDebug"
+    "apk:debug": "cd android && gradlew.bat assembleDebug",
+    "native": "next build && npx cap sync android && npx cap run android"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

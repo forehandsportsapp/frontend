@@ -37,7 +37,7 @@ type AppContextValue = {
 const AppContext = createContext<AppContextValue | null>(null);
 
 const ACTIVE_ORG_STORAGE_KEY = "forehand:active-org-id";
-const NATIVE_CALLBACK_URL = "forehand://auth/callback";
+const NATIVE_CALLBACK_URL = "com.forehand.app://auth/callback";
 
 function getBaseUrl(): string {
   if (typeof window === "undefined") return "http://localhost:3000";
