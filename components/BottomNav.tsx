@@ -170,7 +170,6 @@ export default function BottomNav() {
             <Link key={href} href={href}>
               <div
                 className={`p-1 my-2 bg-[var(--nav-bar-bg)]
-                  hover:bg-[var(--nav-item-hover-bg)]
                   backdrop-blur-none
 
                   border-t-[1px]
@@ -209,4 +208,3 @@ export default function BottomNav() {
     </nav>
   );
 }
-
