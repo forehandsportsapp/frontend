@@ -66,6 +66,7 @@ type UpcomingCardData = {
   modes: string;
   colorVariant: "orange" | "blue" | "green" | "red" | "purple";
   logoText: string;
+  logoUrl?: string | null;
   entryFee: string;
   ctaText: string;
 };
@@ -78,6 +79,7 @@ type OngoingCardData = {
   category: string;
   modes: string;
   logoText: string;
+  logoUrl?: string | null;
 };
 
 const colorVariants: UpcomingCardData["colorVariant"][] = [
@@ -115,6 +117,74 @@ function getEntryFee(t: TournamentData) {
   const firstPaidEvent = (t.events || []).find((e) => (e.amount || 0) > 0);
   if (!firstPaidEvent) return "Free";
   return `Rs ${firstPaidEvent.amount}`;
+}
+
+function getTournamentLogoUrl(t: TournamentData) {
+  const raw = t as any;
+  return (
+    t.logoUrl ||
+    raw?.logoURL ||
+    raw?.logo ||
+    raw?.imageUrl ||
+    raw?.image ||
+    null
+  );
+}
+
+function normalizeTeam(team: any) {
+  const playersRaw = Array.isArray(team?.players)
+    ? team.players
+    : Array.isArray(team?.participants)
+      ? team.participants
+      : Array.isArray(team?.members)
+        ? team.members
+        : Array.isArray(team?.users)
+          ? team.users
+          : [];
+  const players = playersRaw.map((player: any) =>
+    typeof player === "string"
+      ? player
+      : player?.name ||
+          player?.fullName ||
+          player?.displayName ||
+          player?.user?.name ||
+          "Player",
+  );
+
+  const directImages = [
+    ...(Array.isArray(team?.images) ? team.images : []),
+    ...(Array.isArray(team?.playerImages) ? team.playerImages : []),
+    ...(Array.isArray(team?.avatarUrls) ? team.avatarUrls : []),
+    ...(Array.isArray(team?.avatars) ? team.avatars : []),
+    ...(Array.isArray(team?.profilePicUrls) ? team.profilePicUrls : []),
+    ...(Array.isArray(team?.photos) ? team.photos : []),
+  ].filter(Boolean);
+  const mappedImages = playersRaw
+    .map(
+      (player: any) =>
+        player?.image ||
+        player?.avatarUrl ||
+        player?.profilePicUrl ||
+        player?.photoUrl ||
+        player?.avatar ||
+        player?.user?.profilePicUrl ||
+        player?.user?.avatarUrl ||
+        player?.user?.photoUrl ||
+        player?.user?.avatar,
+    )
+    .filter(Boolean);
+
+  const dedupedDirectImages = Array.from(new Set(directImages));
+  const dedupedMappedImages = Array.from(new Set(mappedImages));
+
+  return {
+    ...team,
+    players: players.length > 0 ? players : ["Player"],
+    images:
+      dedupedDirectImages.length > 0
+        ? dedupedDirectImages
+        : dedupedMappedImages,
+  };
 }
 
 function isLiveTournament(t: TournamentData) {
@@ -250,12 +320,22 @@ export default function UserHomePage() {
         const supabase = getSupabaseBrowserClient();
         const { data } = await supabase.auth.getSession();
         const token = data.session?.access_token;
+        const hasLiveSubscriptions =
+          Boolean(match?.id) ||
+          (Array.isArray(feed) &&
+            feed.some(
+              (group: any) =>
+                Array.isArray(group?.matches) && group.matches.length > 0,
+            ));
 
-        if (token) {
+        if (token && hasLiveSubscriptions) {
           let wsUrl = "";
+          const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL;
           const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-          if (baseUrl && baseUrl.startsWith("http")) {
+          if (wsBaseUrl && wsBaseUrl.startsWith("ws")) {
+            wsUrl = wsBaseUrl.replace(/\/$/, "");
+          } else if (baseUrl && baseUrl.startsWith("http")) {
             wsUrl = baseUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
           } else {
             // Fallback to current origin if baseUrl is relative or missing
@@ -364,9 +444,7 @@ export default function UserHomePage() {
           };
 
           socket.onerror = () =>
-            console.warn(
-              `[WS] Connection failed for ${wsUrl}. Real-time updates disabled.`,
-            );
+            console.log(`[WS] Connection failed for ${wsUrl}. Real-time updates disabled.`);
           socket.onclose = (event) =>
             console.log(`[WS] Closed: ${event.code} ${event.reason}`);
         }
@@ -399,8 +477,18 @@ export default function UserHomePage() {
           tournamentApi.getJoinedTournaments(),
         ]);
         if (!active) return;
-        setTournaments(Array.isArray(browseRows) ? browseRows : []);
-        setJoinedTournaments(Array.isArray(joinedRows) ? joinedRows : []);
+        const browse = Array.isArray(browseRows) ? browseRows : [];
+        const joined = Array.isArray(joinedRows) ? joinedRows : [];
+
+        const combinedById = new Map<string, TournamentData>();
+        [...joined, ...browse].forEach((tournament, index) => {
+          const key = tournament?.id || `fallback-${index}`;
+          const existing = combinedById.get(key);
+          combinedById.set(key, { ...(existing || {}), ...tournament } as TournamentData);
+        });
+
+        setTournaments(Array.from(combinedById.values()));
+        setJoinedTournaments(joined);
       } catch (error) {
         if (!active) return;
         console.error("Failed to load user tournaments", error);
@@ -438,6 +526,7 @@ export default function UserHomePage() {
           modes: getModes(t),
           colorVariant: colorVariants[idx % colorVariants.length],
           logoText: getLogoText(t.name),
+          logoUrl: getTournamentLogoUrl(t),
           entryFee: getEntryFee(t),
           ctaText: "Register",
         })),
@@ -457,6 +546,7 @@ export default function UserHomePage() {
           category: getCategory(t),
           modes: getModes(t),
           logoText: getLogoText(t.name),
+          logoUrl: getTournamentLogoUrl(t),
         })),
     [tournaments],
   );
@@ -635,6 +725,7 @@ export default function UserHomePage() {
                         modes={t.modes}
                         colorVariant={t.colorVariant}
                         logoText={t.logoText}
+                        logoUrl={t.logoUrl}
                         entryFee={t.entryFee}
                         ctaText={t.ctaText}
                       />
@@ -712,6 +803,7 @@ export default function UserHomePage() {
                         modes={t.modes}
                         venue={t.venue}
                         logoText={t.logoText}
+                        logoUrl={t.logoUrl}
                       />
                     </div>
                   ))
@@ -771,7 +863,7 @@ export default function UserHomePage() {
                 <section key={group.tournamentId} className="space-y-3">
                   <div className="flex items-center justify-between px-1">
                     <h4 className="font-heading text-base font-bold text-[var(--color-text)] truncate max-w-[80%]">
-                      {group.tournamentName}
+                      {group.tournamentName || "Tournament"}
                     </h4>
                     <span className="text-[10px] font-bold text-orange-600 uppercase bg-orange-50 px-2 py-0.5 rounded">
                       {group.matches.length} Live
@@ -784,10 +876,10 @@ export default function UserHomePage() {
                         className="min-w-[85vw] sm:min-w-[320px] snap-center shrink-0"
                       >
                         <LiveMatchCard
-                          tournamentName={group.tournamentName}
+                          tournamentName={group.tournamentName || "Tournament"}
                           matchTitle={match.matchTitle}
-                          teamA={match.teamA}
-                          teamB={match.teamB}
+                          teamA={normalizeTeam(match.teamA)}
+                          teamB={normalizeTeam(match.teamB)}
                           score={match.score}
                           court={match.court}
                           isLive={true}
@@ -825,8 +917,8 @@ export default function UserHomePage() {
                 <LiveMatchCard
                   tournamentName={liveMatch.tournamentName || "Tournament"}
                   matchTitle={liveMatch.matchTitle || "Live Match"}
-                  teamA={liveMatch.teamA}
-                  teamB={liveMatch.teamB}
+                  teamA={normalizeTeam(liveMatch.teamA)}
+                  teamB={normalizeTeam(liveMatch.teamB)}
                   score={
                     liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
                   }
@@ -866,6 +958,7 @@ export default function UserHomePage() {
                       sport={getPrimarySport(t)}
                       category={getCategory(t)}
                       format={getModes(t)}
+                      logoUrl={getTournamentLogoUrl(t)}
                       ctaLabel="View Tournament Events"
                     />
                   ))

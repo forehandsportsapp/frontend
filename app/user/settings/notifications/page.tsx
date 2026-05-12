@@ -6,7 +6,7 @@ import {
   SettingsShell,
   ToggleRow,
 } from "@/app/org/settings/_components/SettingsScaffold";
-import { BellIcon } from "@/components/Icons";
+import { Bell } from "lucide-react";
 
 export default function NotificationsSettingsPage() {
   const [alerts, setAlerts] = useState([
@@ -30,7 +30,7 @@ export default function NotificationsSettingsPage() {
   return (
     <SettingsShell title="Notifications">
       <IntroWithIcon
-        icon={BellIcon}
+        icon={Bell}
         title="Stay Updated"
         subtitle="Choose which notifications you want to receive"
       />

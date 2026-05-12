@@ -134,7 +134,7 @@ export function HelpCard() {
           Need help? Our support team is available 24/7.
         </p>
         <a
-          href="mailto:support@forehand.app"
+          href="mailto:forehandsportsapp@gmail.com"
           className="mt-4 inline-flex items-center gap-1 text-[14px] font-bold text-[#ff7a00] transition-colors hover:text-[#e66a00]"
         >
           Email Support &rarr;

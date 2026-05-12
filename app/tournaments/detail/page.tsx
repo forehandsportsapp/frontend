@@ -48,10 +48,41 @@ function formatDateTime(value?: string | null) {
   });
 }
 
+function getTournamentLogoUrl(tournament: TournamentData) {
+  const raw = tournament as any;
+  return (
+    tournament.logoUrl ||
+    raw?.logoURL ||
+    raw?.logo ||
+    raw?.imageUrl ||
+    raw?.image ||
+    null
+  );
+}
+
+function isEventEligibleForUser(event: EventData, userGender?: string | null) {
+  const eventGender = event.gender?.toLowerCase();
+  const normalizedUserGender = userGender?.toLowerCase();
+  if (!eventGender) return true;
+  if (!normalizedUserGender) return true;
+  return eventGender === normalizedUserGender;
+}
+
+function isEventRegisteredByUser(event: EventData, userId?: string | null) {
+  if (!userId || !Array.isArray(event.teams)) return false;
+  return event.teams.some((team) => {
+    const state = (team.teamStatus || team.status || "").toLowerCase();
+    const hasUser = Array.isArray(team.participants)
+      ? team.participants.some((p) => p.userId === userId)
+      : false;
+    return hasUser && state !== "created";
+  });
+}
+
 function TournamentDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userProfile } = useApp();
+  const { userProfile, session } = useApp();
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -95,6 +126,24 @@ function TournamentDetailContent() {
   }, [id]);
 
   const [tab, setTab] = useState<MainTab>("about");
+
+  const sortedEvents = useMemo(() => {
+    const events = tournament?.events || [];
+    const userId = session?.user?.id;
+    const userGender = userProfile?.gender;
+
+    return [...events].sort((a, b) => {
+      const aRegistered = isEventRegisteredByUser(a, userId);
+      const bRegistered = isEventRegisteredByUser(b, userId);
+      if (aRegistered !== bRegistered) return aRegistered ? -1 : 1;
+
+      const aEligible = isEventEligibleForUser(a, userGender);
+      const bEligible = isEventEligibleForUser(b, userGender);
+      if (aEligible !== bEligible) return aEligible ? -1 : 1;
+
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [tournament?.events, session?.user?.id, userProfile?.gender]);
 
   const total = useMemo(() => {
     if (!tournament?.events) return 0;
@@ -150,7 +199,7 @@ function TournamentDetailContent() {
           registrationStatus={
             tournament.tournamentState === "published" ? "Open" : "Closed"
           }
-          logoUrl={tournament.logoUrl}
+          logoUrl={getTournamentLogoUrl(tournament)}
           onBack={() => router.back()}
         />
       </div>
@@ -240,7 +289,7 @@ function TournamentDetailContent() {
                 <div className="pt-0">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 overflow-hidden rounded-full border border-[var(--color-border)] shadow-md">
+                      <div className="h-14 w-14 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-md">
                         <img
                           src={
                             tournament.organization?.logoUrl ||
@@ -281,7 +330,7 @@ function TournamentDetailContent() {
             </section>
           </>
         ) : (
-          tournament.events?.map((ev) => (
+          sortedEvents.map((ev) => (
             <RegistrationEventCard
               key={ev.id}
               event={ev}

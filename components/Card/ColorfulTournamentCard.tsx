@@ -26,6 +26,7 @@ export type ColorfulTournamentCardProps = {
     colorVariant?: "orange" | "green" | "red" | "blue" | "purple";
     href?: string;
     logoText?: string;
+    logoUrl?: string | null;
 };
 
 export default function ColorfulTournamentCard({
@@ -41,6 +42,7 @@ export default function ColorfulTournamentCard({
     colorVariant = "orange",
     href,
     logoText,
+    logoUrl,
 }: ColorfulTournamentCardProps) {
     const url = `/tournaments/detail${toQuery({ id })}`
 
@@ -83,8 +85,12 @@ export default function ColorfulTournamentCard({
                     <div className="relative z-10 flex flex-col h-full">
 
                         {/* Reduced Logo from w-12/h-12 to w-8/h-8, smaller text */}
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm font-black text-gray-900 shadow-sm dark:bg-[var(--color-surface-elevated)] dark:text-orange-400">
-                            {logoText || name.substring(0, 1)}
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-black text-gray-900 shadow-sm dark:bg-[var(--color-surface-elevated)] dark:text-orange-400">
+                            {logoUrl ? (
+                                <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
+                            ) : (
+                                logoText || name.substring(0, 1)
+                            )}
                         </div>
 
                         <h3 className="mb-2 font-heading text-[18px] font-black leading-tight tracking-tight text-white drop-shadow-sm line-clamp-2">

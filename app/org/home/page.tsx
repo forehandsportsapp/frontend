@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import HomeHeader from "@/components/HomeHeader";
@@ -10,7 +9,6 @@ import {
   CircleIcon,
   TimerIcon,
   TrophyIcon,
-  BellIcon,
 } from "@/components/Icons";
 import {
   motion,
@@ -24,10 +22,6 @@ import { tournamentApi } from "@/lib/api/tournamentApi";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
-import NotificationsSlideOver, {
-  NotificationItem,
-} from "@/components/NotificationsSlideOver";
-import { notificationApi } from "@/lib/api/notificationApi";
 
 const listContainerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -212,57 +206,11 @@ function toLiveCard(t: TournamentData): LiveTournamentCardData {
 
 export default function OrgHomePage() {
   const tournamentContainerRef = useRef<HTMLDivElement>(null);
-  const matchContainerRef = useRef<HTMLDivElement>(null);
   const { activeOrganization: organization } = useApp();
   const [tournaments, setTournaments] = useState<TournamentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
-
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
-
-  const attachActions = (items: NotificationItem[]) =>
-    items.map((item) => ({
-      ...item,
-      unread: item.unread && !readIds.has(item.id),
-      onAccept:
-        item.type === "invite"
-          ? async () => {
-              const targetId = item.inviteId || item.id;
-              await notificationApi.respondToInvite(targetId, "accept");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
-            }
-          : undefined,
-      onReject:
-        item.type === "invite"
-          ? async () => {
-              const targetId = item.inviteId || item.id;
-              await notificationApi.respondToInvite(targetId, "reject");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
-            }
-          : undefined,
-    }));
-
-  useEffect(() => {
-    let active = true;
-    const loadNotifications = async () => {
-      try {
-        const items = await notificationApi.getUserNotifications();
-        if (!active) return;
-        setNotifications(attachActions(items));
-      } catch (error) {
-        if (!active) return;
-        console.error("Failed to load notifications", error);
-        setNotifications([]);
-      }
-    };
-    void loadNotifications();
-    return () => {
-      active = false;
-    };
-  }, [readIds]);
 
   useEffect(() => {
     let active = true;
@@ -441,27 +389,21 @@ export default function OrgHomePage() {
     [tournaments],
   );
 
-  const unreadCount = notifications.filter((n) => n.unread).length;
+  const resolveTeamLogo = (team: any) => {
+    const src =
+      team?.logoUrl ||
+      team?.avatarUrl ||
+      team?.profilePicUrl ||
+      team?.iconUrl ||
+      team?.imageUrl ||
+      "";
+    if (!src || typeof src !== "string") return null;
+    return src;
+  };
 
   return (
     <Layout hideTopNav>
-      <div className="bg-[var(--color-surface)] px-4 pt-10 pb-4 shadow-sm relative z-10">
-        <div className="mx-auto w-full max-w-md flex items-center justify-between">
-          <HomeHeader />
-          <button
-            onClick={() => setNotificationsOpen(true)}
-            className="relative w-10 h-10 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-border)] active:scale-95 transition-all shrink-0 cursor-pointer"
-            aria-label="Open notifications"
-          >
-            <BellIcon size={20} />
-            {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary ring-2 ring-[var(--color-surface)] text-[9px] font-bold text-white">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <HomeHeader showNotifications={false} />
       <div className="font-body mx-auto w-full max-w-md space-y-6 px-4 pb-24 pt-6">
         <section className="space-y-4">
           <h2 className="px-1 text-lg font-bold tracking-tight">
@@ -550,7 +492,7 @@ export default function OrgHomePage() {
             <>
               <motion.div
                 ref={tournamentContainerRef}
-                className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4"
+                className="relative no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4"
                 variants={listContainerVariants}
                 initial="hidden"
                 animate="visible"
@@ -663,14 +605,18 @@ export default function OrgHomePage() {
 
                       <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                         <div className="flex flex-col items-center gap-1">
-                          <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                            <Image
-                              src="/pwa-icons/icon-192.png"
-                              alt="Team logo"
-                              width={24}
-                              height={24}
-                              className="rounded-full"
-                            />
+                          <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
+                            {resolveTeamLogo(match.teamA) ? (
+                              <img
+                                src={resolveTeamLogo(match.teamA) || ""}
+                                alt={`${match.teamA?.name || "Team A"} logo`}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-[var(--color-text-secondary)]">
+                                {(match.teamA?.name || "A").charAt(0)}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs font-bold truncate max-w-[80px]">
                             {match.teamA?.name || "Team A"}
@@ -685,14 +631,18 @@ export default function OrgHomePage() {
                         </div>
 
                         <div className="flex flex-col items-center gap-1">
-                          <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                            <Image
-                              src="/pwa-icons/icon-192.png"
-                              alt="Team logo"
-                              width={24}
-                              height={24}
-                              className="rounded-full"
-                            />
+                          <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
+                            {resolveTeamLogo(match.teamB) ? (
+                              <img
+                                src={resolveTeamLogo(match.teamB) || ""}
+                                alt={`${match.teamB?.name || "Team B"} logo`}
+                                className="h-8 w-8 rounded-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-xs font-bold text-[var(--color-text-secondary)]">
+                                {(match.teamB?.name || "B").charAt(0)}
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs font-bold truncate max-w-[80px]">
                             {match.teamB?.name || "Team B"}
@@ -712,16 +662,6 @@ export default function OrgHomePage() {
         </section>
       </div>
 
-      <NotificationsSlideOver
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        items={notifications}
-        unreadCount={unreadCount}
-        onMarkAllRead={() =>
-          setReadIds(new Set(notifications.map((n) => n.id)))
-        }
-        onClearAll={() => setNotifications([])}
-      />
     </Layout>
   );
 }

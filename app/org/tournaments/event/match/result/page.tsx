@@ -1,70 +1,31 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
-import { getItem, removeItem } from "@/lib/storage";
-import type { LiveMatchStateData, MatchConfigData } from "@/lib/models";
-import { TrophyIcon } from "@/components/Icons";
+import { removeItem } from "@/lib/storage";
+import { TrophyIcon, UserIcon } from "@/components/Icons";
 import { motion } from "framer-motion";
 import { toQuery } from "@/lib/utils";
+import { matchApi } from "@/lib/api/matchApi";
 
-type SidePlayer = { name: string; initials: string };
+type Player = { id?: string; name: string; avatarUrl?: string | null };
 
-function ensurePlayers(players: unknown, format: MatchConfigData["format"]) {
-  const fallbackSingles = {
-    side0: [{ initials: "A", name: "Side A" }],
-    side1: [{ initials: "B", name: "Side B" }],
-  };
-
-  const fallbackDoubles = {
-    side0: [
-      { initials: "KV", name: "Kunal Verma" },
-      { initials: "AC", name: "Alex Costa" },
-    ],
-    side1: [
-      { initials: "AK", name: "Anil Kumar" },
-      { initials: "TR", name: "The Rock" },
-    ],
-  };
-
-  const p = players as { side0?: SidePlayer[]; side1?: SidePlayer[] } | null;
-
-  if (!p?.side0?.length || !p?.side1?.length) {
-    return format === "doubles" ? fallbackDoubles : fallbackSingles;
-  }
-
-  if (format === "doubles") {
-    return {
-      side0: [
-        p.side0[0] ?? fallbackDoubles.side0[0],
-        p.side0[1] ?? fallbackDoubles.side0[1],
-      ],
-      side1: [
-        p.side1[0] ?? fallbackDoubles.side1[0],
-        p.side1[1] ?? fallbackDoubles.side1[1],
-      ],
-    };
-  }
-
-  return {
-    side0: [p.side0[0] ?? fallbackSingles.side0[0]],
-    side1: [p.side1[0] ?? fallbackSingles.side1[0]],
-  };
+function getTeamPlayers(teamData: any): Player[] {
+  const players = (teamData?.participants ?? [])
+    .map((p: any) => p?.user)
+    .filter(Boolean)
+    .map((u: any) => ({
+      id: u.id,
+      name: u.name ?? "Player",
+      avatarUrl: u.profilePicUrl ?? null,
+    }));
+  return players;
 }
 
-function computeWinner(setScores: [number, number][]) {
-  let winsA = 0;
-  let winsB = 0;
-
-  setScores.forEach(([a, b]) => {
-    if (a === b) return;
-    if (a > b) winsA += 1;
-    else winsB += 1;
-  });
-
-  if (winsA === winsB) return null;
-  return winsA > winsB ? 0 : 1;
+function getTeamName(players: Player[]): string {
+  if (players.length === 0) return "Unknown Team";
+  return players.map((p) => p.name).join(" / ");
 }
 
 export default function OrgMatchResultPage() {
@@ -72,6 +33,8 @@ export default function OrgMatchResultPage() {
   const [searchParams, setSearchParams] = useState<URLSearchParams>(
     new URLSearchParams(),
   );
+  const [loading, setLoading] = useState(true);
+  const [matchInfo, setMatchInfo] = useState<any | null>(null);
 
   useEffect(() => {
     setSearchParams(new URLSearchParams(window.location.search));
@@ -80,77 +43,88 @@ export default function OrgMatchResultPage() {
   const tournamentId = searchParams.get("tournamentId");
   const matchId = searchParams.get("matchId");
 
-  const config = useMemo(
-    () =>
-      (matchId
-        ? getItem<MatchConfigData>(`match:${matchId}:config`)
-        : null) ?? {
-        scoringSystem: "sideout",
-        format: "doubles",
-        bestOf: 3,
-        pointsToWin: 11,
-        winByTwo: true,
-        initialServer: 1,
-      },
-    [matchId],
-  );
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!matchId) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const info = await matchApi.getMatchInfo(matchId);
+        if (!cancelled) setMatchInfo(info);
+      } catch (error) {
+        console.error("Failed to load match result", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [matchId]);
 
-  const state = useMemo(
-    () =>
-      matchId ? getItem<LiveMatchStateData>(`match:${matchId}:state`) : null,
-    [matchId],
-  );
+  const computed = useMemo(() => {
+    const teamAPlayers = getTeamPlayers(matchInfo?.teamAData);
+    const teamBPlayers = getTeamPlayers(matchInfo?.teamBData);
+    const teamAName = getTeamName(teamAPlayers);
+    const teamBName = getTeamName(teamBPlayers);
 
-  const format =
-    config.format === "singles" || config.format === "doubles"
-      ? config.format
-      : "doubles";
+    const sets: Array<[number, number]> = (matchInfo?.sets ?? [])
+      .slice()
+      .sort((a: any, b: any) => (a?.setNumber ?? 0) - (b?.setNumber ?? 0))
+      .map((s: any) => [s?.teamAScore ?? 0, s?.teamBScore ?? 0]);
 
-  const players = useMemo(
-    () =>
-      ensurePlayers(
-        matchId ? getItem(`match:${matchId}:players`) : null,
-        format,
-      ),
-    [matchId, format],
-  );
+    let winsA = 0;
+    let winsB = 0;
+    for (const [a, b] of sets) {
+      if (a > b) winsA += 1;
+      else if (b > a) winsB += 1;
+    }
 
-  const setScores: [number, number][] = (state?.setScores ?? [])
-    .map((s): [number, number] => [s?.[0] ?? 0, s?.[1] ?? 0])
-    .filter(([a, b]) => a !== 0 || b !== 0);
+    const winnerId = matchInfo?.winnerId ?? null;
+    const winnerSide =
+      winnerId && winnerId === matchInfo?.teamA
+        ? 0
+        : winnerId && winnerId === matchInfo?.teamB
+          ? 1
+          : winsA === winsB
+            ? null
+            : winsA > winsB
+              ? 0
+              : 1;
 
-  const winner = computeWinner(setScores);
+    const winnerName =
+      winnerSide === 0
+        ? teamAName
+        : winnerSide === 1
+          ? teamBName
+          : "Match Complete";
+    const winnerPlayers = winnerSide === 0 ? teamAPlayers : teamBPlayers;
+    const winnerAvatar =
+      winnerPlayers.find((p) => p.avatarUrl)?.avatarUrl ?? null;
+    const scoreLine =
+      sets.length > 0
+        ? sets.map(([a, b]) => `${a}-${b}`).join(" • ")
+        : "No sets recorded";
 
-  const winnerName =
-    winner === null
-      ? "Match Complete"
-      : winner === 0
-        ? format === "doubles"
-          ? `${players.side0[0].name} & ${players.side0[1].name}`
-          : players.side0[0].name
-        : format === "doubles"
-          ? `${players.side1[0].name} & ${players.side1[1].name}`
-          : players.side1[0].name;
-
-  const scoreLine =
-    setScores.length > 0
-      ? setScores.map(([a, b]) => `${a}-${b}`).join("   •   ")
-      : "No sets recorded";
+    return { winnerName, winnerAvatar, scoreLine };
+  }, [matchInfo]);
 
   return (
     <Layout
       title="Live Match"
       showBack
       showBottomNav={false}
-      onBack={() => router.back()}
+      onBack={() =>
+        router.replace("/org/tournaments/detail" + toQuery({ t: tournamentId }))
+      }
     >
       <div className="relative min-h-screen">
-        {/* 🔵 Blurred Background Overlay */}
         <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-md" />
 
-        {/* 🏆 Center Winner Content */}
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center px-6 text-center">
-          {/* Trophy */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -160,7 +134,6 @@ export default function OrgMatchResultPage() {
             <TrophyIcon size={52} />
           </motion.div>
 
-          {/* Winner Label */}
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -170,28 +143,39 @@ export default function OrgMatchResultPage() {
             Winner
           </motion.p>
 
-          {/* Winner Name */}
+          <div className="mt-3">
+            {computed.winnerAvatar ? (
+              <img
+                src={computed.winnerAvatar}
+                alt={computed.winnerName}
+                className="mx-auto h-16 w-16 rounded-full border-2 border-white/60 object-cover"
+              />
+            ) : (
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/60 bg-white/15">
+                <UserIcon size={28} className="text-white" />
+              </div>
+            )}
+          </div>
+
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="mt-2 text-2xl font-bold text-white"
+            className="mt-3 text-2xl font-bold text-white"
           >
-            {winnerName}
+            {loading ? "Loading..." : computed.winnerName}
           </motion.p>
 
-          {/* Final Score */}
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="mt-2 text-sm text-white/80"
           >
-            Final Score: {scoreLine}
+            Final Score: {loading ? "Loading..." : computed.scoreLine}
           </motion.p>
         </div>
 
-        {/* 🔶 Bottom Confirm Button */}
         <motion.div
           initial={{ y: 60 }}
           animate={{ y: 0 }}

@@ -494,7 +494,7 @@ export default function RegistrationEventCard({
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-8 w-8 rounded-full bg-gray-400" />
+                      <div className="h-8 w-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]" />
                     )}
                     <span className="font-medium">
                       {partnerProfile?.name ||
@@ -544,7 +544,7 @@ export default function RegistrationEventCard({
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-8 w-8 rounded-full bg-gray-400" />
+                      <div className="h-8 w-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]" />
                     )}
                     <span className="font-medium">
                       {partnerProfile?.name ||
@@ -603,7 +603,7 @@ export default function RegistrationEventCard({
                                 className="h-8 w-8 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="h-8 w-8 rounded-full bg-gray-400" />
+                              <div className="h-8 w-8 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]" />
                             )}
                             <span className="font-medium">
                               {partner?.name || "Partner"}

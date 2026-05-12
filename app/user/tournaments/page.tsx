@@ -46,6 +46,18 @@ function formatDate(value?: string | null) {
   });
 }
 
+function getTournamentLogoUrl(t: TournamentData) {
+  const raw = t as any;
+  return (
+    t.logoUrl ||
+    raw?.logoURL ||
+    raw?.logo ||
+    raw?.imageUrl ||
+    raw?.image ||
+    null
+  );
+}
+
 type TopTab = "browse" | "joined" | "history";
 type FormatTab = "all" | "singles" | "doubles";
 
@@ -171,7 +183,7 @@ export default function UserTournamentsPage() {
         location: `${t.venueCity} | ${t.venueState}`,
         cta,
         joinedStatus: activeTab === "history" ? "Completed" : undefined,
-        logoUrl: t.logoUrl,
+        logoUrl: getTournamentLogoUrl(t),
       };
     });
   }, [tournaments, activeTab, format]);

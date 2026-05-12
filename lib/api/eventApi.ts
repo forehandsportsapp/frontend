@@ -1,6 +1,37 @@
 import { EventData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
 
+export type EventResultStanding = {
+  rank: number;
+  teamId: string;
+  teamName: string;
+  avatarUrl: string | null;
+  players: Array<{ id: string; name: string; avatarUrl: string | null }>;
+  played: number;
+  wins: number;
+  losses: number;
+  setsWon: number;
+  setsLost: number;
+  setDiff: number;
+  pointsFor: number;
+  pointsAgainst: number;
+  pointDiff: number;
+  label: "Winner" | "Runner Up" | "Third Place" | null;
+};
+
+export type EventResultsResponse = {
+  event: {
+    id: string;
+    name: string;
+    eventState: string;
+    tournamentId: string;
+  };
+  champion: EventResultStanding | null;
+  standings: EventResultStanding[];
+  totalTeams: number;
+  totalMatches: number;
+};
+
 /**
  * API client for individual event management within a tournament.
  */
@@ -32,6 +63,17 @@ export const eventApi = {
     );
     if (error) throw error;
     return data;
+  },
+
+  /**
+   * Fetches computed event standings/champion and full results table.
+   */
+  getEventResults: async (eventId: string): Promise<EventResultsResponse> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/event/results", param: eventId }),
+    );
+    if (error) throw error;
+    return data as EventResultsResponse;
   },
 
   /**

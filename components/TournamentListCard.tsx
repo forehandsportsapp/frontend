@@ -6,6 +6,7 @@ import {
   CalendarIcon,
   ChevronRightIcon,
   MapPinIcon,
+  TrophyIcon,
   WalletIcon,
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
@@ -33,62 +34,8 @@ function SoftballLogo({ url, name }: { url?: string | null; name: string }) {
     );
   }
   return (
-    <div className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full border border-[#f28a36] bg-[radial-gradient(circle_at_35%_35%,#fffefb_0%,#faf7ef_58%,#f3ebd8_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_3px_8px_rgba(242,138,54,0.08)]">
-      <svg viewBox="0 0 64 64" className="h-[34px] w-[34px]" aria-hidden="true">
-        <circle
-          cx="32"
-          cy="32"
-          r="27"
-          fill="#fffdf8"
-          stroke="#2f2a21"
-          strokeWidth="1.8"
-        />
-        <circle
-          cx="32"
-          cy="32"
-          r="20.5"
-          fill="none"
-          stroke="#2f2a21"
-          strokeWidth="1.2"
-          strokeDasharray="1.3 2.2"
-        />
-        <path
-          d="M18 12c4.8 6.4 7 13.1 7 20s-2.2 13.6-7 20"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M46 12c-4.8 6.4-7 13.1-7 20s2.2 13.6 7 20"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        <text
-          x="32"
-          y="29"
-          textAnchor="middle"
-          fontSize="7.2"
-          fontWeight="700"
-          fill="#2f2a21"
-          letterSpacing="1.5"
-        >
-          SOFT
-        </text>
-        <text
-          x="32"
-          y="37.5"
-          textAnchor="middle"
-          fontSize="6"
-          fontWeight="700"
-          fill="#2f2a21"
-          letterSpacing="1.2"
-        >
-          BALL
-        </text>
-      </svg>
+    <div className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full border border-[#f28a36] bg-[radial-gradient(circle_at_35%_35%,#fffefb_0%,#faf7ef_58%,#f3ebd8_100%)] text-[#c96b1f] shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_3px_8px_rgba(242,138,54,0.08)]">
+      <TrophyIcon size={20} />
     </div>
   );
 }

@@ -17,6 +17,19 @@ import { useApp } from "@/components/AppProvider";
 import { TournamentData, EventData } from "@/lib/models";
 import { QRCodeSVG } from "qrcode.react";
 
+function getTournamentLogoUrl(tournament?: TournamentData | null) {
+  if (!tournament) return null;
+  const raw = tournament as any;
+  return (
+    tournament.logoUrl ||
+    raw?.logoURL ||
+    raw?.logo ||
+    raw?.imageUrl ||
+    raw?.image ||
+    null
+  );
+}
+
 export default function TournamentCheckoutScreen() {
   const [completed, setCompleted] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -197,15 +210,15 @@ export default function TournamentCheckoutScreen() {
 
         {/* Tournament Info */}
         <div className="mt-8 flex items-center gap-4">
-          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] bg-white shadow-sm">
-            {tournament?.logoUrl ? (
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-sm">
+            {getTournamentLogoUrl(tournament) ? (
               <img
-                src={tournament.logoUrl}
+                src={getTournamentLogoUrl(tournament) || ""}
                 alt="Logo"
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-gray-400">
+              <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-[var(--color-text-secondary)]">
                 SOFT
               </div>
             )}
@@ -287,7 +300,7 @@ export default function TournamentCheckoutScreen() {
         {/* UPI Section */}
         {tournament?.upiId && totals.online > 0 && (
           <section className="mt-8 rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-center">
-            <div className="mx-auto h-44 w-44 rounded-2xl bg-white p-4 shadow-xl flex items-center justify-center">
+            <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-2xl bg-[var(--color-surface-elevated)] p-4 shadow-xl">
               <QRCodeSVG value={upiUrl} size={144} />
             </div>
             <p className="mt-4 text-[16px] font-bold">
@@ -304,7 +317,7 @@ export default function TournamentCheckoutScreen() {
         )}
 
         {/* Notice */}
-        <section className="mt-6 rounded-2xl bg-[#ff7a1a]/10 p-4 border border-[#ff7a1a]/20">
+        <section className="mt-6 rounded-2xl border border-[#ff7a1a]/20 bg-[#ff7a1a]/10 p-4">
           <p className="text-[15px] font-bold text-[#ff7a1a]">
             Payment Verification
           </p>

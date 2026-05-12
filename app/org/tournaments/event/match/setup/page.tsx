@@ -268,8 +268,9 @@ export default function OrgMatchSetupPage() {
   const [maxDrag, setMaxDrag] = useState(200);
 
   // THUMB constants (must match the style below exactly)
-  const THUMB_W = 70; // px — width of the white pill (further decreased)
-  const SIDE_PAD = 12; // px — inset from each side (further increased)
+  const THUMB_W = 70; // px — width of the white pill
+  const LEFT_PAD = 12; // px — left inset
+  const RIGHT_PAD = 6; // px — keep a small gap before track end
 
   useEffect(() => {
     const update = () => {
@@ -277,7 +278,7 @@ export default function OrgMatchSetupPage() {
       if (!track) return;
       // trackWidth - thumbWidth - leftPad - rightPad
       setMaxDrag(
-        Math.max(0, track.clientWidth - THUMB_W - SIDE_PAD - SIDE_PAD),
+        Math.max(0, track.clientWidth - THUMB_W - LEFT_PAD - RIGHT_PAD),
       );
       x.set(0);
     };
@@ -289,7 +290,7 @@ export default function OrgMatchSetupPage() {
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [THUMB_W, SIDE_PAD, x]);
+  }, [THUMB_W, LEFT_PAD, RIGHT_PAD, x]);
 
   const handleSwipeEnd = () => {
     if (isStarting || maxDrag <= 0) {
@@ -299,7 +300,7 @@ export default function OrgMatchSetupPage() {
     const cur = x.get();
     // Fire when user drags past 80% of the available track
     if (cur >= maxDrag * 0.8) {
-      animate(x, Math.max(0, maxDrag - 4), {
+      animate(x, maxDrag, {
         type: "spring",
         stiffness: 500,
         damping: 30,
@@ -682,7 +683,7 @@ export default function OrgMatchSetupPage() {
             Swipe to start match
           </span>
 
-          {/* White pill thumb — fixed size, positioned with SIDE_PAD inset */}
+          {/* White pill thumb — fixed size, positioned with left inset */}
           <motion.button
             drag="x"
             dragConstraints={{ left: 0, right: maxDrag }}
@@ -696,7 +697,7 @@ export default function OrgMatchSetupPage() {
             style={{
               x,
               position: "absolute",
-              left: `${SIDE_PAD}px`,
+              left: `${LEFT_PAD}px`,
               height: "40px", // Slightly smaller vertically
               width: `${THUMB_W}px`,
               minWidth: `${THUMB_W}px`,
