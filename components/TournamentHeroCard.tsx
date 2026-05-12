@@ -12,6 +12,25 @@ type TournamentHeroCardProps = {
   logoUrl?: string | null;
 };
 
+function sanitizeLogoUrl(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const lowered = trimmed.toLowerCase();
+  if (
+    lowered === "null" ||
+    lowered === "undefined" ||
+    lowered === "default" ||
+    lowered === "unset" ||
+    lowered.endsWith("/default") ||
+    lowered.includes("default-logo") ||
+    lowered.includes("placeholder")
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
 function SoftballLogo() {
   return (
     <div className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full border border-[#f4f0e8] bg-[radial-gradient(circle_at_35%_35%,#fffefb_0%,#faf7ef_58%,#f3ebd8_100%)] shadow-[0_3px_8px_rgba(110,45,0,0.12)]">
@@ -97,6 +116,14 @@ export default function TournamentHeroCard({
   onShare,
   logoUrl,
 }: TournamentHeroCardProps) {
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const safeLogoUrl = sanitizeLogoUrl(logoUrl);
+  const showFallback = imageFailed || !safeLogoUrl;
+
+  React.useEffect(() => {
+    setImageFailed(false);
+  }, [safeLogoUrl]);
+
   return (
     <section className="bg-[var(--color-background)] px-4 pb-6 pt-[calc(max(env(safe-area-inset-top),12px)+4px)]">
       {/* Top Bar */}
@@ -119,15 +146,16 @@ export default function TournamentHeroCard({
 
       {/* Info Section */}
       <div className="mt-8 flex items-center gap-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-[var(--color-border)] bg-white shadow-lg">
-          {logoUrl ? (
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-lg">
+          {!showFallback ? (
             <img
-              src={logoUrl}
+              src={safeLogoUrl || ""}
               alt="Logo"
               className="h-full w-full object-cover"
+              onError={() => setImageFailed(true)}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gray-100">
+            <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface)]">
               <SoftballLogo />
             </div>
           )}

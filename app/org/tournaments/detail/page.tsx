@@ -25,7 +25,11 @@ import {
 import { toQuery } from "@/lib/utils";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
-import { EventData, TournamentData } from "@/lib/models";
+import {
+  EventData,
+  TournamentData,
+  TournamentSummaryEventData,
+} from "@/lib/models";
 import { useApp } from "@/components/AppProvider";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { notificationApi } from "@/lib/api/notificationApi";
@@ -458,7 +462,7 @@ const getWorkflowSteps = (event: EventData, tournamentId: string) => {
   return steps;
 };
 
-// ─── Extend Due Date Modal ──────────────────────────────────────────────────
+// Extend Due Date Modal
 const ExtendDueDateModal = ({
   open,
   onClose,
@@ -694,8 +698,11 @@ const EventsTab = ({
   );
 };
 
-const SummaryTab = ({ events }: { events: EventData[] }) => {
+const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({});
+  const [summaryEvents, setSummaryEvents] = useState<TournamentSummaryEventData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const toggleCard = (eventId: string) => {
     setExpandedById((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
@@ -706,109 +713,133 @@ const SummaryTab = ({ events }: { events: EventData[] }) => {
       case "created":
         return { label: "Draft", className: "bg-muted text-primary-contrast" };
       case "registration_closed":
-        return {
-          label: "Reg Closed",
-          className: "bg-muted text-primary-contrast",
-        };
+        return { label: "Reg Closed", className: "bg-muted text-primary-contrast" };
       case "participants_finalized":
-        return {
-          label: "Finalized",
-          className: "bg-success text-primary-contrast",
-        };
+        return { label: "Finalized", className: "bg-success text-primary-contrast" };
       case "scheduled":
-        return {
-          label: "Scheduled",
-          className: "bg-success text-primary-contrast",
-        };
+        return { label: "Scheduled", className: "bg-success text-primary-contrast" };
       case "in_progress":
         return { label: "Live", className: "bg-error text-primary-contrast" };
       case "round_over":
-        return {
-          label: "Round Over",
-          className: "bg-success text-primary-contrast",
-        };
+        return { label: "Round Over", className: "bg-success text-primary-contrast" };
       case "completed":
-        return {
-          label: "Completed",
-          className: "bg-success text-primary-contrast",
-        };
+        return { label: "Completed", className: "bg-success text-primary-contrast" };
       case "cancelled":
-        return {
-          label: "Cancelled",
-          className: "bg-muted text-primary-contrast",
-        };
+        return { label: "Cancelled", className: "bg-muted text-primary-contrast" };
       default:
         return { label: "Draft", className: "bg-muted text-primary-contrast" };
     }
   };
 
-  const cards = events.map((event, index) => {
-    const enrolled = Math.max(
-      Array.isArray(event.teams) ? event.teams.length * 8 : 0,
-      24 + index * 2,
-    );
-    const confirmed = Math.max(Math.floor(enrolled * 0.56), 14 + index);
-    const stageOptions = [
-      "Registrations Open",
-      "3 Matches left in round 1",
-      "Match 2 Delayed",
-    ];
-    const contextOptions = [
-      "Closes in 2 days",
-      "2 Bye Players",
-      "Due to weather",
-    ];
+  const loadSummary = async () => {
+    if (!tournamentId || tournamentId === "dummy-system-1") {
+      setSummaryEvents([]);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setError("");
+      const summary = await tournamentApi.getSummary(tournamentId);
+      setSummaryEvents(summary?.events ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load tournament summary");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    void loadSummary();
+
+    const intervalId = window.setInterval(() => {
+      void loadSummary();
+    }, 20000);
+
+    return () => window.clearInterval(intervalId);
+  }, [tournamentId]);
+
+  const cards = summaryEvents.map((event, index) => {
+    const enrolled = event.enrolledParticipants ?? 0;
+    const confirmed = event.confirmedParticipants ?? 0;
+    const totalMatches = event.totalMatches ?? 0;
+    const completedMatches = event.completedMatches ?? 0;
+    const liveMatches = event.liveMatches ?? 0;
+
+    const contextText =
+      event.eventState === "registration_closed" || event.eventState === "created"
+        ? `Closes ${formatDate(event.dueDate)}`
+        : event.eventState === "in_progress"
+          ? `${liveMatches} live | ${completedMatches}/${totalMatches} completed`
+          : `Starts ${formatDate(event.startDate)}`;
+
     const detailItems = [
       {
-        id: `${event.id}-a`,
+        id: `${event.eventId}-a`,
         tone: "warning",
-        title: "Participants Confirmation Remaining",
-        subtitle: `${enrolled} participants have enrolled`,
+        title: "Participants Registered",
+        subtitle: `${enrolled} participants enrolled`,
+        href: `/org/tournaments/event/participants${toQuery({
+          tournamentId,
+          eventId: event.eventId,
+        })}`,
       },
       {
-        id: `${event.id}-b`,
+        id: `${event.eventId}-b`,
         tone: "warning",
-        title: "Fixtures Setup Remaining",
-        subtitle: `${Math.max(confirmed, 16)} participants pending`,
+        title: "Teams Confirmed",
+        subtitle: `${event.totalTeams} teams confirmed`,
+        href: `/org/tournaments/event/fixture${toQuery({
+          tournamentId,
+          eventId: event.eventId,
+        })}`,
       },
       {
-        id: `${event.id}-c`,
+        id: `${event.eventId}-c`,
         tone: "success",
-        title: "Match 2 Completed",
-        subtitle: "Match 2 is completed on 22 dec, 2025",
+        title: "Matches Completed",
+        subtitle: `${completedMatches} of ${totalMatches} matches completed`,
+        href: `/org/tournaments/event/matches${toQuery({
+          tournamentId,
+          eventId: event.eventId,
+        })}`,
       },
       {
-        id: `${event.id}-d`,
+        id: `${event.eventId}-d`,
         tone: "warning",
-        title: "Match 3 Delayed",
-        subtitle: "Because of rain",
+        title: "Live / Remaining",
+        subtitle: `${liveMatches} live | ${event.remainingMatches} remaining`,
+        href: `/org/tournaments/event/matches${toQuery({
+          tournamentId,
+          eventId: event.eventId,
+        })}`,
       },
     ];
-    const statePill = getEventStatePill(event.eventState);
 
     return {
-      id: event.id || `event-${index}`,
-      title: event.name,
-      stageText: stageOptions[index % stageOptions.length],
-      contextText: contextOptions[index % contextOptions.length],
-      amount: Number(event.amount || 0),
+      id: event.eventId || `event-${index}`,
+      title: event.eventName,
+      stageText: event.stageText || "Registrations Open",
+      contextText,
+      amount: Number(event.totalCollected || 0),
       enrolled,
       confirmed,
       detailItems,
-      statePill,
+      statePill: getEventStatePill(event.eventState),
     };
   });
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center px-1">
-        <h2 className="font-semibold text-lg text-[var(--color-text)]">
-          {events.length} Events
-        </h2>
+        <h2 className="font-semibold text-lg text-[var(--color-text)]">{summaryEvents.length} Events</h2>
         <button className="flex items-center gap-1 text-xs font-medium text-orange-500">
           <FilterIcon size={16} /> Filter
         </button>
       </div>
+      {isLoading ? <p className="text-sm text-[var(--color-muted)] px-1">Loading summary...</p> : null}
+      {error ? <p className="text-sm text-red-500 px-1">{error}</p> : null}
       {cards.map((card) => {
         const isExpanded = Boolean(expandedById[card.id]);
         return (
@@ -816,9 +847,7 @@ const SummaryTab = ({ events }: { events: EventData[] }) => {
             key={card.id}
             className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-sm p-4"
           >
-            <h3 className="font-bold text-[15px] text-[var(--color-text)]">
-              {card.title}
-            </h3>
+            <h3 className="font-bold text-[15px] text-[var(--color-text)]">{card.title}</h3>
             <div className="mt-2 flex gap-1.5 flex-wrap">
               <span
                 className={`px-2.5 py-1 text-[10px] leading-none rounded-full font-semibold ${card.statePill.className}`}
@@ -842,20 +871,12 @@ const SummaryTab = ({ events }: { events: EventData[] }) => {
             <div className="mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3">
               <div className="grid grid-cols-2 divide-x divide-[var(--color-border)]">
                 <div className="pr-3">
-                  <p className="text-[10px] text-[var(--color-muted)]">
-                    Enrolled
-                  </p>
-                  <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">
-                    {card.enrolled}
-                  </p>
+                  <p className="text-[10px] text-[var(--color-muted)]">Enrolled</p>
+                  <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">{card.enrolled}</p>
                 </div>
                 <div className="pl-3">
-                  <p className="text-[10px] text-[var(--color-muted)]">
-                    Confirmed (Paid)
-                  </p>
-                  <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">
-                    {card.confirmed}
-                  </p>
+                  <p className="text-[10px] text-[var(--color-muted)]">Confirmed (Paid)</p>
+                  <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">{card.confirmed}</p>
                 </div>
               </div>
             </div>
@@ -872,9 +893,10 @@ const SummaryTab = ({ events }: { events: EventData[] }) => {
             {isExpanded && (
               <div className="mt-3 space-y-3">
                 {card.detailItems.map((detail) => (
-                  <div
+                  <Link
                     key={detail.id}
-                    className="flex items-start justify-between"
+                    href={detail.href}
+                    className="flex items-start justify-between hover:opacity-90 transition-opacity"
                   >
                     <div className="flex items-start gap-2.5">
                       <CircleIcon
@@ -886,65 +908,21 @@ const SummaryTab = ({ events }: { events: EventData[] }) => {
                         }
                       />
                       <div>
-                        <p className="text-sm font-medium text-[var(--color-text)]">
-                          {detail.title}
-                        </p>
-                        <p className="text-xs text-[var(--color-muted)] mt-0.5">
-                          {detail.subtitle}
-                        </p>
+                        <p className="text-sm font-medium text-[var(--color-text)]">{detail.title}</p>
+                        <p className="text-xs text-[var(--color-muted)] mt-0.5">{detail.subtitle}</p>
                       </div>
                     </div>
-                    <ChevronRightIcon
-                      size={14}
-                      className="text-[var(--color-muted)] mt-1"
-                    />
-                  </div>
+                    <ChevronRightIcon size={14} className="text-[var(--color-muted)] mt-1" />
+                  </Link>
                 ))}
               </div>
             )}
           </div>
         );
       })}
-      <div className="hidden bg-[var(--color-surface)] rounded-xl shadow-sm border border-[var(--color-border)] overflow-hidden">
-        <div className="p-4 space-y-4">
-          <h3 className="font-semibold text-[var(--color-text)]">
-            {events[0]?.name || "No events yet"}
-          </h3>
-          <div className="flex gap-2 flex-wrap">
-            <span className="px-2.5 py-1 text-[11px] font-semibold tracking-wide rounded-full border bg-green-100 text-green-700 border-green-200">
-              {" "}
-              ₹
-              {events.reduce(
-                (sum, event) => sum + Number(event.amount || 0),
-                0,
-              )}{" "}
-              Listed Fees
-            </span>
-          </div>
-          <div className="grid grid-cols-2 mt-3 pt-2">
-            <div>
-              <p className="text-xs text-[var(--color-muted)] mb-0.5">Teams</p>
-              <p className="text-xl font-bold text-[var(--color-text)]">
-                {events.reduce(
-                  (sum, event) =>
-                    sum + (Array.isArray(event.teams) ? event.teams.length : 0),
-                  0,
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[var(--color-muted)] mb-0.5">Events</p>
-              <p className="text-xl font-bold text-[var(--color-text)]">
-                {events.length}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
-
 type CrewRole = "admin" | "scorer";
 type InviteStatus = "invite_sent" | "accepted" | "rejected" | "idle";
 
@@ -1375,7 +1353,7 @@ export default function TournamentEventDetailsPage() {
               />
             )}
             {activeTab === "Summary" && (
-              <SummaryTab events={tournament?.events ?? []} />
+              <SummaryTab tournamentId={tournamentId} />
             )}
             {activeTab === "Event Crew" && (
               <EventCrewTab

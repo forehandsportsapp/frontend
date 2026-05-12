@@ -211,3 +211,28 @@ export interface AppStateData {
   scoreLocks: Record<string, ScoreLockData>;
   offlineQueue: ScoreEventData[];
 }
+
+export interface TournamentSummaryEventData {
+  eventId: string;
+  eventName: string;
+  eventState?: EventState | null;
+  amount: number;
+  totalCollected: number;
+  totalTeams: number;
+  enrolledParticipants: number;
+  confirmedParticipants: number;
+  totalMatches: number;
+  completedMatches: number;
+  liveMatches: number;
+  remainingMatches: number;
+  activeRound?: number | null;
+  dueDate?: string | null;
+  startDate?: string | null;
+  stageText: string;
+}
+
+export interface TournamentSummaryData {
+  tournamentId: string;
+  updatedAt: string;
+  events: TournamentSummaryEventData[];
+}

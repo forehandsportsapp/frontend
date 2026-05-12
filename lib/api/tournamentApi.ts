@@ -1,4 +1,4 @@
-import { EventData, TournamentData } from "../models";
+import { EventData, TournamentData, TournamentSummaryData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
 
 /**
@@ -72,6 +72,14 @@ export const tournamentApi = {
     if (error) throw error;
 
     return data as TournamentData;
+  },
+
+  getSummary: async (tournamentId: string): Promise<TournamentSummaryData> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/tournament/summary", param: tournamentId }),
+    );
+    if (error) throw error;
+    return data as TournamentSummaryData;
   },
 
   /**

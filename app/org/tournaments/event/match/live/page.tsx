@@ -292,7 +292,18 @@ export default function OrgLiveMatchPage() {
         }
 
         if (matchId) {
-          await matchApi.updateScore({
+          const scorePayload: {
+            matchId: string;
+            setNumber: number;
+            teamAScore: number;
+            teamBScore: number;
+            setStatus: "completed" | "in_progress";
+            winnerId: string | null;
+            matchFinished: boolean;
+            matchWinnerId: string | null;
+            teamAId?: string;
+            teamBId?: string;
+          } = {
             matchId,
             setNumber: updatedSetIndex + 1,
             teamAScore: setScore[0] ?? 0,
@@ -301,8 +312,13 @@ export default function OrgLiveMatchPage() {
             winnerId: setWinnerId,
             matchFinished: winner != null,
             matchWinnerId,
-            teamAId: teamIds.a || null,
-            teamBId: teamIds.b || null,
+          };
+
+          if (teamIds.a) scorePayload.teamAId = teamIds.a;
+          if (teamIds.b) scorePayload.teamBId = teamIds.b;
+
+          await matchApi.updateScore({
+            ...scorePayload,
           });
         }
 

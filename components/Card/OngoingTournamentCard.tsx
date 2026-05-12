@@ -10,6 +10,7 @@ interface OngoingTournamentCardProps {
   modes: string;
   venue: string;
   logoText: string;
+  logoUrl?: string | null;
 }
 
 export default function OngoingTournamentCard({
@@ -20,6 +21,7 @@ export default function OngoingTournamentCard({
   modes,
   venue,
   logoText,
+  logoUrl,
 }: OngoingTournamentCardProps) {
   return (
     <Link
@@ -33,10 +35,14 @@ export default function OngoingTournamentCard({
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
 
           {/* Logo Badge */}
-          <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-sm dark:bg-[var(--color-surface-elevated)]">
-            <span className="text-lg font-black tracking-tighter text-orange-600 dark:text-orange-400">
-              {logoText}
-            </span>
+          <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm dark:bg-[var(--color-surface-elevated)]">
+            {logoUrl ? (
+              <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-lg font-black tracking-tighter text-orange-600 dark:text-orange-400">
+                {logoText}
+              </span>
+            )}
           </div>
 
           {/* Event Details */}

@@ -14,6 +14,8 @@ type PastMatch = {
   rightTeamName: string;
   leftTeamPlayers: string[];
   rightTeamPlayers: string[];
+  leftTeamImages?: string[];
+  rightTeamImages?: string[];
   score: string;
   scoreLabel: string;
   accentColor: string;
@@ -54,7 +56,8 @@ const avatarPalette = [
   { accent: "#c7d2fe", skin: "#e2b38f", shirt: "#6366f1" },
 ];
 
-function buildAvatar(name: string, index: number) {
+function buildAvatar(name: string, index: number, provided?: string) {
+  if (provided) return provided;
   const initials = name
     .split(" ")
     .filter(Boolean)
@@ -65,7 +68,13 @@ function buildAvatar(name: string, index: number) {
   return avatarDataUri(initials, palette.accent, palette.skin, palette.shirt);
 }
 
-function TeamAvatarStack({ players }: { players: string[] }) {
+function TeamAvatarStack({
+  players,
+  images,
+}: {
+  players: string[];
+  images?: string[];
+}) {
   return (
     <div className="flex items-center justify-center">
       {players.slice(0, 2).map((player, index) => (
@@ -75,7 +84,7 @@ function TeamAvatarStack({ players }: { players: string[] }) {
         >
           <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary bg-surface shadow-[var(--shadow-card)]">
             <Image
-              src={buildAvatar(player, index)}
+              src={buildAvatar(player, index, images?.[index])}
               alt={player}
               fill
               sizes="40px"
@@ -115,7 +124,10 @@ function PastMatchCard({ match }: { match: PastMatch }) {
 
           <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
             <div className="flex min-w-0 flex-col items-center text-center">
-              <TeamAvatarStack players={match.leftTeamPlayers} />
+              <TeamAvatarStack
+                players={match.leftTeamPlayers}
+                images={match.leftTeamImages}
+              />
               <p className="mt-2 w-full truncate text-[13px] font-medium text-text">
                 {match.leftTeamName}
               </p>
@@ -131,7 +143,10 @@ function PastMatchCard({ match }: { match: PastMatch }) {
             </div>
 
             <div className="flex min-w-0 flex-col items-center text-center">
-              <TeamAvatarStack players={match.rightTeamPlayers} />
+              <TeamAvatarStack
+                players={match.rightTeamPlayers}
+                images={match.rightTeamImages}
+              />
               <p className="mt-2 w-full truncate text-[13px] font-medium text-text">
                 {match.rightTeamName}
               </p>
@@ -178,11 +193,78 @@ export default function PastMatchesSection() {
         const data = await userApi.getPastMatches();
         if (!active) return;
 
-        const formattedMatches = data.map((m, idx) => ({
-          ...m,
-          timeAgo: m.endedAt ? getTimeAgo(m.endedAt) : "N/A",
-          accentColor: accentColors[idx % accentColors.length],
-        }));
+        const formattedMatches = data.map((m, idx) => {
+          const leftPlayersRaw = Array.isArray(m.leftTeamPlayers)
+            ? m.leftTeamPlayers
+            : Array.isArray(m.leftTeam?.players)
+              ? m.leftTeam.players
+              : Array.isArray(m.leftTeam?.participants)
+                ? m.leftTeam.participants
+                : [];
+          const rightPlayersRaw = Array.isArray(m.rightTeamPlayers)
+            ? m.rightTeamPlayers
+            : Array.isArray(m.rightTeam?.players)
+              ? m.rightTeam.players
+              : Array.isArray(m.rightTeam?.participants)
+                ? m.rightTeam.participants
+                : [];
+
+          const normalizedLeftPlayers = leftPlayersRaw.map((player: any) =>
+            typeof player === "string"
+              ? player
+              : player?.name ||
+                  player?.fullName ||
+                  player?.displayName ||
+                  player?.user?.name ||
+                  "Player",
+          );
+          const normalizedRightPlayers = rightPlayersRaw.map((player: any) =>
+            typeof player === "string"
+              ? player
+              : player?.name ||
+                  player?.fullName ||
+                  player?.displayName ||
+                  player?.user?.name ||
+                  "Player",
+          );
+
+          const leftImages = leftPlayersRaw
+            .map(
+              (player: any) =>
+                player?.image ||
+                player?.avatarUrl ||
+                player?.profilePicUrl ||
+                player?.photoUrl ||
+                player?.avatar ||
+                player?.user?.profilePicUrl,
+            )
+            .filter(Boolean);
+          const rightImages = rightPlayersRaw
+            .map(
+              (player: any) =>
+                player?.image ||
+                player?.avatarUrl ||
+                player?.profilePicUrl ||
+                player?.photoUrl ||
+                player?.avatar ||
+                player?.user?.profilePicUrl,
+            )
+            .filter(Boolean);
+
+          return {
+            ...m,
+            leftTeamPlayers:
+              normalizedLeftPlayers.length > 0 ? normalizedLeftPlayers : ["Player"],
+            rightTeamPlayers:
+              normalizedRightPlayers.length > 0
+                ? normalizedRightPlayers
+                : ["Player"],
+            leftTeamImages: leftImages,
+            rightTeamImages: rightImages,
+            timeAgo: m.endedAt ? getTimeAgo(m.endedAt) : "N/A",
+            accentColor: accentColors[idx % accentColors.length],
+          };
+        });
 
         setMatches(formattedMatches);
       } catch (err) {

@@ -26,7 +26,11 @@ function BellIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-export default function HomeHeader() {
+type HomeHeaderProps = {
+  showNotifications?: boolean;
+};
+
+export default function HomeHeader({ showNotifications = true }: HomeHeaderProps) {
   const { userProfile: profile, activeOrganization: organization } = useApp();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -56,6 +60,7 @@ export default function HomeHeader() {
     }));
 
   useEffect(() => {
+    if (!showNotifications) return;
     let active = true;
     const loadNotifications = async () => {
       try {
@@ -72,7 +77,7 @@ export default function HomeHeader() {
     return () => {
       active = false;
     };
-  }, [readIds]);
+  }, [readIds, showNotifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -107,34 +112,37 @@ export default function HomeHeader() {
           </div>
         </div>
 
-        {/* Notifications */}
-        <button
-          type="button"
-          onClick={() => setNotificationsOpen(true)}
-          className="relative w-12 h-12 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-surface)] transition-all active:scale-95"
-          aria-label="Notifications"
-        >
-          <BellIcon size={24} />
-          {unreadCount > 0 && (
-            <span className="absolute top-0 right-0 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--color-background)]">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+        {showNotifications && (
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen(true)}
+            className="relative w-12 h-12 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-surface)] transition-all active:scale-95"
+            aria-label="Notifications"
+          >
+            <BellIcon size={24} />
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-5 h-5 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[var(--color-background)]">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
-      <NotificationsSlideOver
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        items={notifications}
-        unreadCount={unreadCount}
-        onMarkAllRead={() =>
-          setReadIds(
-            new Set(notifications.map((notification) => notification.id))
-          )
-        }
-        onClearAll={() => setNotifications([])}
-      />
+      {showNotifications && (
+        <NotificationsSlideOver
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          items={notifications}
+          unreadCount={unreadCount}
+          onMarkAllRead={() =>
+            setReadIds(
+              new Set(notifications.map((notification) => notification.id))
+            )
+          }
+          onClearAll={() => setNotifications([])}
+        />
+      )}
     </header>
   );
 }
