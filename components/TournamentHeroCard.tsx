@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { ArrowLeftIcon, ShareIcon, UsersIcon } from "@/components/Icons";
+import { ArrowLeftIcon, ShareIcon, TrophyIcon, UsersIcon } from "@/components/Icons";
+import { sanitizeLogoUrl } from "@/lib/logo";
 type TournamentHeroCardProps = {
   title: string;
   subtitle: string;
@@ -11,101 +12,6 @@ type TournamentHeroCardProps = {
   onShare?: () => void;
   logoUrl?: string | null;
 };
-
-function sanitizeLogoUrl(value?: string | null) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const lowered = trimmed.toLowerCase();
-  if (
-    lowered === "null" ||
-    lowered === "undefined" ||
-    lowered === "default" ||
-    lowered === "unset" ||
-    lowered.endsWith("/default") ||
-    lowered.includes("default-logo") ||
-    lowered.includes("placeholder")
-  ) {
-    return null;
-  }
-  return trimmed;
-}
-
-function SoftballLogo() {
-  return (
-    <div className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-full border border-[#f4f0e8] bg-[radial-gradient(circle_at_35%_35%,#fffefb_0%,#faf7ef_58%,#f3ebd8_100%)] shadow-[0_3px_8px_rgba(110,45,0,0.12)]">
-      <svg viewBox="0 0 64 64" className="h-[42px] w-[42px]" aria-hidden="true">
-        <circle
-          cx="32"
-          cy="32"
-          r="27"
-          fill="#fffdf8"
-          stroke="#2f2a21"
-          strokeWidth="1.8"
-        />
-        <circle
-          cx="32"
-          cy="32"
-          r="20.5"
-          fill="none"
-          stroke="#2f2a21"
-          strokeWidth="1.2"
-          strokeDasharray="1.3 2.2"
-        />
-        <path
-          d="M18 12c4.8 6.4 7 13.1 7 20s-2.2 13.6-7 20"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M46 12c-4.8 6.4-7 13.1-7 20s2.2 13.6 7 20"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M15 24c5.8 2.8 11.4 4.2 17 4.2S43.2 26.8 49 24"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-        <path
-          d="M15 40c5.8-2.8 11.4-4.2 17-4.2S43.2 37.2 49 40"
-          fill="none"
-          stroke="#c96b1f"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-        <text
-          x="32"
-          y="29"
-          textAnchor="middle"
-          fontSize="7.2"
-          fontWeight="700"
-          fill="#2f2a21"
-          letterSpacing="1.8"
-        >
-          SOFT
-        </text>
-        <text
-          x="32"
-          y="37.5"
-          textAnchor="middle"
-          fontSize="6"
-          fontWeight="700"
-          fill="#2f2a21"
-          letterSpacing="1.4"
-        >
-          BALL
-        </text>
-      </svg>
-    </div>
-  );
-}
 
 export default function TournamentHeroCard({
   title,
@@ -155,8 +61,8 @@ export default function TournamentHeroCard({
               onError={() => setImageFailed(true)}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface)]">
-              <SoftballLogo />
+            <div className="flex h-full w-full items-center justify-center bg-[var(--color-surface)] text-[var(--color-muted)]">
+              <TrophyIcon size={24} />
             </div>
           )}
         </div>

@@ -10,6 +10,7 @@ import {
   WalletIcon,
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 export type TournamentListItem = {
   id: string;
@@ -26,10 +27,11 @@ export type TournamentListItem = {
 };
 
 function SoftballLogo({ url, name }: { url?: string | null; name: string }) {
-  if (url) {
+  const safeLogoUrl = sanitizeLogoUrl(url);
+  if (safeLogoUrl) {
     return (
       <div className="w-[42px] h-[42px] md:w-[48px] md:h-[48px] rounded-full overflow-hidden border border-[var(--color-border)] shadow-sm bg-[var(--color-surface-elevated)] shrink-0">
-        <img src={url} alt={name} className="w-full h-full object-cover" />
+        <img src={safeLogoUrl} alt={name} className="w-full h-full object-cover" />
       </div>
     );
   }

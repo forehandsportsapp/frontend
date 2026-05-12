@@ -75,10 +75,25 @@ export const tournamentApi = {
   },
 
   getSummary: async (tournamentId: string): Promise<TournamentSummaryData> => {
+    const url = getApiUrl({ path: "/tournament/summary", param: tournamentId });
+    console.info("[tournamentApi.getSummary] requesting", {
+      tournamentId,
+      url,
+      expectedRouteFormat: "/tournament/summary/:tournamentId",
+      alternateTQueryUrl: `${getApiUrl({ path: "/tournament/summary" })}?t=${encodeURIComponent(tournamentId)}`,
+    });
+
     const { data, error } = await fetchApi(
-      getApiUrl({ path: "/tournament/summary", param: tournamentId }),
+      url,
     );
-    if (error) throw error;
+    if (error) {
+      console.error("[tournamentApi.getSummary] failed", {
+        tournamentId,
+        url,
+        error,
+      });
+      throw error;
+    }
     return data as TournamentSummaryData;
   },
 

@@ -61,6 +61,7 @@ export const fetchApi = async (
     silent?: boolean;
   } = {},
 ): Promise<ParsedRespone> => {
+  const requestStartedAt = Date.now();
   try {
     const supabaseClient = getSupabaseBrowserClient();
     const session = await supabaseClient.auth.getSession();
@@ -135,7 +136,36 @@ export const fetchApi = async (
     };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
+    const browserContext =
+      typeof window !== "undefined"
+        ? {
+            href: window.location.href,
+            origin: window.location.origin,
+            online: window.navigator.onLine,
+          }
+        : null;
+
+    const detailedError =
+      e instanceof Error
+        ? {
+            name: e.name,
+            message: e.message,
+            stack: e.stack,
+            cause: (e as any).cause ?? null,
+          }
+        : { raw: String(e) };
+
     if (!silent) {
+      console.error(`[fetchApi] ${method} ${path} failed`, {
+        method,
+        path,
+        durationMs: Date.now() - requestStartedAt,
+        contentType: contentType ?? null,
+        hasBody: body !== undefined,
+        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? null,
+        browserContext,
+        error: detailedError,
+      });
       console.error(`[fetchApi] ${method} ${path} failed:`, errorMessage);
     }
     return {

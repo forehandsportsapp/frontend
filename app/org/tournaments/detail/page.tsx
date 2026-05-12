@@ -33,6 +33,7 @@ import {
 import { useApp } from "@/components/AppProvider";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { notificationApi } from "@/lib/api/notificationApi";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 function formatDate(value?: string | null) {
   if (!value) return "TBA";
@@ -75,29 +76,40 @@ const TopAppBar = () => (
   </div>
 );
 
-const EventHeader = ({ tournament }: { tournament: TournamentData | null }) => (
-  <div className="flex gap-3 items-center">
-    <div className="w-12 h-12 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center overflow-hidden shrink-0">
-      {tournament?.logoUrl ? (
-        <img
-          src={tournament.logoUrl}
-          alt="Tournament logo"
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <TrophyIcon size={24} className="text-[var(--color-muted)]" />
-      )}
+const EventHeader = ({ tournament }: { tournament: TournamentData | null }) => {
+  const safeLogoUrl = sanitizeLogoUrl(tournament?.logoUrl);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showFallback = imageFailed || !safeLogoUrl;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [safeLogoUrl]);
+
+  return (
+    <div className="flex gap-3 items-center">
+      <div className="w-12 h-12 rounded-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] flex items-center justify-center overflow-hidden shrink-0">
+        {!showFallback ? (
+          <img
+            src={safeLogoUrl || ""}
+            alt="Tournament logo"
+            className="w-full h-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <TrophyIcon size={24} className="text-[var(--color-muted)]" />
+        )}
+      </div>
+      <div>
+        <h1 className="font-semibold text-lg leading-tight text-[var(--color-text)]">
+          {tournament?.name || "Tournament"}
+        </h1>
+        <p className="text-sm text-[var(--color-muted)] mt-0.5">
+          {tournament?.organization?.name || "Organization"}
+        </p>
+      </div>
     </div>
-    <div>
-      <h1 className="font-semibold text-lg leading-tight text-[var(--color-text)]">
-        {tournament?.name || "Tournament"}
-      </h1>
-      <p className="text-sm text-[var(--color-muted)] mt-0.5">
-        {tournament?.organization?.name || "Organization"}
-      </p>
-    </div>
-  </div>
-);
+  );
+};
 
 const EventStats = ({
   tournament,
@@ -470,9 +482,10 @@ const ExtendDueDateModal = ({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (date: string) => void;
+  onSave: (date: string) => Promise<void>;
 }) => {
   const [selected, setSelected] = React.useState("");
+  const [isSaving, setIsSaving] = React.useState(false);
   if (!open) return null;
   return (
     <>
@@ -514,20 +527,26 @@ const ExtendDueDateModal = ({
           </div>
         </label>
         <button
-          onClick={() => {
+          onClick={async () => {
             if (selected) {
-              onSave(selected);
-              onClose();
+              try {
+                setIsSaving(true);
+                await onSave(selected);
+                setSelected("");
+                onClose();
+              } finally {
+                setIsSaving(false);
+              }
             }
           }}
-          disabled={!selected}
+          disabled={!selected || isSaving}
           className="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
           style={{
             background: selected ? "var(--gradient-orange)" : undefined,
             backgroundColor: !selected ? "#ccc" : undefined,
           }}
         >
-          Confirm New Date
+          {isSaving ? "Saving..." : "Confirm New Date"}
         </button>
       </div>
     </>
@@ -550,6 +569,25 @@ const EventsTab = ({
   );
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
+  const handleExtendDueDate = async (date: string) => {
+    if (!extendModalEventId) return;
+    try {
+      setIsUpdating(extendModalEventId);
+      await eventApi.updateEventDueDate(extendModalEventId, date);
+      onRefresh();
+    } catch (error) {
+      console.error("Failed to extend due date", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to update due date. Please try again.",
+      );
+      throw error;
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
   const handleCloseRegistration = async (eventId: string) => {
     try {
       setIsUpdating(eventId);
@@ -568,7 +606,7 @@ const EventsTab = ({
       <ExtendDueDateModal
         open={extendModalEventId !== null}
         onClose={() => setExtendModalEventId(null)}
-        onSave={(_date) => setExtendModalEventId(null)}
+        onSave={handleExtendDueDate}
       />
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
         {filters.map((filter) => (
@@ -731,6 +769,56 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
     }
   };
 
+  const buildSummaryFromInfo = (events: EventData[] = []): TournamentSummaryEventData[] =>
+    events.map((event) => {
+      const teams = Array.isArray(event.teams) ? event.teams : [];
+      const totalTeams = teams.length;
+
+      // Count teams that have paid/confirmed (participating or registered status).
+      // Falls back to totalTeams when status is absent (older API responses).
+      const confirmedTeams = teams.filter((t) => {
+        const s = t?.status ?? t?.teamStatus;
+        return s === "participating" || s === "registered";
+      }).length;
+      // If no team carries a status field, treat all teams as confirmed.
+      const hasStatusInfo = teams.some((t) => t?.status != null || t?.teamStatus != null);
+      const confirmedParticipants = hasStatusInfo ? confirmedTeams : totalTeams;
+
+      // Enrolled = every team that registered (totalTeams), regardless of payment status.
+      const enrolledParticipants = totalTeams;
+
+      const amount = Number(event.amount ?? 0);
+      const totalCollected = amount * confirmedParticipants;
+
+      let stageText = "Registrations Open";
+      if (event.eventState === "registration_closed") stageText = "Registration Closed";
+      if (event.eventState === "participants_finalized") stageText = "Participants Finalized";
+      if (event.eventState === "scheduled") stageText = "Fixtures Scheduled";
+      if (event.eventState === "in_progress") stageText = "Matches in Progress";
+      if (event.eventState === "round_over") stageText = "Round Over";
+      if (event.eventState === "completed") stageText = "Event Completed";
+      if (event.eventState === "cancelled") stageText = "Event Cancelled";
+
+      return {
+        eventId: event.id || "",
+        eventName: event.name || "Event",
+        eventState: event.eventState,
+        amount,
+        totalCollected,
+        totalTeams,
+        enrolledParticipants,
+        confirmedParticipants,
+        totalMatches: 0,
+        completedMatches: 0,
+        liveMatches: 0,
+        remainingMatches: 0,
+        activeRound: event.activeRound,
+        dueDate: event.dueDate,
+        startDate: event.startDate,
+        stageText,
+      };
+    });
+
   const loadSummary = async () => {
     if (!tournamentId || tournamentId === "dummy-system-1") {
       setSummaryEvents([]);
@@ -740,10 +828,11 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
 
     try {
       setError("");
-      const summary = await tournamentApi.getSummary(tournamentId);
-      setSummaryEvents(summary?.events ?? []);
+      const info = await tournamentApi.getInfo(tournamentId);
+      setSummaryEvents(buildSummaryFromInfo(info?.events ?? []));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load tournament summary");
+      setSummaryEvents([]);
     } finally {
       setIsLoading(false);
     }
@@ -761,6 +850,13 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
   }, [tournamentId]);
 
   const cards = summaryEvents.map((event, index) => {
+    const eventId = event.eventId || (event as any).id || `event-${index}`;
+    const eventName = event.eventName || (event as any).name || `Event ${index + 1}`;
+    const totalTeams = Number(event.totalTeams ?? (event as any).teams ?? 0);
+    const remainingMatches = Number(
+      event.remainingMatches ??
+        Math.max((event.totalMatches ?? 0) - (event.completedMatches ?? 0), 0),
+    );
     const enrolled = event.enrolledParticipants ?? 0;
     const confirmed = event.confirmedParticipants ?? 0;
     const totalMatches = event.totalMatches ?? 0;
@@ -776,50 +872,50 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
 
     const detailItems = [
       {
-        id: `${event.eventId}-a`,
+        id: `${eventId}-a`,
         tone: "warning",
         title: "Participants Registered",
-        subtitle: `${enrolled} participants enrolled`,
+        subtitle: `${enrolled} teams enrolled`,
         href: `/org/tournaments/event/participants${toQuery({
           tournamentId,
-          eventId: event.eventId,
+          eventId,
         })}`,
       },
       {
-        id: `${event.eventId}-b`,
+        id: `${eventId}-b`,
         tone: "warning",
         title: "Teams Confirmed",
-        subtitle: `${event.totalTeams} teams confirmed`,
+        subtitle: `${confirmed} teams confirmed`,
         href: `/org/tournaments/event/fixture${toQuery({
           tournamentId,
-          eventId: event.eventId,
+          eventId,
         })}`,
       },
       {
-        id: `${event.eventId}-c`,
+        id: `${eventId}-c`,
         tone: "success",
         title: "Matches Completed",
         subtitle: `${completedMatches} of ${totalMatches} matches completed`,
         href: `/org/tournaments/event/matches${toQuery({
           tournamentId,
-          eventId: event.eventId,
+          eventId,
         })}`,
       },
       {
-        id: `${event.eventId}-d`,
+        id: `${eventId}-d`,
         tone: "warning",
         title: "Live / Remaining",
-        subtitle: `${liveMatches} live | ${event.remainingMatches} remaining`,
+        subtitle: `${liveMatches} live | ${remainingMatches} remaining`,
         href: `/org/tournaments/event/matches${toQuery({
           tournamentId,
-          eventId: event.eventId,
+          eventId,
         })}`,
       },
     ];
 
     return {
-      id: event.eventId || `event-${index}`,
-      title: event.eventName,
+      id: eventId,
+      title: eventName,
       stageText: event.stageText || "Registrations Open",
       contextText,
       amount: Number(event.totalCollected || 0),
@@ -840,6 +936,9 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
       </div>
       {isLoading ? <p className="text-sm text-[var(--color-muted)] px-1">Loading summary...</p> : null}
       {error ? <p className="text-sm text-red-500 px-1">{error}</p> : null}
+      {!isLoading && !error && cards.length === 0 ? (
+        <p className="text-sm text-[var(--color-muted)] px-1">No event summary available yet.</p>
+      ) : null}
       {cards.map((card) => {
         const isExpanded = Boolean(expandedById[card.id]);
         return (
@@ -853,9 +952,6 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
                 className={`px-2.5 py-1 text-[10px] leading-none rounded-full font-semibold ${card.statePill.className}`}
               >
                 {card.statePill.label}
-              </span>
-              <span className="px-2.5 py-1 text-[10px] leading-none rounded-full font-semibold bg-warning text-primary-contrast">
-                On Track
               </span>
               <span className="px-2.5 py-1 text-[10px] leading-none rounded-full font-semibold bg-success text-primary-contrast">
                 Rs {card.amount} Collected

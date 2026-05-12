@@ -62,13 +62,13 @@ export default function EventChampionPage() {
     <div className="min-h-screen bg-gradient-to-b from-orange-500 to-orange-600">
       <div className="flex items-center justify-between p-4">
         <Link
-          href={"/org/tournaments/detail/" + toQuery({ t: tournamentId })}
+          href={"/org/tournaments/detail" + toQuery({ t: tournamentId })}
           className="p-2 text-white"
         >
           <ArrowLeftIcon size={20} />
         </Link>
         <Link
-          href={"/org/tournaments/detail" + toQuery({ id: tournamentId })}
+          href={"/org/tournaments/detail" + toQuery({ t: tournamentId })}
           className="p-2 text-white"
         >
           <XIcon size={20} />

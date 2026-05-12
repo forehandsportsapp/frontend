@@ -32,7 +32,7 @@ export const routes = {
   tournamentEvent: (id: string, event?: string) => `/tournaments/event${toQuery({ id, event })}`,
   tournamentMatches: (id: string) => `/tournaments/matches${toQuery({ id })}`,
   tournamentCheckout: (id: string) => `/tournaments/checkout${toQuery({ id })}`,
-  orgTournamentDetail: (id: string) => `/org/tournaments/detail${toQuery({ id })}`,
+  orgTournamentDetail: (t: string) => `/org/tournaments/detail${toQuery({ t })}`,
   orgEventParticipants: (tournamentId: string, eventId: string) =>
     `/org/tournaments/event/participants${toQuery({ tournamentId, eventId })}`,
   orgEventFixture: (tournamentId: string, eventId: string) =>

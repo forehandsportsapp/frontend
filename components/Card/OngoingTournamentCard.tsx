@@ -1,6 +1,8 @@
 import React from "react";
 import Link from "next/link";
 import { toQuery } from "@/lib/utils";
+import { TrophyIcon } from "@/components/Icons";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 interface OngoingTournamentCardProps {
   id: string;
@@ -23,6 +25,8 @@ export default function OngoingTournamentCard({
   logoText,
   logoUrl,
 }: OngoingTournamentCardProps) {
+  const safeLogoUrl = sanitizeLogoUrl(logoUrl);
+
   return (
     <Link
       href={`/tournaments/detail${toQuery({ id })}`}
@@ -36,12 +40,10 @@ export default function OngoingTournamentCard({
 
           {/* Logo Badge */}
           <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm dark:bg-[var(--color-surface-elevated)]">
-            {logoUrl ? (
-              <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
+            {safeLogoUrl ? (
+              <img src={safeLogoUrl} alt={name} className="h-full w-full object-cover" />
             ) : (
-              <span className="text-lg font-black tracking-tighter text-orange-600 dark:text-orange-400">
-                {logoText}
-              </span>
+              <TrophyIcon size={18} className="text-orange-600 dark:text-orange-400" />
             )}
           </div>
 

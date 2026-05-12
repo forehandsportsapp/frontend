@@ -122,6 +122,18 @@ export const eventApi = {
     if (error) throw error;
   },
 
+  updateEventDueDate: async (eventId: string, dueDate: string) => {
+    const { error } = await fetchApi(
+      getApiUrl({ path: "/event/update-due-date", param: eventId }),
+      {
+        method: "POST",
+        contentType: "json",
+        body: { dueDate },
+      },
+    );
+    if (error) throw error;
+  },
+
   /**
    * Finalizes the participants for an event, locking the list and preparing for round 1.
    *

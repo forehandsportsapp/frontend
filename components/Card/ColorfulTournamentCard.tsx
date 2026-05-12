@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { toQuery } from "@/lib/utils";
+import { TrophyIcon } from "@/components/Icons";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 
 function MapPinIcon({ size = 12 }: { size?: number }) {
@@ -45,6 +47,7 @@ export default function ColorfulTournamentCard({
     logoUrl,
 }: ColorfulTournamentCardProps) {
     const url = `/tournaments/detail${toQuery({ id })}`
+    const safeLogoUrl = sanitizeLogoUrl(logoUrl);
 
     const bgVariants = {
         orange: "from-orange-500 to-orange-700 dark:from-orange-600 dark:to-orange-800",
@@ -86,10 +89,10 @@ export default function ColorfulTournamentCard({
 
                         {/* Reduced Logo from w-12/h-12 to w-8/h-8, smaller text */}
                         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-black text-gray-900 shadow-sm dark:bg-[var(--color-surface-elevated)] dark:text-orange-400">
-                            {logoUrl ? (
-                                <img src={logoUrl} alt={name} className="h-full w-full object-cover" />
+                            {safeLogoUrl ? (
+                                <img src={safeLogoUrl} alt={name} className="h-full w-full object-cover" />
                             ) : (
-                                logoText || name.substring(0, 1)
+                                <TrophyIcon size={18} className="text-gray-700 dark:text-orange-400" />
                             )}
                         </div>
 

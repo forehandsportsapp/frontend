@@ -7,6 +7,7 @@ import {
   WalletIcon,
   TrophyIcon,
 } from "@/components/Icons";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 export type OrgTournamentCardProps = {
   id: string;
@@ -32,6 +33,8 @@ export default function OrgTournamentCard({
   href,
   logoUrl,
 }: OrgTournamentCardProps) {
+  const safeLogoUrl = sanitizeLogoUrl(logoUrl ?? null);
+
   return (
     <Link
       href={href}
@@ -40,9 +43,9 @@ export default function OrgTournamentCard({
       <div className="grid grid-cols-[42px_minmax(0,1fr)] gap-x-3 gap-y-3">
         {/* Logo Container - Compact Visual Anchor */}
         <div className="self-start pt-0.5">
-          {logoUrl ? (
+          {safeLogoUrl ? (
             <img
-              src={logoUrl}
+              src={safeLogoUrl}
               alt={name}
               className="h-[42px] w-[42px] rounded-full object-cover border border-border bg-surface shadow-sm"
             />

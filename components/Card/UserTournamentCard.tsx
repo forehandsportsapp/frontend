@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { TrophyIcon } from "@/components/Icons";
+import { sanitizeLogoUrl } from "@/lib/logo";
 
 type UserTournamentCardProps = {
   href: string;
@@ -31,6 +32,8 @@ export default function UserTournamentCard({
   logoUrl,
   ctaLabel = "View Tournament Events",
 }: UserTournamentCardProps) {
+  const safeLogoUrl = sanitizeLogoUrl(logoUrl);
+
   return (
     <Link
       href={href}
@@ -42,8 +45,8 @@ export default function UserTournamentCard({
         <div className="flex flex-1 flex-col justify-between px-3.5 py-3.5">
           <div className="flex items-start gap-2.5">
             <div className="grid h-10 w-10 shrink-0 place-content-center overflow-hidden rounded-full border border-border bg-surface-elevated text-text">
-              {logoUrl ? (
-                <img src={logoUrl} alt={title} className="h-full w-full object-cover" />
+              {safeLogoUrl ? (
+                <img src={safeLogoUrl} alt={title} className="h-full w-full object-cover" />
               ) : (
                 <TrophyIcon size={18} />
               )}
