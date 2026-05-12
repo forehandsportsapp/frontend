@@ -30,7 +30,7 @@ export default function NotificationsSettingsPage() {
   return (
     <SettingsShell title="Notifications">
       <IntroWithIcon
-        icon={Bell}
+        icon={Bell as any}
         title="Stay Updated"
         subtitle="Choose which notifications you want to receive"
       />
