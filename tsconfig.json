@@ -7,7 +7,6 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
-    "ignoreDeprecations": "6.0",
 
     "esModuleInterop": true,
     "module": "esnext",
@@ -18,23 +17,23 @@
 
     "incremental": true,
 
-    "baseUrl": ".",                     // ✅ THIS WAS MISSING
+    "baseUrl": ".", // ✅ THIS WAS MISSING
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
     },
 
     "plugins": [
       {
-        "name": "next"
-      }
-    ]
+        "name": "next",
+      },
+    ],
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
 }
