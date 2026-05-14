@@ -23,6 +23,7 @@ import {
   PhoneIcon,
 } from "@/components/Icons";
 import { Bell, Settings2 } from "lucide-react";
+
 export default function UserSettingsPage() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -72,7 +73,7 @@ export default function UserSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] text-[var(--color-text)] flex flex-col">
+    <div className="h-[100dvh] bg-[var(--color-background)] text-[var(--color-text)] flex flex-col overflow-hidden">
       <header className="sticky top-0 z-40 bg-[var(--color-surface)] border-b border-[var(--color-border)] shadow-sm">
         <div className="flex items-center justify-between h-14 px-5">
           <button
@@ -97,7 +98,7 @@ export default function UserSettingsPage() {
         </div>
       </header>
 
-      <main className="flex-1 pb-24 pb-safe px-4 pt-6 space-y-8 overflow-y-auto">
+      <main className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4 space-y-8">
         <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-5 shadow-sm">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-primary flex flex-shrink-0 items-center justify-center text-white text-2xl font-bold overflow-hidden border border-[var(--color-border)]">
@@ -161,7 +162,7 @@ export default function UserSettingsPage() {
             </button>
 
             {settingsItems.map((item, idx) => {
-              const Icon = item.icon; // Correctly unwrap component before rendering
+              const Icon = item.icon;
               return (
                 <Link
                   key={idx}
@@ -204,6 +205,9 @@ export default function UserSettingsPage() {
             {isSigningOut ? "Signing Out..." : "Log Out"}
           </button>
         </div>
+
+        {/* Spacer to clear BottomNav */}
+        <div className="h-32 pb-safe" />
       </main>
 
       <BottomNav />
