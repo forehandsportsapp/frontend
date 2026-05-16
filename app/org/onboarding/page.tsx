@@ -96,7 +96,7 @@ export default function OrgOnboardingPage() {
           <h1 className="font-semibold">Choose organization type</h1>
         </div>
         <Link
-          href="/org/home"
+          href="/user/settings"
           className="p-2 hover:bg-[var(--color-surface-elevated)] rounded-lg"
           aria-label="Close organization setup"
         >
