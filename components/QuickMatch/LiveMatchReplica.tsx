@@ -452,13 +452,22 @@ export default function LiveMatchReplica({
                 Final Score: {winnerScore}
               </p>
             ) : null}
-            <button
-              type="button"
-              onClick={onConfirmWinner}
-              className="mt-6 h-12 w-full rounded-full bg-primary text-[15px] font-bold text-white shadow-md hover:bg-primary/90 active:scale-[0.98]"
-            >
-              Confirm Results
-            </button>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={onRestoreWinner}
+                className="flex-1 h-12 rounded-full border border-[var(--color-border)] text-[14px] font-bold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] active:scale-[0.98] transition-all"
+              >
+                Undo Point
+              </button>
+              <button
+                type="button"
+                onClick={onConfirmWinner}
+                className="flex-1 h-12 rounded-full bg-primary text-[14px] font-bold text-white shadow-md hover:bg-primary/90 active:scale-[0.98] transition-all"
+              >
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}

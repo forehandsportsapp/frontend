@@ -12,6 +12,7 @@ import {
   HandIcon,
   GamepadIcon,
   CameraIcon,
+  ChevronDownIcon,
 } from "@/components/Icons";
 import { userApi } from "@/lib/api/userApi";
 import { storageApi } from "@/lib/api/storageApi";
@@ -26,6 +27,7 @@ export default function EditProfilePage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isDobFocused, setIsDobFocused] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -222,17 +224,22 @@ export default function EditProfilePage() {
             <label className="block text-sm font-medium mb-2 flex items-center gap-1">
               <UserIcon size={14} /> Gender
             </label>
-            <select
-              value={formData.gender}
-              onChange={(e) =>
-                setFormData({ ...formData, gender: e.target.value as any })
-              }
-              className={`w-full px-4 py-3 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.gender ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none`}
-            >
-              <option value="">Select</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
+            <div className="relative flex items-center">
+              <select
+                value={formData.gender}
+                onChange={(e) =>
+                  setFormData({ ...formData, gender: e.target.value as any })
+                }
+                className={`w-full px-4 py-3 pr-10 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.gender ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none appearance-none`}
+              >
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+              <div className="absolute right-4 pointer-events-none opacity-40 text-[var(--color-text)]">
+                <ChevronDownIcon size={16} />
+              </div>
+            </div>
             <InputError message={fieldErrors.gender} />
           </div>
           <div>
@@ -240,8 +247,11 @@ export default function EditProfilePage() {
               <CalendarIcon size={14} /> Date of Birth
             </label>
             <input
-              type="date"
+              type={isDobFocused || formData.dateOfBirth ? "date" : "text"}
+              placeholder="Date of Birth"
               value={formData.dateOfBirth}
+              onFocus={() => setIsDobFocused(true)}
+              onBlur={() => setIsDobFocused(false)}
               onChange={(e) =>
                 setFormData({ ...formData, dateOfBirth: e.target.value })
               }
@@ -254,17 +264,22 @@ export default function EditProfilePage() {
             <label className="block text-sm font-medium mb-2 flex items-center gap-1">
               <HandIcon size={14} /> Playing Hand
             </label>
-            <select
-              value={formData.playingHand}
-              onChange={(e) =>
-                setFormData({ ...formData, playingHand: e.target.value as any })
-              }
-              className={`w-full px-4 py-3 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.playingHand ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none`}
-            >
-              <option value="">Select</option>
-              <option value="right">Right</option>
-              <option value="left">Left</option>
-            </select>
+            <div className="relative flex items-center">
+              <select
+                value={formData.playingHand}
+                onChange={(e) =>
+                  setFormData({ ...formData, playingHand: e.target.value as any })
+                }
+                className={`w-full px-4 py-3 pr-10 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.playingHand ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none appearance-none`}
+              >
+                <option value="">Select</option>
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+              </select>
+              <div className="absolute right-4 pointer-events-none opacity-40 text-[var(--color-text)]">
+                <ChevronDownIcon size={16} />
+              </div>
+            </div>
             <InputError message={fieldErrors.playingHand} />
           </div>
 

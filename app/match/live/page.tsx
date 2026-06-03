@@ -14,6 +14,7 @@ import {
   applyRally,
   createInitialLiveState,
   maybeAdvanceSet,
+  getSetsWon,
 } from "@/lib/matchEngine";
 
 function parseConfig(params: URLSearchParams): MatchConfigData {
@@ -168,7 +169,8 @@ export default function LiveMatchPage() {
     state.setScores[index]?.[0] ?? (index === 0 ? 0 : null),
     state.setScores[index]?.[1] ?? (index === 0 ? 0 : null),
   ]);
-  const winnerScore = `${String(currentSet[0] ?? 0).padStart(2, "0")}-${String(currentSet[1] ?? 0).padStart(2, "0")}`;
+  const [setsWon0, setsWon1] = getSetsWon(state, config);
+  const winnerScore = `${setsWon0}-${setsWon1}`;
 
   return (
     <LiveMatchReplica

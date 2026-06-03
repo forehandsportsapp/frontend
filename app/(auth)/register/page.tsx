@@ -31,6 +31,7 @@ const InputField = ({
   type,
   ...props
 }: any) => {
+  const [isFocused, setIsFocused] = useState(false);
   const handleClick = (e: React.MouseEvent) => {
     // If clicking the input/select directly, let the browser handle it
     if (
@@ -81,7 +82,15 @@ const InputField = ({
           {children || (
             <input
               id={id}
-              type={type}
+              type={type === "date" && !isFocused && !props.value ? "text" : type}
+              onFocus={(e) => {
+                setIsFocused(true);
+                if (props.onFocus) props.onFocus(e);
+              }}
+              onBlur={(e) => {
+                setIsFocused(false);
+                if (props.onBlur) props.onBlur(e);
+              }}
               className="w-full bg-transparent px-4 text-[15px] font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-secondary)] placeholder:opacity-30"
               {...props}
             />
@@ -249,7 +258,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[var(--color-background)] overflow-hidden">
+    <div className="relative min-h-screen flex flex-col bg-[var(--color-background)] overflow-x-hidden">
       {/* Orange Diagonal Background - Top Section */}
       <svg
         className="absolute top-0 left-0 w-full h-[40vh] text-[#ff7a1a] fill-current z-0"
@@ -375,7 +384,7 @@ export default function RegisterPage() {
           <InputField
             id="dob"
             type="date"
-            placeholder="Date of birth"
+            placeholder="Date of Birth"
             icon={CalendarIcon}
             value={formData.dob}
             onChange={(e: any) =>

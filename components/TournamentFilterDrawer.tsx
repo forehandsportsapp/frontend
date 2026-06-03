@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { SlidersIcon, XIcon, SearchIcon, CalendarIcon, RefreshIcon } from "@/components/Icons";
 
 const sports = ["Badminton", "Tennis", "Table Tennis", "Squash", "Pickleball"];
@@ -22,6 +22,7 @@ export default function TournamentFilterDrawer({
   onReset,
   initialFilters = {},
 }: FilterDrawerProps) {
+  const dragControls = useDragControls();
   const [selectedSport, setSelectedSport] = useState(initialFilters.sport || "");
   const [locationSearch, setLocationSearch] = useState(initialFilters.location || "");
   const [dateFrom, setDateFrom] = useState(initialFilters.dateFrom || "");
@@ -64,16 +65,38 @@ export default function TournamentFilterDrawer({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md bg-[var(--color-surface)] rounded-t-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={{ top: 0, bottom: 0.85 }}
+            onDragEnd={(event, info) => {
+              if (info.offset.y > 120 || info.velocity.y > 300) {
+                onClose();
+              }
+            }}
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md bg-[var(--color-surface)] rounded-t-[32px] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] max-h-[85dvh]"
           >
             {/* Drag Handle */}
-            <div className="flex justify-center pt-3 pb-2">
+            <div
+              className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none select-none"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
               <div className="w-12 h-1.5 rounded-full bg-[var(--color-border)] opacity-50" />
             </div>
 
             {/* Header */}
-            <div className="px-6 py-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[var(--color-text)]">Refine Results</h2>
+            <div className="px-6 py-4 flex items-center justify-between border-b border-[var(--color-border)]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={onClose}
+                  className="p-1 rounded-full hover:bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] transition-colors"
+                  aria-label="Close"
+                >
+                  <XIcon size={20} />
+                </button>
+                <h2 className="text-xl font-bold text-[var(--color-text)]">Refine Results</h2>
+              </div>
               <button
                 onClick={handleReset}
                 className="px-4 py-1.5 rounded-full border border-[var(--color-border)] text-sm font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] transition-colors"
