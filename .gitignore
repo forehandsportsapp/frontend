@@ -53,3 +53,5 @@ next-env.d.ts
 # optional lockfiles (keep ONE, ignore others if you want)
 yarn.lock
 pnpm-lock.yaml
+
+prompts/
