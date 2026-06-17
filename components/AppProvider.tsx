@@ -52,6 +52,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // --- Backend profile ---
   const [userProfile, setUserProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
   // --- Active organisation ---
   const [activeOrganization, setActiveOrganization] =
@@ -228,15 +229,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession();
         if (error) throw error;
 
-        if (initialSession) {
-          setSession(initialSession);
-        } else {
-          setIsLoading(false);
-        }
+        setSession(initialSession);
       } catch (err) {
         console.error("Failed to initialize app session:", err);
-        setIsLoading(false);
+        setSession(null);
       } finally {
+        setHasRestoredSession(true);
         isInitialMount = false;
       }
     };
@@ -246,6 +244,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setHasRestoredSession(true);
       if (!isInitialMount) {
         setSession((prev) => {
           if (prev?.user?.id !== nextSession?.user?.id) {
@@ -282,6 +281,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // 2. Respond to ANY session change
   useEffect(() => {
+    if (!hasRestoredSession) return;
+
     const userId = session?.user?.id || null;
 
     // A. User logged out or no session
@@ -315,6 +316,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
               setActiveOrganization(matched);
               activeOrgIdRef.current = matched?.id || null;
+
+              if (matched?.id) {
+                localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, matched.id);
+              } else {
+                localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+              }
             }
           } else {
             // No valid profile found
@@ -332,7 +339,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Ensure we're not stuck in loading if onAuthStateChange set it to true.
       setIsLoading(false);
     }
-  }, [session]);
+  }, [hasRestoredSession, session]);
 
   /* ---- context value --------------------------------------------- */
 

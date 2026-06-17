@@ -12,9 +12,7 @@ import {
   tournamentFormSchema,
   tournamentBaseSchema,
   type TournamentFormData,
-  type EventFormData,
 } from "@/lib/validators/tournamentSchema";
-import { z } from "zod";
 import { optionsApi } from "@/lib/api/optionsApi";
 import { OptionsData } from "@/lib/models";
 
@@ -416,6 +414,19 @@ export default function TournamentWizard({
     void fetchOptions();
   }, []);
 
+  const collectErrors = (
+    issues: Array<{ path: PropertyKey[]; message: string }>,
+  ) => {
+    const newErrors: Record<string, string> = {};
+    issues.forEach((issue) => {
+      const path = issue.path.join(".");
+      if (path && !newErrors[path]) {
+        newErrors[path] = issue.message;
+      }
+    });
+    return newErrors;
+  };
+
   const validateStep = (currentStep: number) => {
     setErrors({});
     let stepSchema;
@@ -456,7 +467,6 @@ export default function TournamentWizard({
       if (!result.success) {
         const newErrors: Record<string, string> = {};
         result.error.issues.forEach((issue) => {
-          const path = issue.path.join(".");
           // Only show errors for the current step's fields
           const isStepField =
             (currentStep === 1 &&
@@ -479,7 +489,10 @@ export default function TournamentWizard({
             (currentStep === 3 && issue.path[0] === "events");
 
           if (isStepField) {
-            newErrors[path] = issue.message;
+            const path = issue.path.join(".");
+            if (path && !newErrors[path]) {
+              newErrors[path] = issue.message;
+            }
           }
         });
 
@@ -496,6 +509,46 @@ export default function TournamentWizard({
     if (validateStep(step)) {
       setStep((prev) => Math.min(prev + 1, totalSteps));
     }
+  };
+
+  const handleComplete = (state: "created" | "draft") => {
+    const result = tournamentFormSchema.safeParse(formData);
+
+    if (!result.success) {
+      setErrors(collectErrors(result.error.issues));
+
+      const firstPath = result.error.issues[0]?.path[0];
+      if (
+        firstPath &&
+        ["name", "description", "startDate", "endDate", "logo"].includes(
+          String(firstPath),
+        )
+      ) {
+        setStep(1);
+      } else if (
+        firstPath &&
+        [
+          "venueName",
+          "city",
+          "state",
+          "addressLine",
+          "zipCode",
+          "numCourts",
+          "organizerName",
+          "organizerPhone",
+          "organizerEmail",
+          "upiId",
+        ].includes(String(firstPath))
+      ) {
+        setStep(2);
+      } else {
+        setStep(3);
+      }
+      return;
+    }
+
+    setErrors({});
+    onComplete(result.data, state);
   };
 
   const addEvent = () => {
@@ -1294,7 +1347,7 @@ export default function TournamentWizard({
           <div className="flex gap-3">
             {step === totalSteps && (
               <button
-                onClick={() => onComplete(formData, "draft")}
+                onClick={() => handleComplete("draft")}
                 disabled={isPublishing}
                 className="px-6 py-2.5 rounded-xl font-bold border border-[var(--color-border)] text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] transition-colors"
               >
@@ -1312,7 +1365,7 @@ export default function TournamentWizard({
               </button>
             ) : (
               <button
-                onClick={() => onComplete(formData, "created")}
+                onClick={() => handleComplete("created")}
                 disabled={isPublishing}
                 className="px-6 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 shadow-[0_0_15px_rgba(255,107,0,0.3)] hover:scale-[1.02] transition-transform"
                 style={{ background: "var(--gradient-orange)" }}

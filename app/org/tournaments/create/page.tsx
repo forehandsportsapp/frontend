@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import TournamentWizard from "@/components/Wizard/TournamentWizard";
 import { tournamentApi } from "@/lib/api/tournamentApi";
+import { eventApi } from "@/lib/api/eventApi";
 import { storageApi } from "@/lib/api/storageApi";
 import type { TournamentFormData } from "@/lib/validators/tournamentSchema";
-import type { TournamentData, EventData, TournamentState } from "@/lib/models";
+import type { TournamentData } from "@/lib/models";
 
 function normalizePhone(value: string) {
   let clean = value.replace(/\D/g, "");
@@ -21,32 +22,14 @@ function normalizePhone(value: string) {
   return clean;
 }
 
-// These are now passthrough because the Wizard uses backend codes directly
-function mapSportCode(value: string) {
-  return value;
-}
-
-function mapFormatCode(value: string) {
-  return value;
-}
-
 function mapGender(value: string): "male" | "female" | null {
   if (value === "male" || value === "female") return value;
   return null;
 }
 
-function mapTeamTypeCode(value: string) {
-  return value;
-}
-
 function mapPaymentModeCode(value: string | null | undefined, isFree: boolean) {
   if (isFree) return null;
   return value || null;
-}
-
-function mapSetsPerMatch(value: string) {
-  const match = value.match(/\d+/);
-  return match ? Number(match[0]) : 1;
 }
 
 export default function CreateOrgTournamentPage() {
@@ -96,28 +79,26 @@ export default function CreateOrgTournamentPage() {
 
       // 3. Create events
       if (tournament.events.length > 0) {
-        const eventsData: EventData[] = tournament.events.map((event) => ({
+        const eventsData = tournament.events.map((event) => ({
           tournamentId,
           name: event.name.trim(),
-          sportsOptionCode: mapSportCode(event.sport),
-          eventFormatCode: mapFormatCode(event.format),
+          sportsOptionCode: event.sport,
+          eventFormatCode: event.format,
           dueDate: event.regDueDate,
           startDate: event.startDate,
           gender: mapGender(event.gender),
-          teamTypeCode: mapTeamTypeCode(event.partType),
-          setsPerMatch: mapSetsPerMatch(event.sets),
-          pointsPerSet: Number(event.points || 0),
+          teamTypeCode: event.partType,
+          setsPerMatch: Number(event.sets),
+          pointsPerSet: Number(event.points),
           playerBornAfter: event.ageRestricted || null,
           paymentModeCode: mapPaymentModeCode(
             event.paymentOption,
             event.isFree,
           ),
           amount: event.isFree ? 0 : Number(event.fee || 0),
-          eventState: "created" as const,
-          activeRound: 0,
         }));
 
-        await tournamentApi.createEvents(eventsData);
+        await eventApi.createEvents(eventsData);
       }
 
       // 4. Publish if requested

@@ -1,4 +1,4 @@
-import { EventData, TournamentData, TournamentSummaryData } from "../models";
+import { TournamentData, TournamentSummaryData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
 
 /**
@@ -31,32 +31,6 @@ export const tournamentApi = {
     if (error) throw error;
 
     return data as string;
-  },
-
-  /**
-   * Creates one or more events for a specific tournament.
-   *
-   * @param events - Array of `EventData` objects:
-   *   - tournamentId (string): The tournament this event belongs to.
-   *   - name (string): Event name (e.g., 'Men's Singles Under 19').
-   *   - sportsOptionCode (string): Code for the sport.
-   *   - eventFormatCode (string): Code for the format (e.g., 'knockout').
-   *   - teamTypeCode (string): Code for team type (e.g., 'singles').
-   *   - gender (string | null): 'male', 'female', or null for mixed.
-   *   - startDate, dueDate (string): ISO dates for event start and registration deadline.
-   *   - setsPerMatch, pointsPerSet (number): Scoring configuration.
-   *   - amount (number): Registration fee.
-   *   - paymentModeCode (optional string): How to pay.
-   *
-   * @returns A promise resolving when events are created.
-   */
-  createEvents: async (events: EventData[]) => {
-    const { error } = await fetchApi(getApiUrl({ path: "/event/create" }), {
-      method: "POST",
-      contentType: "json",
-      body: events,
-    });
-    if (error) throw error;
   },
 
   /**

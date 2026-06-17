@@ -1,22 +1,70 @@
 import { z } from "zod";
 
+const sportsOptionCodes = ["pickleBall"] as const;
+const eventFormatCodes = ["singleKnockoutElimination"] as const;
+const genderCodes = ["male", "female", "mixed"] as const;
+const teamTypeCodes = ["singles", "doubles"] as const;
+const paymentModeCodes = ["online", "atVenue"] as const;
+
+function codeSchema<T extends readonly string[]>(
+  codes: T,
+  requiredMessage: string,
+  invalidMessage: string,
+) {
+  return z
+    .string()
+    .min(1, requiredMessage)
+    .refine((value) => codes.includes(value as T[number]), invalidMessage);
+}
+
 export const eventSchema = z.object({
   id: z.number().optional(),
   name: z
     .string()
     .min(2, "Event name is too short")
     .max(100, "Event name is too long"),
-  sport: z.string().min(1, "Please select a sport"),
-  format: z.string().min(1, "Please select a format"),
+  sport: codeSchema(
+    sportsOptionCodes,
+    "Please select a sport",
+    "Please select a valid sport",
+  ),
+  format: codeSchema(
+    eventFormatCodes,
+    "Please select a format",
+    "Please select a valid format",
+  ),
   regDueDate: z.string().min(1, "Registration due date is required"),
   startDate: z.string().min(1, "Event start date is required"),
-  gender: z.string().min(1, "Please select gender"),
-  partType: z.string().min(1, "Please select participation type"),
-  sets: z.string().min(1, "Please select sets per match"),
-  points: z.string().min(1, "Please select points per set"),
+  gender: codeSchema(
+    genderCodes,
+    "Please select gender",
+    "Please select a valid gender",
+  ),
+  partType: codeSchema(
+    teamTypeCodes,
+    "Please select participation type",
+    "Please select Singles or Doubles",
+  ),
+  sets: codeSchema(
+    ["1", "3", "5"] as const,
+    "Please select sets per match",
+    "Please select a valid sets per match value",
+  ),
+  points: codeSchema(
+    ["11", "15", "21"] as const,
+    "Please select points per set",
+    "Please select a valid points per set value",
+  ),
   ageRestricted: z.string().optional().nullable(),
   isFree: z.boolean().default(true),
-  paymentOption: z.string().optional().nullable(),
+  paymentOption: z
+    .string()
+    .optional()
+    .nullable()
+    .refine(
+      (value) => !value || paymentModeCodes.includes(value as (typeof paymentModeCodes)[number]),
+      "Please select a valid payment option",
+    ),
   fee: z
     .string()
     .optional()
@@ -100,7 +148,7 @@ export const tournamentFormSchema = tournamentBaseSchema
       }
 
       // 3. UPI validation
-      if (!event.isFree && event.paymentOption === "Pay online (UPI)") {
+      if (!event.isFree && event.paymentOption === "online") {
         if (!data.upiId || data.upiId.trim() === "") {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -116,6 +164,14 @@ export const tournamentFormSchema = tournamentBaseSchema
           code: z.ZodIssueCode.custom,
           message: "Entry fee must be greater than 0 for paid events",
           path: ["events", index, "fee"],
+        });
+      }
+
+      if (!event.isFree && !event.paymentOption) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please select a payment option",
+          path: ["events", index, "paymentOption"],
         });
       }
     });

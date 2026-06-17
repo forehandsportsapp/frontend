@@ -37,6 +37,21 @@ export type EventResultsResponse = {
  */
 export const eventApi = {
   /**
+   * Creates one or more events for a tournament.
+   *
+   * The backend expects an array body and reads code fields such as
+   * `teamTypeCode`, not display labels or nested option objects.
+   */
+  createEvents: async (events: EventData[]) => {
+    const { error } = await fetchApi(getApiUrl({ path: "/event/create" }), {
+      method: "POST",
+      contentType: "json",
+      body: events,
+    });
+    if (error) throw error;
+  },
+
+  /**
    * Fetches detailed information for a specific event.
    *
    * @param eventId - The unique ID of the event.
