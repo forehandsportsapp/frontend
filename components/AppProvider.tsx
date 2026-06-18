@@ -17,6 +17,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { OrganizationData, ProfileData } from "@/lib/models";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { userApi } from "@/lib/api/userApi";
+import { saveAuthRedirect } from "@/lib/authRedirect";
 
 type AppContextValue = {
   session: Session | null;
@@ -27,7 +28,7 @@ type AppContextValue = {
   userProfile: ProfileData | null;
   activeOrganization: OrganizationData | null;
 
-  login: () => Promise<void>;
+  login: (next?: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: ProfileData) => Promise<void>;
   setOrganization: (orgId?: string | null) => Promise<void>;
@@ -123,11 +124,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /* ================================================================ */
 
   /** Initiates Google OAuth login via Supabase. */
-  const login = useCallback(async () => {
+  const login = useCallback(async (next?: string) => {
+    const redirectPath = saveAuthRedirect(next);
     const isNative = Capacitor.isNativePlatform();
     const redirectTo = isNative
       ? NATIVE_CALLBACK_URL
-      : `${getBaseUrl()}/auth/callback`;
+      : `${getBaseUrl()}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",

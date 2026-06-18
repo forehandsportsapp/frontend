@@ -4,27 +4,42 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import { FloatingIcons } from "@/components/FloatingIcons";
-import { ChevronRightIcon } from "@/components/Icons";
+import {
+  getAuthRedirectFromUrl,
+  getStoredAuthRedirect,
+  saveAuthRedirect,
+  withAuthRedirect,
+} from "@/lib/authRedirect";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, login } = useApp();
+  const { isAuthenticated, isLoading, login, userProfile } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState("/home");
+
+  useEffect(() => {
+    setNextPath(saveAuthRedirect(getAuthRedirectFromUrl()));
+  }, []);
 
   // Redirect already-authenticated users
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/home");
+      const redirectPath = getStoredAuthRedirect(nextPath);
+      router.replace(
+        userProfile
+          ? redirectPath
+          : withAuthRedirect("/register", redirectPath),
+      );
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isLoading, nextPath, router, userProfile]);
 
   const handleGoogleLogin = async () => {
     if (isSubmitting) return;
     try {
       setIsSubmitting(true);
       setError(null);
-      await login();
+      await login(nextPath);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to start Google sign-in.");
       setIsSubmitting(false);

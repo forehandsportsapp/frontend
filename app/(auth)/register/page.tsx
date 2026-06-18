@@ -10,6 +10,12 @@ import {
 import { userApi } from "@/lib/api/userApi";
 import { storageApi } from "@/lib/api/storageApi";
 import {
+  getAuthRedirectFromUrl,
+  getStoredAuthRedirect,
+  saveAuthRedirect,
+  withAuthRedirect,
+} from "@/lib/authRedirect";
+import {
   CameraIcon,
   UserIcon,
   PhoneIcon,
@@ -114,6 +120,7 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState("/home");
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     name: "",
@@ -123,6 +130,10 @@ export default function RegisterPage() {
     playingHand: undefined,
     primarySport: "",
   });
+
+  useEffect(() => {
+    setNextPath(saveAuthRedirect(getAuthRedirectFromUrl()));
+  }, []);
 
   // Real-time contact uniqueness check
   useEffect(() => {
@@ -165,12 +176,13 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (isLoading) return;
+    const redirectPath = getStoredAuthRedirect(nextPath);
     if (!isAuthenticated) {
-      router.replace("/login");
+      router.replace(withAuthRedirect("/login", redirectPath));
       return;
     }
     if (userProfile) {
-      router.replace("/home");
+      router.replace(redirectPath);
       return;
     }
     setFormData((prev) => ({
@@ -181,7 +193,7 @@ export default function RegisterPage() {
         session?.user?.user_metadata?.name ||
         "",
     }));
-  }, [isAuthenticated, isLoading, userProfile, router, session]);
+  }, [isAuthenticated, isLoading, nextPath, userProfile, router, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +240,7 @@ export default function RegisterPage() {
           console.error("Avatar upload failed:", uploadErr);
         }
       }
-      router.replace("/home");
+      router.replace(getStoredAuthRedirect(nextPath));
     } catch (err) {
       setErrorMessage(
         err instanceof Error
@@ -243,7 +255,7 @@ export default function RegisterPage() {
     try {
       setIsSigningOut(true);
       await logout();
-      router.replace("/login");
+      router.replace(withAuthRedirect("/login", getStoredAuthRedirect(nextPath)));
     } catch {
       setIsSigningOut(false);
     }

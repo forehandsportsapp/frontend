@@ -4,11 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { userApi } from "@/lib/api/userApi";
+import {
+  consumeAuthRedirect,
+  saveAuthRedirect,
+  withAuthRedirect,
+} from "@/lib/authRedirect";
 
 /**
  * Handles the Google OAuth PKCE callback.
  * Exchanges the `code` param for a session, then redirects
- * to /register (new user) or /home (returning user).
+ * to /register (new user) or the original destination (returning user).
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -25,6 +30,7 @@ export default function AuthCallbackPage() {
       try {
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
+        const nextPath = saveAuthRedirect(url.searchParams.get("next"));
 
         if (!code) throw new Error("No auth code found in URL.");
 
@@ -35,7 +41,7 @@ export default function AuthCallbackPage() {
         try {
           const profile = await userApi.getInfo();
           if (profile) {
-            router.replace("/home");
+            router.replace(consumeAuthRedirect(nextPath));
             return;
           }
         } catch (apiError) {
@@ -43,7 +49,7 @@ export default function AuthCallbackPage() {
           console.error("Profile fetch failed:", apiError);
         }
 
-        router.replace("/register");
+        router.replace(withAuthRedirect("/register", nextPath));
       } catch (cause) {
         setError(
           cause instanceof Error

@@ -16,6 +16,11 @@ import { teamApi } from "@/lib/api/teamApi";
 import { useApp } from "@/components/AppProvider";
 import { TournamentData, EventData } from "@/lib/models";
 import { QRCodeSVG } from "qrcode.react";
+import {
+  getCurrentAuthRedirect,
+  saveAuthRedirect,
+  withAuthRedirect,
+} from "@/lib/authRedirect";
 
 function getTournamentLogoUrl(tournament?: TournamentData | null) {
   if (!tournament) return null;
@@ -35,7 +40,7 @@ export default function TournamentCheckoutScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { userProfile, session } = useApp();
+  const { isLoading: isAuthLoading, userProfile, session } = useApp();
   const INR = "\u20B9";
 
   const tournamentId = searchParams.get("id");
@@ -63,6 +68,19 @@ export default function TournamentCheckoutScreen() {
     };
     void loadData();
   }, [tournamentId]);
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+    if (!session?.user) {
+      router.replace(withAuthRedirect("/login", nextPath));
+      return;
+    }
+    if (!userProfile) {
+      router.replace(withAuthRedirect("/register", nextPath));
+    }
+  }, [isAuthLoading, router, session?.user, userProfile]);
 
   const selectedEvents = useMemo(() => {
     if (!tournament?.events) return [];
@@ -107,7 +125,14 @@ export default function TournamentCheckoutScreen() {
   const handleConfirmRegistration = async () => {
     const userId = session?.user?.id;
     if (!userId) {
-      alert("Session not found. Please log in again.");
+      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      router.replace(withAuthRedirect("/login", nextPath));
+      return;
+    }
+
+    if (!userProfile) {
+      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      router.replace(withAuthRedirect("/register", nextPath));
       return;
     }
 
@@ -150,7 +175,7 @@ export default function TournamentCheckoutScreen() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading || !session?.user || !userProfile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#ff7a1a] border-t-transparent"></div>

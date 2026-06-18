@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import TournamentHeroCard from "@/components/TournamentHeroCard";
 import {
   ArrowLeftIcon,
   CalendarIcon,
+  CheckIcon,
+  ClipboardIcon,
   InfoIcon,
   MailIcon,
   MapPinIcon,
@@ -15,6 +18,7 @@ import {
   SearchIcon,
   TimerIcon,
   TrashIcon,
+  XIcon,
 } from "@/components/Icons";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { TournamentData, EventData } from "@/lib/models";
@@ -86,9 +90,16 @@ function TournamentDetailContent() {
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const id = searchParams.get("id");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+
+  const shareUrl = useMemo(() => {
+    if (!id || typeof window === "undefined") return "";
+    return `${window.location.origin}/tournaments/detail${toQuery({ id })}`;
+  }, [id]);
 
   useEffect(() => {
     const sel = searchParams.get("selected")?.split(",") || [];
@@ -165,6 +176,35 @@ function TournamentDetailContent() {
     setSelected((prev) => ({ ...prev, [eventId]: isAdded }));
   };
 
+  const handleOpenShareSheet = () => {
+    setIsCopied(false);
+    setIsShareSheetOpen(true);
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = shareUrl;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1800);
+    } catch (err) {
+      console.error("Failed to copy tournament link", err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
@@ -201,6 +241,7 @@ function TournamentDetailContent() {
           }
           logoUrl={getTournamentLogoUrl(tournament)}
           onBack={() => router.back()}
+          onShare={handleOpenShareSheet}
         />
       </div>
 
@@ -389,6 +430,67 @@ function TournamentDetailContent() {
       )}
 
       {tab === "events" && total > 0 ? <div className="h-24" /> : null}
+
+      {isShareSheetOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
+            onClick={() => setIsShareSheetOpen(false)}
+          />
+          <div
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md rounded-t-[32px] border-t border-[var(--color-border)] bg-[var(--color-surface)] p-6 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-tournament-title"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2
+                  id="share-tournament-title"
+                  className="text-[20px] font-bold text-[var(--color-text)]"
+                >
+                  Share Tournament
+                </h2>
+                <p className="mt-1 truncate text-[13px] text-[var(--color-text-secondary)]">
+                  {tournament.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsShareSheetOpen(false)}
+                className="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)]"
+                aria-label="Close share sheet"
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm">
+                <QRCodeSVG
+                  value={shareUrl}
+                  size={196}
+                  bgColor="#ffffff"
+                  fgColor="#111111"
+                  level="M"
+                  includeMargin
+                />
+              </div>
+
+              <p className="mt-4 w-full truncate rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-center text-[13px] font-medium text-[var(--color-text-secondary)]">
+                {shareUrl}
+              </p>
+
+              <button
+                onClick={handleCopyShareLink}
+                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#ff811f] px-5 text-[17px] font-bold text-white shadow-lg transition-transform active:scale-[0.98]"
+              >
+                {isCopied ? <CheckIcon size={18} /> : <ClipboardIcon size={18} />}
+                {isCopied ? "Copied" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

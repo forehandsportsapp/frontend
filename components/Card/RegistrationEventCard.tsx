@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   PlusIcon,
   TrashIcon,
@@ -16,6 +17,11 @@ import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { useApp } from "@/components/AppProvider";
+import {
+  getCurrentAuthRedirect,
+  saveAuthRedirect,
+  withAuthRedirect,
+} from "@/lib/authRedirect";
 
 interface RegistrationEventCardProps {
   event: EventData;
@@ -39,6 +45,7 @@ export default function RegistrationEventCard({
   onAddedChange,
   isInitiallyAdded = false,
 }: RegistrationEventCardProps) {
+  const router = useRouter();
   const { userProfile, session } = useApp();
   const [state, setState] = useState<LocalState>("LOADING");
   const [team, setTeam] = useState<TeamData | null>(null);
@@ -56,7 +63,15 @@ export default function RegistrationEventCard({
     event.name?.toLowerCase().includes("double");
 
   const loadRegistrationState = useCallback(async () => {
-    if (!event.id || !session?.user?.id) return;
+    if (!event.id) return;
+    if (!session?.user?.id) {
+      setState("IDLE");
+      return;
+    }
+    if (!userProfile) {
+      setState("IDLE");
+      return;
+    }
 
     try {
       setState("LOADING");
@@ -143,6 +158,7 @@ export default function RegistrationEventCard({
   }, [
     event.id,
     session?.user?.id,
+    userProfile,
     isDoubles,
     isEligible,
     isInitiallyAdded,
@@ -154,7 +170,17 @@ export default function RegistrationEventCard({
   }, [loadRegistrationState]);
 
   const handleAdd = async () => {
-    if (!event.id || !session?.user?.id) return;
+    if (!event.id) return;
+    if (!session?.user?.id) {
+      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      router.push(withAuthRedirect("/login", nextPath));
+      return;
+    }
+    if (!userProfile) {
+      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      router.push(withAuthRedirect("/register", nextPath));
+      return;
+    }
 
     try {
       setState("LOADING");
