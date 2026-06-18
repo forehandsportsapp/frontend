@@ -557,7 +557,7 @@ function FixtureSetupContent() {
             onClick={() => setShowByeModal(false)}
           />
           <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-[var(--color-surface)] rounded-3xl shadow-2xl z-50 p-6 animate-in zoom-in-95 duration-200 border border-[var(--color-border)]">
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-500/20 rounded-full flex items-center justify-center mb-5 border-4 border-white dark:border-[var(--color-surface)] shadow-sm -mt-10 mx-auto">
+            <div className="w-12 h-12 bg-orange-100 dark:bg-[#60394a] rounded-full flex items-center justify-center mb-5 border-4 border-white dark:border-[var(--color-surface)] shadow-sm -mt-10 mx-auto">
               <TrophyIcon
                 size={20}
                 className="text-orange-600 dark:text-orange-500"
