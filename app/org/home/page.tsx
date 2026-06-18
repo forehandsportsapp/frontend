@@ -22,6 +22,7 @@ import { tournamentApi } from "@/lib/api/tournamentApi";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
+import { toQuery } from "@/lib/utils";
 
 const listContainerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -202,6 +203,27 @@ function toLiveCard(t: TournamentData): LiveTournamentCardData {
     participants: `${t.events?.length || 0} events`,
     subtitle: `${primarySport} - ${category} - ${format}`,
   };
+}
+
+function getLiveMatchEventId(group: any, match: any) {
+  return (
+    match?.eventId ||
+    match?.event?.id ||
+    match?.event?.eventId ||
+    match?.fixture?.eventId ||
+    group?.eventId ||
+    group?.event?.id ||
+    ""
+  );
+}
+
+function getLiveMatchTournamentId(group: any, match: any) {
+  return (
+    group?.tournamentId ||
+    match?.tournamentId ||
+    match?.tournament?.id ||
+    ""
+  );
 }
 
 export default function OrgHomePage() {
@@ -498,38 +520,43 @@ export default function OrgHomePage() {
                 animate="visible"
               >
                 {liveTournaments.map((item) => (
-                  <AnimatedCard
+                  <Link
                     key={item.id}
-                    containerRef={tournamentContainerRef}
-                    className="card min-w-[85%] snap-center p-4"
+                    href={`/org/tournaments/detail${toQuery({ t: item.id })}`}
+                    className="block min-w-[85%] snap-center"
                   >
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-success)]">
-                        <CircleIcon
-                          size={6}
-                          className="text-[var(--color-success)] fill-current"
-                        />
-                        Live
-                      </span>
-                      <span className="text-xs text-[var(--color-muted)]">
-                        {item.stage}
-                      </span>
-                    </div>
-                    <h4 className="font-heading text-lg font-bold leading-tight">
-                      {item.name}
-                    </h4>
-                    <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                      {item.subtitle}
-                    </p>
-                    <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border)] pt-2">
-                      <span className="text-xs text-[var(--color-text-secondary)]">
-                        Participants
-                      </span>
-                      <span className="text-sm font-semibold">
-                        {item.participants}
-                      </span>
-                    </div>
-                  </AnimatedCard>
+                    <AnimatedCard
+                      containerRef={tournamentContainerRef}
+                      className="card h-full p-4 transition-transform active:scale-[0.98]"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-success)]">
+                          <CircleIcon
+                            size={6}
+                            className="text-[var(--color-success)] fill-current"
+                          />
+                          Live
+                        </span>
+                        <span className="text-xs text-[var(--color-muted)]">
+                          {item.stage}
+                        </span>
+                      </div>
+                      <h4 className="font-heading text-lg font-bold leading-tight">
+                        {item.name}
+                      </h4>
+                      <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                        {item.subtitle}
+                      </p>
+                      <div className="mt-3 flex items-center justify-between border-t border-[var(--color-border)] pt-2">
+                        <span className="text-xs text-[var(--color-text-secondary)]">
+                          Participants
+                        </span>
+                        <span className="text-sm font-semibold">
+                          {item.participants}
+                        </span>
+                      </div>
+                    </AnimatedCard>
+                  </Link>
                 ))}
               </motion.div>
 
@@ -585,76 +612,89 @@ export default function OrgHomePage() {
                 </div>
 
                 <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2">
-                  {group.matches.map((match: any) => (
-                    <article
-                      key={match.id}
-                      className="card min-w-[85%] snap-center p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-success)]">
-                          <CircleIcon
-                            size={6}
-                            className="text-[var(--color-success)] fill-current"
-                          />
-                          Live
-                        </span>
-                        <p className="truncate text-xs text-[var(--color-text-secondary)] max-w-[150px]">
-                          {match.matchTitle}
-                        </p>
-                      </div>
+                  {group.matches.map((match: any) => {
+                    const tournamentId = getLiveMatchTournamentId(group, match);
+                    const eventId = getLiveMatchEventId(group, match);
+                    const href =
+                      tournamentId && eventId
+                        ? `/org/tournaments/event/matches${toQuery({
+                            tournamentId,
+                            eventId,
+                          })}`
+                        : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
 
-                      <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                            {resolveTeamLogo(match.teamA) ? (
-                              <img
-                                src={resolveTeamLogo(match.teamA) || ""}
-                                alt={`${match.teamA?.name || "Team A"} logo`}
-                                className="h-8 w-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-xs font-bold text-[var(--color-text-secondary)]">
-                                {(match.teamA?.name || "A").charAt(0)}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-bold truncate max-w-[80px]">
-                            {match.teamA?.name || "Team A"}
+                    return (
+                      <Link
+                        key={match.id}
+                        href={href}
+                        className="card block min-w-[85%] snap-center p-4 transition-transform active:scale-[0.98]"
+                      >
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-success)]">
+                            <CircleIcon
+                              size={6}
+                              className="text-[var(--color-success)] fill-current"
+                            />
+                            Live
+                          </span>
+                          <p className="truncate text-xs text-[var(--color-text-secondary)] max-w-[150px]">
+                            {match.matchTitle}
                           </p>
                         </div>
 
-                        <div className="flex flex-col items-center">
-                          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-1.5 font-heading text-2xl font-bold tracking-tight">
-                            {String(match.score?.teamA || 0).padStart(2, "0")} -{" "}
-                            {String(match.score?.teamB || 0).padStart(2, "0")}
+                        <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
+                              {resolveTeamLogo(match.teamA) ? (
+                                <img
+                                  src={resolveTeamLogo(match.teamA) || ""}
+                                  alt={`${match.teamA?.name || "Team A"} logo`}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-[var(--color-text-secondary)]">
+                                  {(match.teamA?.name || "A").charAt(0)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-bold truncate max-w-[80px]">
+                              {match.teamA?.name || "Team A"}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col items-center">
+                            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-1.5 font-heading text-2xl font-bold tracking-tight">
+                              {String(match.score?.teamA || 0).padStart(2, "0")} -{" "}
+                              {String(match.score?.teamB || 0).padStart(2, "0")}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
+                              {resolveTeamLogo(match.teamB) ? (
+                                <img
+                                  src={resolveTeamLogo(match.teamB) || ""}
+                                  alt={`${match.teamB?.name || "Team B"} logo`}
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-[var(--color-text-secondary)]">
+                                  {(match.teamB?.name || "B").charAt(0)}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs font-bold truncate max-w-[80px]">
+                              {match.teamB?.name || "Team B"}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                            {resolveTeamLogo(match.teamB) ? (
-                              <img
-                                src={resolveTeamLogo(match.teamB) || ""}
-                                alt={`${match.teamB?.name || "Team B"} logo`}
-                                className="h-8 w-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-xs font-bold text-[var(--color-text-secondary)]">
-                                {(match.teamB?.name || "B").charAt(0)}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-bold truncate max-w-[80px]">
-                            {match.teamB?.name || "Team B"}
-                          </p>
+                        <div className="flex items-center justify-center rounded-lg bg-primary/5 border border-primary/10 py-2 text-sm font-bold text-primary">
+                          Set {match.score?.currentSet || 1}
                         </div>
-                      </div>
-
-                      <div className="flex items-center justify-center rounded-lg bg-primary/5 border border-primary/10 py-2 text-sm font-bold text-primary">
-                        Set {match.score?.currentSet || 1}
-                      </div>
-                    </article>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))
