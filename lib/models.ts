@@ -184,13 +184,24 @@ export interface MatchData {
   id: string;
   eventId: string;
   round: number;
+  roundNumber?: number;
   slotIndex: number;
   player1Id?: string;
   player2Id?: string;
   pair1Ids?: string[];
   pair2Ids?: string[];
+  teamA?: string;
+  teamB?: string;
   scoreLog: ScoreEventData[];
   status: "upcoming" | "live" | "completed";
+  matchState?:
+    | "scheduled"
+    | "in_progress"
+    | "completed"
+    | "abandoned"
+    | "walkover";
+  startTime?: string | null;
+  scheduledAt?: string | null;
   config?: MatchConfigData;
   startedAt?: number;
   endedAt?: number;

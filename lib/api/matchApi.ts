@@ -18,6 +18,7 @@ export interface CreateMatchPayload {
     | "walkover";
   setsPerMatch?: number;
   pointsPerSet?: number;
+  startTime?: string;
   sideSwitching?: "per_set" | "half_set" | "no_switch";
 }
 
@@ -54,6 +55,7 @@ export const matchApi = {
    *   - matchState (optional): 'scheduled', 'in_progress', 'completed', etc.
    *   - setsPerMatch (optional number): Override event-level sets per match.
    *   - pointsPerSet (optional number): Override event-level points per set.
+   *   - startTime (optional string): ISO start time for scheduled matches.
    *   - sideSwitching (optional): 'per_set', 'half_set', 'no_switch'.
    *
    * @returns A promise resolving to the API response data containing an array of results for each match creation attempt.

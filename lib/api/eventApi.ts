@@ -32,6 +32,35 @@ export type EventResultsResponse = {
   totalMatches: number;
 };
 
+export type FinalizeScheduleMatchPayload = {
+  roundNumber: number;
+  teamA: string;
+  teamB: string;
+  scorer?: string;
+  setsPerMatch?: number;
+  pointsPerSet?: number;
+  startTime: string;
+  sideSwitching?: "per_set" | "half_set" | "no_switch";
+};
+
+export type EventUpdatePayload = Partial<
+  Pick<
+    EventData,
+    | "name"
+    | "sportsOptionCode"
+    | "eventFormatCode"
+    | "dueDate"
+    | "startDate"
+    | "gender"
+    | "teamTypeCode"
+    | "setsPerMatch"
+    | "pointsPerSet"
+    | "playerBornAfter"
+    | "paymentModeCode"
+    | "amount"
+  >
+>;
+
 /**
  * API client for individual event management within a tournament.
  */
@@ -64,6 +93,25 @@ export const eventApi = {
     if (error) throw error;
 
     return data as EventData;
+  },
+
+  /**
+   * Updates editable event details.
+   *
+   * @param eventId - The unique ID of the event.
+   * @param event - Partial event fields to update.
+   * @returns A promise resolving when the event is updated.
+   */
+  updateEvent: async (eventId: string, event: EventUpdatePayload) => {
+    const { error } = await fetchApi(
+      getApiUrl({ path: "/event", param: eventId }),
+      {
+        method: "PATCH",
+        contentType: "json",
+        body: event,
+      },
+    );
+    if (error) throw error;
   },
 
   /**
@@ -175,7 +223,10 @@ export const eventApi = {
    * @param matches - Array of matches to create.
    * @returns A promise resolving when the schedule is finalized.
    */
-  finalizeSchedule: async (eventId: string, matches: any[]) => {
+  finalizeSchedule: async (
+    eventId: string,
+    matches: FinalizeScheduleMatchPayload[],
+  ) => {
     const { error } = await fetchApi(
       getApiUrl({
         path: "/event/finalize-schedule",

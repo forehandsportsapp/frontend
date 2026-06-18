@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 import {
   ArrowLeftIcon,
   ShareIcon,
@@ -12,6 +13,7 @@ import {
   MailIcon,
   TrophyIcon,
   CheckIcon,
+  ClipboardIcon,
   FilterIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -57,7 +59,13 @@ function genderLabel(gender?: string | null) {
 // ==========================================
 // 1. SHARED COMPONENTS & TOURNAMENT HEADER
 // ==========================================
-const TopAppBar = () => (
+const TopAppBar = ({
+  onShare,
+  settingsHref,
+}: {
+  onShare: () => void;
+  settingsHref: string;
+}) => (
   <div className="flex items-center justify-between">
     <Link
       href="/org/tournaments"
@@ -66,15 +74,102 @@ const TopAppBar = () => (
       <ArrowLeftIcon size={20} />
     </Link>
     <div className="flex gap-3">
-      <button className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]">
+      <button
+        onClick={onShare}
+        className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
+        aria-label="Share"
+      >
         <ShareIcon size={18} />
       </button>
-      <button className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]">
+      <Link
+        href={settingsHref}
+        className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
+        aria-label="Tournament settings"
+      >
         <EllipsisIcon size={20} />
-      </button>
+      </Link>
     </div>
   </div>
 );
+
+const ShareTournamentSheet = ({
+  open,
+  tournamentName,
+  shareUrl,
+  isCopied,
+  onClose,
+  onCopy,
+}: {
+  open: boolean;
+  tournamentName: string;
+  shareUrl: string;
+  isCopied: boolean;
+  onClose: () => void;
+  onCopy: () => void;
+}) => {
+  if (!open) return null;
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md rounded-t-[32px] border-t border-[var(--color-border)] bg-[var(--color-surface)] p-6 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-tournament-title"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <div className="min-w-0">
+            <h2
+              id="share-tournament-title"
+              className="text-[20px] font-bold text-[var(--color-text)]"
+            >
+              Share Tournament
+            </h2>
+            <p className="mt-1 truncate text-[13px] text-[var(--color-text-secondary)]">
+              {tournamentName}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)]"
+            aria-label="Close share sheet"
+          >
+            <XIcon size={18} />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center">
+          <div className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm">
+            <QRCodeSVG
+              value={shareUrl}
+              size={196}
+              bgColor="#ffffff"
+              fgColor="#111111"
+              level="M"
+              includeMargin
+            />
+          </div>
+
+          <p className="mt-4 w-full truncate rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-center text-[13px] font-medium text-[var(--color-text-secondary)]">
+            {shareUrl}
+          </p>
+
+          <button
+            onClick={onCopy}
+            className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#ff811f] px-5 text-[17px] font-bold text-white shadow-lg transition-transform active:scale-[0.98]"
+          >
+            {isCopied ? <CheckIcon size={18} /> : <ClipboardIcon size={18} />}
+            {isCopied ? "Copied" : "Copy Link"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
 
 const EventHeader = ({ tournament }: { tournament: TournamentData | null }) => {
   const safeLogoUrl = sanitizeLogoUrl(tournament?.logoUrl);
@@ -1297,9 +1392,17 @@ export default function TournamentEventDetailsPage() {
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const primaryTabs = ["About", "Events", "Summary", "Event Crew"];
   const [activeTab, setActiveTab] = useState("About");
+
+  const shareUrl = React.useMemo(() => {
+    const id = tournament?.id || tournamentId;
+    if (!id || typeof window === "undefined") return "";
+    return `${window.location.origin}/tournaments/detail${toQuery({ id })}`;
+  }, [tournament?.id, tournamentId]);
 
   const loadTournamentData = async () => {
     if (isAuthLoading) return;
@@ -1413,9 +1516,41 @@ export default function TournamentEventDetailsPage() {
     sessionStorage.setItem(`tournament-tab-${tournamentId}`, tab);
   };
 
+  const handleOpenShareSheet = () => {
+    setIsCopied(false);
+    setIsShareSheetOpen(true);
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareUrl) return;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = shareUrl;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1800);
+    } catch (error) {
+      console.error("Failed to copy tournament link", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--color-background)] px-4 py-3 pb-24 space-y-4">
-      <TopAppBar />
+      <TopAppBar
+        onShare={handleOpenShareSheet}
+        settingsHref={`/org/tournaments/settings${toQuery({ t: tournamentId })}`}
+      />
       {isLoading && !tournament ? (
         <p className="text-center text-sm text-[var(--color-muted)] py-8">
           Loading tournament...
@@ -1460,6 +1595,14 @@ export default function TournamentEventDetailsPage() {
           </div>
         </>
       )}
+      <ShareTournamentSheet
+        open={isShareSheetOpen}
+        tournamentName={tournament?.name || "Tournament"}
+        shareUrl={shareUrl}
+        isCopied={isCopied}
+        onClose={() => setIsShareSheetOpen(false)}
+        onCopy={handleCopyShareLink}
+      />
     </div>
   );
 }

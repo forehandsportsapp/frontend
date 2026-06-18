@@ -55,7 +55,7 @@ export const fetchApi = async (
     body,
     silent = false,
   }: {
-    method?: "POST" | "GET" | "PUT" | "DELETE";
+    method?: "POST" | "GET" | "PUT" | "PATCH" | "DELETE";
     contentType?: "json";
     body?: any;
     silent?: boolean;

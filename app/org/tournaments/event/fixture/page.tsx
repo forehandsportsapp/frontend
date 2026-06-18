@@ -16,9 +16,34 @@ import { toQuery } from "@/lib/utils";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
 import { teamApi } from "@/lib/api/teamApi";
-import { matchApi, CreateMatchPayload } from "@/lib/api/matchApi";
 import { TournamentData, EventData } from "@/lib/models";
 import TeamLogo from "@/components/TeamLogo";
+
+type FixtureMatch = {
+  id: string;
+  teamA: any | null;
+  teamB: any | null;
+  state: "upcoming" | "empty";
+  startTime: string;
+};
+
+function toDateTimeLocalValue(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getMinStartTimeValue() {
+  const date = new Date(Date.now() + 60 * 1000);
+  date.setSeconds(0, 0);
+  return toDateTimeLocalValue(date);
+}
+
+function isPastStartTime(value: string) {
+  if (!value) return false;
+  return new Date(value).getTime() <= Date.now();
+}
 
 function FixtureSetupContent() {
   const searchParams = useSearchParams();
@@ -32,13 +57,14 @@ function FixtureSetupContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fixture State
-  const [matches, setMatches] = useState<any[]>([]);
+  const [matches, setMatches] = useState<FixtureMatch[]>([]);
   const [unassigned, setUnassigned] = useState<any[]>([]);
 
   const [isRemainingOpen, setIsRemainingOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showByeModal, setShowByeModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const minStartTime = getMinStartTimeValue();
 
   // Selection State for Assignment
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -92,7 +118,7 @@ function FixtureSetupContent() {
     const N = shuffled.length;
     const matchCount = N - 1;
 
-    const newMatches = [];
+    const newMatches: FixtureMatch[] = [];
     // We can only pair N/2 matches initially
     const initialPairCount = Math.floor(N / 2);
 
@@ -103,6 +129,7 @@ function FixtureSetupContent() {
           teamA: shuffled.pop(),
           teamB: shuffled.pop(),
           state: "upcoming",
+          startTime: "",
         });
       } else {
         newMatches.push({
@@ -110,6 +137,7 @@ function FixtureSetupContent() {
           teamA: null,
           teamB: null,
           state: "empty",
+          startTime: "",
         });
       }
     }
@@ -183,8 +211,23 @@ function FixtureSetupContent() {
         teamA: null,
         teamB: null,
         state: "empty",
+        startTime: "",
       },
     ]);
+  };
+
+  const handleStartTimeChange = (matchId: string, startTime: string) => {
+    if (startTime && isPastStartTime(startTime)) {
+      alert("Start time cannot be in the past.");
+      setMatches((prev) =>
+        prev.map((m) => (m.id === matchId ? { ...m, startTime: "" } : m)),
+      );
+      return;
+    }
+
+    setMatches((prev) =>
+      prev.map((m) => (m.id === matchId ? { ...m, startTime } : m)),
+    );
   };
 
   const handlePublishClick = () => {
@@ -198,6 +241,18 @@ function FixtureSetupContent() {
       alert(
         "Some matches are not filled properly. Please fill or remove them.",
       );
+      return;
+    }
+
+    const missingStartTime = matches.some((m) => !m.startTime);
+    if (missingStartTime) {
+      alert("Please set a start time for every match.");
+      return;
+    }
+
+    const pastStartTime = matches.some((m) => isPastStartTime(m.startTime));
+    if (pastStartTime) {
+      alert("Match start time cannot be in the past.");
       return;
     }
 
@@ -217,6 +272,7 @@ function FixtureSetupContent() {
           matchState: "scheduled",
           pointsPerSet: event?.pointsPerSet || 11,
           setsPerMatch: event?.setsPerMatch || 1,
+          startTime: new Date(m.startTime).toISOString(),
         }));
 
       if (matchesToCreate.length > 0) {
@@ -424,19 +480,38 @@ function FixtureSetupContent() {
           <div className="space-y-3">
             {matches.map((match: any, index: number) => (
               <div key={match.id} className="relative group">
-                <div className="flex justify-between items-end mb-1.5 ml-1 mr-1">
+                <div className="flex justify-between items-end gap-3 mb-1.5 ml-1 mr-1">
                   <div className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wider">
                     Match {index + 1}
                   </div>
-                  {!isAlreadyScheduled && (
-                    <button
-                      onClick={() => handleRemoveFixture(match.id)}
-                      className="text-[var(--color-muted)] hover:text-red-500 transition-colors p-1"
-                      title="Remove Match"
-                    >
-                      <TrashIcon size={14} />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!isAlreadyScheduled && (
+                      <label className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[10px] font-bold text-[var(--color-text-secondary)] shadow-sm">
+                        <span className="whitespace-nowrap">
+                          {match.startTime ? "Start" : "Set start time"}
+                        </span>
+                        <input
+                          type="datetime-local"
+                          value={match.startTime}
+                          min={minStartTime}
+                          onChange={(e) =>
+                            handleStartTimeChange(match.id, e.target.value)
+                          }
+                          className="h-6 w-[128px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-1 text-[11px] font-semibold text-[var(--color-text)] outline-none focus:border-primary"
+                          aria-label={`Set start time for match ${index + 1}`}
+                        />
+                      </label>
+                    )}
+                    {!isAlreadyScheduled && (
+                      <button
+                        onClick={() => handleRemoveFixture(match.id)}
+                        className="text-[var(--color-muted)] hover:text-red-500 transition-colors p-1"
+                        title="Remove Match"
+                      >
+                        <TrashIcon size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div

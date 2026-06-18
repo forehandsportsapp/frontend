@@ -1,6 +1,28 @@
 import { TournamentData, TournamentSummaryData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
 
+export type TournamentUpdatePayload = Partial<
+  Pick<
+    TournamentData,
+    | "name"
+    | "description"
+    | "startDate"
+    | "endDate"
+    | "venueName"
+    | "venueAddress"
+    | "venueCity"
+    | "venueState"
+    | "venuePostalCode"
+    | "venueCourts"
+    | "contactName"
+    | "contactEmail"
+    | "contactPhone"
+    | "upiId"
+    | "logoUrl"
+    | "logoPath"
+  >
+>;
+
 /**
  * API client for tournament and event management.
  */
@@ -46,6 +68,28 @@ export const tournamentApi = {
     if (error) throw error;
 
     return data as TournamentData;
+  },
+
+  /**
+   * Updates editable tournament details.
+   *
+   * @param tournamentId - The unique ID of the tournament.
+   * @param tournament - Partial tournament fields to update.
+   * @returns A promise resolving when the tournament is updated.
+   */
+  updateTournament: async (
+    tournamentId: string,
+    tournament: TournamentUpdatePayload,
+  ) => {
+    const { error } = await fetchApi(
+      getApiUrl({ path: "/tournament", param: tournamentId }),
+      {
+        method: "PATCH",
+        contentType: "json",
+        body: tournament,
+      },
+    );
+    if (error) throw error;
   },
 
   getSummary: async (tournamentId: string): Promise<TournamentSummaryData> => {

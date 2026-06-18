@@ -383,14 +383,15 @@ export default function OrgManageMatchesPage() {
 
             const teamA = tAId && teams[tAId] ? teams[tAId] : m.teamA;
             const teamB = tBId && teams[tBId] ? teams[tBId] : m.teamB;
+            const scheduledStart = m.startTime || m.scheduledAt;
 
             return {
               id: m.id,
               status,
               label: `Match ${m.slotIndex || ""}`,
-              scheduledDate: m.scheduledAt ? formatDate(m.scheduledAt) : "TBA",
-              scheduledTime: m.scheduledAt
-                ? new Date(m.scheduledAt).toLocaleTimeString("en-IN", {
+              scheduledDate: scheduledStart ? formatDate(scheduledStart) : "TBA",
+              scheduledTime: scheduledStart
+                ? new Date(scheduledStart).toLocaleTimeString("en-IN", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })
