@@ -344,7 +344,7 @@ export default function UserTournamentsPage() {
                     : "text-white/60 hover:text-white/80"
                 }`}
               >
-                {tab}
+                {tab === "scorer" ? "score" : tab}
                 {activeTab === tab && (
                   <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-white rounded-t-full shadow-[0_-2px_10px_rgba(255,255,255,0.4)]" />
                 )}
