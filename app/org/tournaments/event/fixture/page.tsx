@@ -480,15 +480,15 @@ function FixtureSetupContent() {
           <div className="space-y-3">
             {matches.map((match: any, index: number) => (
               <div key={match.id} className="relative group">
-                <div className="flex justify-between items-end gap-3 mb-1.5 ml-1 mr-1">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2 ml-1 mr-1">
                   <div className="text-xs font-bold text-[var(--color-muted)] uppercase tracking-wider">
                     Match {index + 1}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                     {!isAlreadyScheduled && (
-                      <label className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1 text-[10px] font-bold text-[var(--color-text-secondary)] shadow-sm">
+                      <label className="flex-1 sm:flex-initial flex items-center justify-between sm:justify-start gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-bold text-[var(--color-text-secondary)] shadow-sm">
                         <span className="whitespace-nowrap">
-                          {match.startTime ? "Start" : "Set start time"}
+                          {match.startTime ? "Start:" : "Set start time:"}
                         </span>
                         <input
                           type="datetime-local"
@@ -497,7 +497,7 @@ function FixtureSetupContent() {
                           onChange={(e) =>
                             handleStartTimeChange(match.id, e.target.value)
                           }
-                          className="h-6 w-[128px] rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-1 text-[11px] font-semibold text-[var(--color-text)] outline-none focus:border-primary"
+                          className="h-8 w-full sm:w-[160px] rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-2 text-xs font-semibold text-[var(--color-text)] outline-none focus:border-primary cursor-pointer"
                           aria-label={`Set start time for match ${index + 1}`}
                         />
                       </label>
@@ -505,10 +505,10 @@ function FixtureSetupContent() {
                     {!isAlreadyScheduled && (
                       <button
                         onClick={() => handleRemoveFixture(match.id)}
-                        className="text-[var(--color-muted)] hover:text-red-500 transition-colors p-1"
+                        className="text-[var(--color-muted)] hover:text-red-500 transition-colors p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl shrink-0"
                         title="Remove Match"
                       >
-                        <TrashIcon size={14} />
+                        <TrashIcon size={16} />
                       </button>
                     )}
                   </div>

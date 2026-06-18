@@ -38,6 +38,12 @@ export interface UpdateScorePayload {
   teamBId?: string | null;
 }
 
+export interface AvailableScorer {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
 /**
  * API client for match-related operations.
  */
@@ -172,6 +178,55 @@ export const matchApi = {
   getMatchInfo: async (matchId: string) => {
     const { data, error } = await fetchApi(
       getApiUrl({ path: "/match/info", param: matchId }),
+    );
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * Retrieves scorer options for a match, excluding scorers already assigned
+   * to another active match in the same round.
+   */
+  getAvailableScorers: async (matchId: string) => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/match/available-scorers", param: matchId }),
+    );
+    if (error) throw error;
+    return (data || {
+      currentScorerId: null,
+      currentScorerName: null,
+      scorers: [],
+    }) as {
+      currentScorerId?: string | null;
+      currentScorerName?: string | null;
+      scorers: AvailableScorer[];
+    };
+  },
+
+  /**
+   * Assigns or reassigns a scorer for a match.
+   */
+  assignScorer: async (matchId: string, scorerId: string | null) => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/match/assign-scorer", param: matchId }),
+      {
+        method: "POST",
+        contentType: "json",
+        body: { scorerId },
+      },
+    );
+    if (error) throw error;
+    return (data || null) as AvailableScorer | null;
+  },
+
+  /**
+   * Retrieves matches assigned to the currently authenticated user as scorer.
+   *
+   * @returns A promise resolving to an array of matches.
+   */
+  getScorerMatches: async () => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/match/scorer-matches" }),
     );
     if (error) throw error;
     return data;

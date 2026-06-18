@@ -13,7 +13,7 @@ import {
 import { toQuery } from "@/lib/utils";
 import TeamLogo from "@/components/TeamLogo";
 import { tournamentApi } from "@/lib/api/tournamentApi";
-import { matchApi } from "@/lib/api/matchApi";
+import { matchApi, type AvailableScorer } from "@/lib/api/matchApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
 
@@ -34,7 +34,8 @@ type MatchRow = {
   sets: SetScore[];
   winner?: "a" | "b";
   court?: string;
-  scorer?: string;
+  scorerId?: string;
+  scorerName?: string;
   roundNumber: number;
 };
 
@@ -116,10 +117,12 @@ function MatchCard({
   match,
   tournamentId,
   eventId,
+  onScorerClick,
 }: {
   match: MatchRow;
   tournamentId: string;
   eventId: string;
+  onScorerClick: (match: MatchRow) => void;
 }) {
   const headerBg =
     match.status === "live"
@@ -130,6 +133,7 @@ function MatchCard({
 
   const scoreA = String(match.setsWonA).padStart(2, "0");
   const scoreB = String(match.setsWonB).padStart(2, "0");
+  const scorerLabel = match.scorerName?.trim() || "Select Scorer";
 
   return (
     <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] shadow-sm bg-[var(--color-surface)]">
@@ -221,9 +225,13 @@ function MatchCard({
           <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
             {match.court}
           </span>
-          <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
-            {match.scorer}
-          </span>
+          <button
+            type="button"
+            onClick={() => onScorerClick(match)}
+            className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
+          >
+            {scorerLabel}
+          </button>
         </div>
 
         {/* Set score grid */}
@@ -276,6 +284,15 @@ export default function OrgManageMatchesPage() {
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [activeRound, setActiveRound] = useState<number>(1);
+  const [scorerSheetMatch, setScorerSheetMatch] = useState<MatchRow | null>(
+    null,
+  );
+  const [availableScorers, setAvailableScorers] = useState<AvailableScorer[]>(
+    [],
+  );
+  const [isScorerSheetLoading, setIsScorerSheetLoading] = useState(false);
+  const [isAssigningScorer, setIsAssigningScorer] = useState(false);
+  const [scorerSheetMessage, setScorerSheetMessage] = useState("");
 
   // 1. Load Tournament, Event and Teams Info
   useEffect(() => {
@@ -384,6 +401,8 @@ export default function OrgManageMatchesPage() {
             const teamA = tAId && teams[tAId] ? teams[tAId] : m.teamA;
             const teamB = tBId && teams[tBId] ? teams[tBId] : m.teamB;
             const scheduledStart = m.startTime || m.scheduledAt;
+            const scorerName =
+              m.scorerUser?.name || m.scorerName || m.scorer?.name || "";
 
             return {
               id: m.id,
@@ -405,10 +424,11 @@ export default function OrgManageMatchesPage() {
                 m.winnerId === teamA?.id
                   ? "a"
                   : m.winnerId === teamB?.id
-                    ? "b"
+                  ? "b"
                     : undefined,
               court: m.courtName || "Select Court",
-              scorer: m.scorerName || "Select Scorer",
+              scorerId: m.scorer || m.scorerUser?.id || undefined,
+              scorerName,
               roundNumber: m.roundNumber || activeRound,
             };
           });
@@ -457,6 +477,65 @@ export default function OrgManageMatchesPage() {
         eventId,
       })}`,
     );
+  };
+
+  const handleOpenScorerSheet = async (match: MatchRow) => {
+    try {
+      setScorerSheetMatch(match);
+      setAvailableScorers([]);
+      setScorerSheetMessage("");
+      setIsScorerSheetLoading(true);
+
+      const data = await matchApi.getAvailableScorers(match.id);
+      const options = Array.isArray(data.scorers) ? data.scorers : [];
+
+      setAvailableScorers(options);
+      setScorerSheetMessage(options.length === 0 ? "No scorers left." : "");
+    } catch (error) {
+      console.error("Failed to load available scorers", error);
+      setAvailableScorers([]);
+      setScorerSheetMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to load scorer options right now.",
+      );
+    } finally {
+      setIsScorerSheetLoading(false);
+    }
+  };
+
+  const handleAssignScorer = async (scorer: AvailableScorer) => {
+    if (!scorerSheetMatch) return;
+
+    try {
+      setIsAssigningScorer(true);
+      await matchApi.assignScorer(scorerSheetMatch.id, scorer.id);
+
+      setMatches((prev) =>
+        prev.map((match) =>
+          match.id === scorerSheetMatch.id
+            ? {
+                ...match,
+                scorerId: scorer.id,
+                scorerName: scorer.name,
+              }
+            : match,
+        ),
+      );
+
+      setScorerSheetMatch(null);
+      setAvailableScorers([]);
+      setScorerSheetMessage("");
+    } catch (error) {
+      console.error("Failed to assign scorer", error);
+      setScorerSheetMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to assign scorer right now.",
+      );
+    } finally {
+      setIsAssigningScorer(false);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -607,11 +686,117 @@ export default function OrgManageMatchesPage() {
                 match={m}
                 tournamentId={tournamentId}
                 eventId={eventId}
+                onScorerClick={handleOpenScorerSheet}
               />
             ))
           )}
         </div>
       </div>
+      {scorerSheetMatch && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">
+                  Select Scorer
+                </h2>
+                <p className="text-sm text-[var(--color-muted)]">
+                  {scorerSheetMatch.label}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAssigningScorer) return;
+                  setScorerSheetMatch(null);
+                  setAvailableScorers([]);
+                  setScorerSheetMessage("");
+                }}
+                className="rounded-full px-3 py-1 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-elevated)]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {isScorerSheetLoading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+                    Loading scorers...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {scorerSheetMatch.scorerId && (
+                    <button
+                      type="button"
+                      disabled={isAssigningScorer}
+                      onClick={async () => {
+                        try {
+                          setIsAssigningScorer(true);
+                          await matchApi.assignScorer(scorerSheetMatch.id, null);
+                          setMatches((prev) =>
+                            prev.map((match) =>
+                              match.id === scorerSheetMatch.id
+                                ? { ...match, scorerId: undefined, scorerName: "" }
+                                : match
+                            )
+                          );
+                          setScorerSheetMatch(null);
+                        } catch (error) {
+                          setScorerSheetMessage("Failed to remove scorer.");
+                        } finally {
+                          setIsAssigningScorer(false);
+                        }
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 mb-2"
+                    >
+                      Remove Current Scorer
+                    </button>
+                  )}
+                  {availableScorers.length > 0 ? (
+                    availableScorers.map((scorer) => (
+                      <button
+                        key={scorer.id}
+                    type="button"
+                    disabled={isAssigningScorer}
+                    onClick={() => void handleAssignScorer(scorer)}
+                    className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)]">
+                      {scorer.avatarUrl ? (
+                        <img
+                          src={scorer.avatarUrl}
+                          alt={scorer.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-[var(--color-text-secondary)]">
+                          {scorer.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-[var(--color-text)]">
+                      {scorer.name}
+                    </span>
+                  </button>
+                ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-sm text-[var(--color-muted)]">
+                      {scorerSheetMessage || "No scorers left."}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!!scorerSheetMessage && availableScorers.length > 0 && (
+                <p className="text-sm text-red-500">{scorerSheetMessage}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

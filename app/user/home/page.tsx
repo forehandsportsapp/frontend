@@ -621,12 +621,12 @@ export default function UserHomePage() {
             </button>
           </div>
 
-          <div className="flex justify-center gap-2 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mb-2">
+          <div className="flex justify-center gap-2 sm:gap-3 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mb-2 px-4">
             {homeTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`snap-center shrink-0 px-6 py-2.5 rounded-full text-sm font-bold tracking-wide transition-all duration-200 ${
+                className={`snap-center shrink-0 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-200 ${
                   activeTab === tab.id
                     ? "bg-white text-orange-600 shadow-md"
                     : "bg-white/20 text-white hover:bg-white/30"
