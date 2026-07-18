@@ -18,6 +18,7 @@ import { userApi } from "@/lib/api/userApi";
 import { storageApi } from "@/lib/api/storageApi";
 import { registrationSchema } from "@/lib/validators/registrationForm";
 import { ProfileData } from "@/lib/models";
+import DatePicker from "@/components/DatePicker";
 
 export default function EditProfilePage() {
   const router = useRouter();
@@ -55,6 +56,59 @@ export default function EditProfilePage() {
       }
     }
   }, [profile]);
+
+  useEffect(() => {
+    let active = true;
+    async function validate() {
+      const dataToValidate = {
+        name: formData.fullName,
+        contactNumber: formData.contactNumber,
+        gender: formData.gender,
+        dob: formData.dateOfBirth,
+        playingHand: formData.playingHand || undefined,
+        primarySport: formData.primarySport || undefined,
+      };
+
+      const result = await registrationSchema.safeParseAsync(dataToValidate);
+      if (!active) return;
+      const currentIssues: Record<string, string> = {};
+      if (!result.success) {
+        result.error.issues.forEach((issue) => {
+          if (issue.path[0]) {
+            const field = issue.path[0].toString();
+            const mappedField =
+              field === "name"
+                ? "fullName"
+                : field === "dob"
+                  ? "dateOfBirth"
+                  : field;
+            currentIssues[mappedField] = issue.message;
+          }
+        });
+      }
+
+      setFieldErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const updatedErrors = { ...prevErrors };
+        let changed = false;
+        Object.keys(prevErrors).forEach((key) => {
+          if (!currentIssues[key]) {
+            delete updatedErrors[key];
+            changed = true;
+          } else if (currentIssues[key] !== prevErrors[key]) {
+            updatedErrors[key] = currentIssues[key];
+            changed = true;
+          }
+        });
+        return changed ? updatedErrors : prevErrors;
+      });
+    }
+
+    validate();
+    return () => {
+      active = false;
+    };
+  }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -246,16 +300,15 @@ export default function EditProfilePage() {
             <label className="block text-sm font-medium mb-2 flex items-center gap-1">
               <CalendarIcon size={14} /> Date of Birth
             </label>
-            <input
-              type={isDobFocused || formData.dateOfBirth ? "date" : "text"}
-              placeholder="Date of Birth"
+            <DatePicker
               value={formData.dateOfBirth}
-              onFocus={() => setIsDobFocused(true)}
-              onBlur={() => setIsDobFocused(false)}
-              onChange={(e) =>
-                setFormData({ ...formData, dateOfBirth: e.target.value })
+              onChange={(date) =>
+                setFormData({ ...formData, dateOfBirth: date })
               }
-              className={`w-full px-4 py-3 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.dateOfBirth ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none`}
+              isDob={true}
+              placeholder="Date of Birth"
+              error={fieldErrors.dateOfBirth}
+              triggerClassName="!rounded-lg !bg-[var(--color-surface)]"
             />
             <InputError message={fieldErrors.dateOfBirth} />
           </div>

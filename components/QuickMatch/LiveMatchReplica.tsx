@@ -37,6 +37,8 @@ interface LiveMatchReplicaProps {
   showWinnerConfirm: boolean;
   showExitConfirm: boolean;
   showSetTransition?: boolean;
+  isPaused: boolean;
+  onPauseToggle: () => void;
   onBack: () => void;
   onConfirmExit: () => void;
   onCloseExitConfirm: () => void;
@@ -149,6 +151,8 @@ export default function LiveMatchReplica({
   showWinnerConfirm,
   showExitConfirm,
   showSetTransition = false,
+  isPaused,
+  onPauseToggle,
   onBack,
   onConfirmExit,
   onCloseExitConfirm,
@@ -219,7 +223,14 @@ export default function LiveMatchReplica({
                 <span className="text-[10px] text-muted font-bold uppercase tracking-wider">
                   Match Timer
                 </span>
-                <TimerResetIcon size={12} className="text-muted" />
+                <button
+                  type="button"
+                  onClick={onPauseToggle}
+                  className="text-muted hover:text-primary active:scale-[0.85] transition-all cursor-pointer flex items-center justify-center p-0.5 rounded"
+                  title="Pause Match"
+                >
+                  <TimerResetIcon size={12} />
+                </button>
               </div>
               <p className="py-1 text-center text-sm font-bold tabular-nums">
                 {matchTimer}
@@ -315,10 +326,6 @@ export default function LiveMatchReplica({
           </button>
         </section>
 
-        <p className="mt-2 text-center text-[13px] text-muted">
-          Set 1: {String(sideAScore).padStart(2, "0")} -{" "}
-          {String(sideBScore).padStart(2, "0")}
-        </p>
       </div>
 
       {/* Switch Serve Dialog */}
@@ -386,6 +393,41 @@ export default function LiveMatchReplica({
               style={{ background: "linear-gradient(135deg,#ff8c00,#f97316)" }}
             >
               Switch Sides
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Match Paused Dialog */}
+      {isPaused && (
+        <div
+          className="fixed inset-0 z-[283] bg-black/40 backdrop-blur-[4px] flex items-center justify-center p-6"
+          onClick={onPauseToggle}
+        >
+          <div
+            className="bg-surface w-full max-w-[340px] rounded-[28px] border border-border p-8 text-center shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-surface-elevated">
+              <TimerResetIcon
+                size={28}
+                className="text-primary"
+                strokeWidth={2.5}
+              />
+            </div>
+            <h3 className="text-2xl font-bold leading-tight tracking-tight">
+              Match Paused
+            </h3>
+            <p className="mx-auto mt-2 mb-8 text-sm text-muted leading-relaxed px-4">
+              The match timer is paused. Click below to resume scoring and play.
+            </p>
+            <button
+              type="button"
+              onClick={onPauseToggle}
+              className="h-14 w-full rounded-[20px] font-bold text-white text-base transition-all active:scale-[0.98] shadow-lg shadow-orange-500/25"
+              style={{ background: "linear-gradient(135deg,#ff8c00,#f97316)" }}
+            >
+              Resume Match
             </button>
           </div>
         </div>

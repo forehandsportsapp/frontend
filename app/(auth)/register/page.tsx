@@ -27,6 +27,7 @@ import {
   UsersIcon,
 } from "@/components/Icons";
 import { FloatingIcons } from "@/components/FloatingIcons";
+import DatePicker from "@/components/DatePicker";
 
 const InputField = ({
   id,
@@ -78,7 +79,8 @@ const InputField = ({
           onClick={(e) => {
             if (type === "date") {
               e.stopPropagation();
-              handleClick(e);
+              const trigger = e.currentTarget.parentElement?.querySelector(".date-picker-trigger") as HTMLElement;
+              if (trigger) trigger.click();
             }
           }}
         >
@@ -86,20 +88,60 @@ const InputField = ({
         </div>
         <div className="flex-1 min-w-0 flex items-center h-full">
           {children || (
-            <input
-              id={id}
-              type={type === "date" && !isFocused && !props.value ? "text" : type}
-              onFocus={(e) => {
-                setIsFocused(true);
-                if (props.onFocus) props.onFocus(e);
-              }}
-              onBlur={(e) => {
-                setIsFocused(false);
-                if (props.onBlur) props.onBlur(e);
-              }}
-              className="w-full bg-transparent px-4 text-[15px] font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-secondary)] placeholder:opacity-30"
-              {...props}
-            />
+            type === "date" ? (
+              <DatePicker
+                id={id}
+                value={props.value}
+                onChange={(date) => {
+                  if (props.onChange) {
+                    props.onChange({ target: { value: date } });
+                  }
+                }}
+                isDob={id === "dob"}
+                placeholder={props.placeholder}
+                error={error}
+                customTrigger={
+                  <div className="date-picker-trigger w-full cursor-pointer bg-transparent px-4 text-[15px] font-medium text-[var(--color-text)] outline-none select-none">
+                    {props.value ? (
+                      (() => {
+                        const parts = props.value.split("-");
+                        if (parts.length === 3) {
+                          const yr = parseInt(parts[0], 10);
+                          const mo = parseInt(parts[1], 10) - 1;
+                          const dy = parseInt(parts[2], 10);
+                          const d = new Date(yr, mo, dy);
+                          return d.toLocaleDateString("en-US", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          });
+                        }
+                        return props.value;
+                      })()
+                    ) : (
+                      <span className="text-[var(--color-text-secondary)] opacity-30">
+                        {props.placeholder}
+                      </span>
+                    )}
+                  </div>
+                }
+              />
+            ) : (
+              <input
+                id={id}
+                type={type}
+                onFocus={(e) => {
+                  setIsFocused(true);
+                  if (props.onFocus) props.onFocus(e);
+                }}
+                onBlur={(e) => {
+                  setIsFocused(false);
+                  if (props.onBlur) props.onBlur(e);
+                }}
+                className="w-full bg-transparent px-4 text-[15px] font-medium text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-secondary)] placeholder:opacity-30"
+                {...props}
+              />
+            )
           )}
         </div>
       </div>
@@ -173,6 +215,43 @@ export default function RegisterPage() {
 
     return () => clearTimeout(timer);
   }, [formData.contactNumber, formData]);
+
+  useEffect(() => {
+    let active = true;
+    async function validate() {
+      const result = await registrationSchema.safeParseAsync(formData);
+      if (!active) return;
+      const currentIssues: Record<string, string> = {};
+      if (!result.success) {
+        result.error.issues.forEach((issue) => {
+          if (issue.path[0]) {
+            currentIssues[issue.path[0].toString()] = issue.message;
+          }
+        });
+      }
+
+      setFieldErrors((prevErrors) => {
+        if (Object.keys(prevErrors).length === 0) return prevErrors;
+        const updatedErrors = { ...prevErrors };
+        let changed = false;
+        Object.keys(prevErrors).forEach((key) => {
+          if (!currentIssues[key]) {
+            delete updatedErrors[key];
+            changed = true;
+          } else if (currentIssues[key] !== prevErrors[key]) {
+            updatedErrors[key] = currentIssues[key];
+            changed = true;
+          }
+        });
+        return changed ? updatedErrors : prevErrors;
+      });
+    }
+
+    validate();
+    return () => {
+      active = false;
+    };
+  }, [formData]);
 
   useEffect(() => {
     if (isLoading) return;

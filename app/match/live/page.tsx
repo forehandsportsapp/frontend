@@ -58,6 +58,7 @@ export default function LiveMatchPage() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showSwitchSides, setShowSwitchSides] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   const p1 = searchParams.get("p1") || "Player 1";
   const p2 = searchParams.get("p2") || "Player 2";
@@ -71,11 +72,12 @@ export default function LiveMatchPage() {
   const scorerLabel = "Match Scorer";
 
   useEffect(() => {
+    if (isPaused) return;
     const timer = window.setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isPaused]);
 
   const matchTimer = useMemo(() => {
     const hours = Math.floor(elapsedSeconds / 3600);
@@ -198,6 +200,8 @@ export default function LiveMatchPage() {
       showSwitchSides={showSwitchSides}
       showWinnerConfirm={matchWinner != null}
       showExitConfirm={showExitConfirm}
+      isPaused={isPaused}
+      onPauseToggle={() => setIsPaused((p) => !p)}
       onBack={() => setShowExitConfirm(true)}
       onConfirmExit={() => router.replace("/match/setup?returnToHome=1")}
       onCloseExitConfirm={() => setShowExitConfirm(false)}

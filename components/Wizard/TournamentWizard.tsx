@@ -7,6 +7,7 @@ import {
   ArrowLeftIcon,
   ChevronRightIcon,
   TrashIcon,
+  InfoIcon,
 } from "@/components/Icons";
 import {
   tournamentFormSchema,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/validators/tournamentSchema";
 import { optionsApi } from "@/lib/api/optionsApi";
 import { OptionsData } from "@/lib/models";
+import DatePicker from "@/components/DatePicker";
 
 // --- CUSTOM ICONS FOR DATE PICKER ---
 const CalendarIcon = ({ size = 20, className = "" }) => (
@@ -116,216 +118,8 @@ const ToggleSwitch = ({ checked, onChange, label }: any) => (
 );
 
 // 3. Custom Date Picker (Responsive Popover / Bottom Sheet)
-const CustomDatePicker = ({ value, onChange, placeholder, error }: any) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(
-    value ? new Date(value) : new Date(),
-  );
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Safely detect mobile to avoid hydration mismatch in Next.js
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile(); // Check on mount
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const daysInMonth = new Date(
-    viewDate.getFullYear(),
-    viewDate.getMonth() + 1,
-    0,
-  ).getDate();
-  const firstDay = new Date(
-    viewDate.getFullYear(),
-    viewDate.getMonth(),
-    1,
-  ).getDay();
-
-  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const blanks = Array.from({ length: firstDay }, (_, i) => i);
-  const weekDays = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const handlePrevMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
-  };
-
-  const handleNextMonth = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
-  };
-
-  const selectDate = (day: number) => {
-    const year = viewDate.getFullYear();
-    const month = String(viewDate.getMonth() + 1).padStart(2, "0");
-    const dayStr = String(day).padStart(2, "0");
-    onChange(`${year}-${month}-${dayStr}`);
-    setIsOpen(false);
-  };
-
-  const displayDate = value
-    ? new Date(value).toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "";
-
-  return (
-    <div className="relative w-full">
-      {/* Input Trigger */}
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border flex items-center justify-between cursor-pointer transition-all duration-200 ${isOpen ? "border-primary ring-2 ring-primary/20 shadow-sm" : error ? "border-red-500" : "border-[var(--color-border)] hover:border-gray-400"}`}
-      >
-        <span
-          className={
-            value
-              ? "text-[var(--color-text)] font-semibold"
-              : "text-[var(--color-muted)] font-medium"
-          }
-        >
-          {displayDate || placeholder || "Select a date..."}
-        </span>
-        <CalendarIcon
-          className={`transition-colors ${isOpen ? "text-primary" : "text-[var(--color-muted)]"}`}
-          size={18}
-        />
-      </div>
-      <InputError message={error} />
-
-      {/* Responsive Calendar Popover / Modal */}
-      {isOpen && (
-        <>
-          {/* Dark backdrop for both mobile and desktop overlay click */}
-          <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[998]"
-            onClick={() => setIsOpen(false)}
-          />
-
-          <div
-            className={`
-              z-[999] bg-[var(--color-surface)] border border-[var(--color-border)]
-              ${
-                isMobile
-                  ? "fixed bottom-0 left-0 right-0 rounded-t-3xl p-6 animate-in slide-in-from-bottom duration-300"
-                  : "absolute top-[calc(100%+8px)] left-0 max-w-[380px] w-full rounded-2xl p-5 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 backdrop-blur-xl"
-              }
-            `}
-          >
-            {/* Mobile Drag Handle */}
-            {isMobile && (
-              <div className="w-10 h-1.5 bg-[var(--color-border)] rounded-full mx-auto mb-4" />
-            )}
-
-            {/* Header Controls */}
-            <div className="flex items-center justify-between mb-6 text-lg sm:text-base">
-              <button
-                onClick={handlePrevMonth}
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-elevated)] text-[var(--color-text)] transition-colors border border-transparent hover:border-[var(--color-border)]"
-              >
-                <ChevronRightIcon size={16} className="rotate-180" />
-              </button>
-              <div className="font-bold text-[var(--color-text)] tracking-wide">
-                {monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}
-              </div>
-              <button
-                onClick={handleNextMonth}
-                className="w-10 h-10 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-elevated)] text-[var(--color-text)] transition-colors border border-transparent hover:border-[var(--color-border)]"
-              >
-                <ChevronRightIcon size={16} />
-              </button>
-            </div>
-
-            {/* Weekdays */}
-            <div className="grid grid-cols-7 gap-2 mb-3">
-              {weekDays.map((day) => (
-                <div
-                  key={day}
-                  className="text-center text-xs font-bold text-[var(--color-muted)] uppercase tracking-wider"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Days Grid - Fluid Spacing */}
-            <div className="grid grid-cols-7 gap-2">
-              {blanks.map((blank) => (
-                <div
-                  key={`blank-${blank}`}
-                  className="aspect-square w-full"
-                ></div>
-              ))}
-              {days.map((day) => {
-                const dateString = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                const isSelected = value === dateString;
-                const isToday =
-                  new Date().toISOString().split("T")[0] === dateString;
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => selectDate(day)}
-                    className={`aspect-square w-full rounded-full flex items-center justify-center text-sm sm:text-base transition-all duration-200
-                      ${
-                        isSelected
-                          ? "bg-primary text-white font-bold shadow-md scale-105"
-                          : isToday
-                            ? "border-2 border-primary text-primary font-bold hover:bg-primary/10"
-                            : "text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-elevated)] hover:scale-110"
-                      }`}
-                  >
-                    {day}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Quick Actions Footer */}
-            <div className="mt-5 pt-4 border-t border-[var(--color-border)] flex justify-between">
-              <button
-                onClick={() => {
-                  onChange("");
-                  setIsOpen(false);
-                }}
-                className="text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={() => {
-                  const today = new Date();
-                  onChange(
-                    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
-                  );
-                  setIsOpen(false);
-                }}
-                className="text-xs font-bold text-primary hover:text-orange-600 transition-colors"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
+const CustomDatePicker = (props: any) => {
+  return <DatePicker {...props} />;
 };
 
 // --- MAIN COMPONENT ---
@@ -346,6 +140,9 @@ export default function TournamentWizard({
 }: TournamentWizardProps) {
   const [step, setStep] = useState(1);
   const totalSteps = 4;
+
+  const [showEventWarning, setShowEventWarning] = useState(false);
+  const [hasSeenEventWarning, setHasSeenEventWarning] = useState(false);
 
   const [formData, setFormData] = useState<TournamentFormData>({
     // Step 1
@@ -393,6 +190,40 @@ export default function TournamentWizard({
     { id: 2, code: "15", label: "15" },
     { id: 3, code: "21", label: "21" },
   ];
+
+  useEffect(() => {
+    if (step === 3 && !hasSeenEventWarning) {
+      setShowEventWarning(true);
+      setHasSeenEventWarning(true);
+    }
+  }, [step, hasSeenEventWarning]);
+
+  useEffect(() => {
+    const result = tournamentFormSchema.safeParse(formData);
+    const currentIssues: Record<string, string> = {};
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        const path = issue.path.join(".");
+        if (path) currentIssues[path] = issue.message;
+      });
+    }
+
+    setErrors((prevErrors) => {
+      if (Object.keys(prevErrors).length === 0) return prevErrors;
+      const updatedErrors = { ...prevErrors };
+      let changed = false;
+      Object.keys(prevErrors).forEach((key) => {
+        if (!currentIssues[key]) {
+          delete updatedErrors[key];
+          changed = true;
+        } else if (currentIssues[key] !== prevErrors[key]) {
+          updatedErrors[key] = currentIssues[key];
+          changed = true;
+        }
+      });
+      return changed ? updatedErrors : prevErrors;
+    });
+  }, [formData]);
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -1377,6 +1208,34 @@ export default function TournamentWizard({
           </div>
         </div>
       </div>
+
+      {/* Event Warning Caution Pop-up Modal */}
+      {showEventWarning && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[4px] animate-in fade-in duration-300">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] w-full max-w-md rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center mb-4">
+              <InfoIcon size={32} />
+            </div>
+            
+            <h2 className="text-xl font-bold text-[var(--color-text)] mb-3">
+              Attention: Events Cannot Be Edited
+            </h2>
+            
+            <p className="text-sm text-[var(--color-muted)] leading-relaxed mb-6">
+              Please be careful while creating events. Once the tournament is created, you will not be able to edit or delete these events. Double-check all event names, formats, dates, and entry fees before proceeding.
+            </p>
+            
+            <button
+              type="button"
+              onClick={() => setShowEventWarning(false)}
+              className="w-full py-3 rounded-xl font-bold text-white shadow-md active:scale-[0.98] transition-all"
+              style={{ background: "var(--gradient-orange)" }}
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

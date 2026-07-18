@@ -3,6 +3,7 @@
 import SwitchAccountModal from "@/components/SwitchAccountModal";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
@@ -35,13 +36,28 @@ function getDisplayField(value: string, fallback = "Not added") {
 }
 
 export default function OrgProfilePage() {
+  const router = useRouter();
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const {
     isLoading,
     activeOrganization: organization,
     userProfile: profile,
+    logout,
   } = useApp();
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await logout();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Failed to sign out:", error);
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
   const orgName = organization?.name || "Organization";
   const orgType =
     typeof organization?.orgType === "object" &&
@@ -231,7 +247,7 @@ export default function OrgProfilePage() {
           </span>
         </button>
         <nav className="space-y-1" aria-label="Settings">
-          <Link
+          {/* <Link
             href="/org/settings/notifications"
             className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)]"
           >
@@ -249,7 +265,7 @@ export default function OrgProfilePage() {
               size={18}
               className="text-[var(--color-muted)] shrink-0"
             />
-          </Link>
+          </Link> */}
           <Link
             href="/org/settings/members"
             className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)]"
@@ -269,7 +285,7 @@ export default function OrgProfilePage() {
               className="text-[var(--color-muted)] shrink-0"
             />
           </Link>
-          <Link
+          {/* <Link
             href="/org/settings/privacy"
             className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)]"
           >
@@ -306,7 +322,7 @@ export default function OrgProfilePage() {
               size={18}
               className="text-[var(--color-muted)] shrink-0"
             />
-          </Link>
+          </Link> */}
           <Link
             href="/org/settings/help"
             className="flex items-center gap-3 p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] border border-[var(--color-border)]"
@@ -329,9 +345,11 @@ export default function OrgProfilePage() {
         </nav>
         <button
           type="button"
-          className="w-full min-h-[44px] rounded-[var(--radius-button)] bg-primary text-[var(--color-primary-contrast)] font-medium"
+          onClick={handleSignOut}
+          disabled={isSigningOut}
+          className="w-full min-h-[44px] rounded-[var(--radius-button)] bg-primary text-[var(--color-primary-contrast)] font-medium hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
         >
-          Logout
+          {isSigningOut ? "Logging out..." : "Logout"}
         </button>
       </div>
 

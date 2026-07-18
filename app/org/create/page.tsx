@@ -89,6 +89,34 @@ export default function CreateOrgPage() {
     }));
   }, [router, searchParams]);
 
+  useEffect(() => {
+    const result = organizationSchema.safeParse(formData);
+    const currentIssues: Record<string, string> = {};
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0]) {
+          currentIssues[issue.path[0].toString()] = issue.message;
+        }
+      });
+    }
+
+    setFieldErrors((prevErrors) => {
+      if (Object.keys(prevErrors).length === 0) return prevErrors;
+      const updatedErrors = { ...prevErrors };
+      let changed = false;
+      Object.keys(prevErrors).forEach((key) => {
+        if (!currentIssues[key]) {
+          delete updatedErrors[key];
+          changed = true;
+        } else if (currentIssues[key] !== prevErrors[key]) {
+          updatedErrors[key] = currentIssues[key];
+          changed = true;
+        }
+      });
+      return changed ? updatedErrors : prevErrors;
+    });
+  }, [formData]);
+
   const validateFields = (fields: (keyof OrganizationFormData)[]) => {
     setFieldErrors((current) => {
       const next = { ...current };

@@ -663,7 +663,7 @@ export default function OrgHomePage() {
                           </div>
 
                           <div className="flex flex-col items-center">
-                            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-1.5 font-heading text-2xl font-bold tracking-tight">
+                            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-1.5 font-heading text-2xl font-bold tracking-tight whitespace-nowrap">
                               {String(match.score?.teamA || 0).padStart(2, "0")} -{" "}
                               {String(match.score?.teamB || 0).padStart(2, "0")}
                             </div>

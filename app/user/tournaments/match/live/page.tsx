@@ -185,11 +185,13 @@ export default function ScorerLiveMatchPage() {
   const [matchWinner, setMatchWinner] = useState<0 | 1 | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
+    if (isPaused) return;
     const timer = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isPaused]);
 
   const matchTimer = useMemo(() => {
     const h = Math.floor(elapsedSeconds / 3600);
@@ -400,6 +402,8 @@ export default function ScorerLiveMatchPage() {
       showSwitchSides={showSwitchSides}
       showWinnerConfirm={matchWinner != null}
       showExitConfirm={showExitConfirm}
+      isPaused={isPaused}
+      onPauseToggle={() => setIsPaused((p) => !p)}
       onBack={() => setShowExitConfirm(true)}
       onConfirmExit={handleConfirmExit}
       onCloseExitConfirm={() => setShowExitConfirm(false)}

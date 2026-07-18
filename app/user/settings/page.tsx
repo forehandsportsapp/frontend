@@ -33,6 +33,7 @@ export default function UserSettingsPage() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const settingsItems = [
+    /*
     {
       href: routes.userSettingsNotifications(),
       icon: Bell,
@@ -51,6 +52,7 @@ export default function UserSettingsPage() {
       label: "Preferences",
       sub: "App preferences",
     },
+    */
     {
       href: routes.userSettingsHelp(),
       icon: HelpCircleIcon,

@@ -210,6 +210,36 @@ function TournamentSettingsContent() {
     );
   }, [form, originalForm]);
 
+  useEffect(() => {
+    const validationResult = settingsSchema.safeParse({
+      ...form,
+      venueCourts: Number(form.venueCourts),
+    });
+    const currentIssues: Record<string, string> = {};
+    if (!validationResult.success) {
+      validationResult.error.issues.forEach((issue) => {
+        const path = issue.path.join(".");
+        if (path) currentIssues[path] = issue.message;
+      });
+    }
+
+    setErrors((prevErrors) => {
+      if (Object.keys(prevErrors).length === 0) return prevErrors;
+      const updatedErrors = { ...prevErrors };
+      let changed = false;
+      Object.keys(prevErrors).forEach((key) => {
+        if (!currentIssues[key]) {
+          delete updatedErrors[key];
+          changed = true;
+        } else if (currentIssues[key] !== prevErrors[key]) {
+          updatedErrors[key] = currentIssues[key];
+          changed = true;
+        }
+      });
+      return changed ? updatedErrors : prevErrors;
+    });
+  }, [form]);
+
   const isDirty = hasFieldChanges || Boolean(logoFile);
 
   const updateField = <K extends keyof TournamentSettingsForm>(

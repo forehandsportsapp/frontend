@@ -165,6 +165,7 @@ export default function OrgLiveMatchPage() {
     config.initialServer === 2 ? 1 : 0,
   );
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const [matchScorerName, setMatchScorerName] = useState("Match Scorer");
   const [teamIds, setTeamIds] = useState<{ a?: string; b?: string }>({});
 
@@ -211,11 +212,12 @@ export default function OrgLiveMatchPage() {
   }, [matchId]);
 
   useEffect(() => {
+    if (isPaused) return;
     const timer = window.setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [isPaused]);
 
   useEffect(() => {
     setScorerSide(config.initialServer === 2 ? 1 : 0);
@@ -452,6 +454,8 @@ export default function OrgLiveMatchPage() {
       showSwitchSides={showSwitchSides}
       showWinnerConfirm={matchWinner != null}
       showExitConfirm={showExitConfirm}
+      isPaused={isPaused}
+      onPauseToggle={() => setIsPaused((p) => !p)}
       onBack={() => setShowExitConfirm(true)}
       onConfirmExit={() =>
         router.replace(

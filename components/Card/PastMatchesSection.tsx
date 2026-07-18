@@ -313,9 +313,9 @@ export default function PastMatchesSection() {
         <h3 className="text-xl font-bold tracking-tight text-[var(--color-text)]">
           Past Matches
         </h3>
-        <button className="pb-1 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] transition-colors hover:text-orange-600">
+        {/* <button className="pb-1 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] transition-colors hover:text-orange-600">
           View History
-        </button>
+        </button> */}
       </div>
 
       <div className="flex gap-3 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-1">

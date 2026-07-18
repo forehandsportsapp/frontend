@@ -25,7 +25,7 @@ function normalizePhone(phone: string) {
 }
 
 export default function OrgMembersPage() {
-  const { activeOrganization } = useApp();
+  const { activeOrganization, isLoading } = useApp();
 
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +35,7 @@ export default function OrgMembersPage() {
   useEffect(() => {
     let active = true;
     const organizationId = activeOrganization?.id;
-    if (!organizationId) return;
+    if (!organizationId || isLoading) return;
 
     const loadInvites = async () => {
       try {
@@ -57,7 +57,7 @@ export default function OrgMembersPage() {
     return () => {
       active = false;
     };
-  }, [activeOrganization?.id]);
+  }, [activeOrganization?.id, isLoading]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +92,13 @@ export default function OrgMembersPage() {
         console.warn("Failed to send org invite notification", err);
       }
 
-      setMembers((prev) => [created as OrganizationMemberInvite, ...prev]);
+      const newInvite: OrganizationMemberInvite = {
+        id: created.inviteId || created.id || String(Date.now()),
+        name: created.receiverName || created.name || "",
+        phone: created.receiverPhone || created.phone || cleanPhone,
+        status: created.inviteState || created.status || "pending",
+      };
+      setMembers((prev) => [newInvite, ...prev]);
       setPhone("");
       setFeedback("Invitation sent successfully.");
     } catch (error) {
@@ -169,7 +175,7 @@ export default function OrgMembersPage() {
           {members.map((m) => (
             <MemberRow
               key={m.id}
-              name={m.name || "Alex Costa"}
+              name={m.name || m.phone || "Invited User"}
               onRemove={() => void handleRemove(m)}
             />
           ))}

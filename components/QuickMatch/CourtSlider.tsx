@@ -325,9 +325,8 @@ export default function CourtSlider({ onBack, onStart }: CourtSliderProps) {
           </div>
         </section>
 
-        {/* Initial Server */}
         <section className="mb-4">
-          <h3 className="mb-2 text-[13px] font-semibold">Initial Server</h3>
+          <h3 className="mb-2 text-[13px] font-semibold">Who'll serve first?</h3>
           <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
@@ -445,31 +444,12 @@ export default function CourtSlider({ onBack, onStart }: CourtSliderProps) {
           </div>
           <div className="rounded-card border border-border bg-surface p-2">
             <CheckLine
-              text="1 Timeout per set"
-              checked={form.timeoutPerSet}
+              text="Win by 2 points"
+              checked={form.winByTwo}
               onChange={(checked) =>
-                setForm((previous) => ({ ...previous, timeoutPerSet: checked }))
+                setForm((previous) => ({ ...previous, winByTwo: checked }))
               }
             />
-            <div className="mt-2">
-              <CheckLine
-                text="Win by 2 points"
-                checked={form.winByTwo}
-                onChange={(checked) =>
-                  setForm((previous) => ({ ...previous, winByTwo: checked }))
-                }
-              />
-            </div>
-            <p className="mt-2 text-[11px] font-semibold">Warm-up Time</p>
-            <div className="mt-1.5">
-              <CheckLine
-                text="No warm-up"
-                checked={!form.warmup}
-                onChange={(checked) =>
-                  setForm((previous) => ({ ...previous, warmup: !checked }))
-                }
-              />
-            </div>
           </div>
         </section>
 

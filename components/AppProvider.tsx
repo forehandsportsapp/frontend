@@ -156,7 +156,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     activeOrgIdRef.current = null;
 
     if (typeof window !== "undefined") {
-      localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+      // 1. Clear LocalStorage preserving theme
+      const theme = localStorage.getItem("forehand:theme");
+      localStorage.clear();
+      if (theme) {
+        localStorage.setItem("forehand:theme", theme);
+      }
+
+      // 2. Clear SessionStorage
+      try {
+        sessionStorage.clear();
+      } catch (err) {
+        console.warn("Failed to clear sessionStorage:", err);
+      }
+
+      // 3. Clear Cache Storage (PWA API Cache)
+      if ("caches" in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map((cacheName) => caches.delete(cacheName))
+          );
+        } catch (err) {
+          console.warn("Failed to clear Cache Storage:", err);
+        }
+      }
+
+      // 4. Clear IndexedDB 'forehand-pwa'
+      if ("indexedDB" in window) {
+        try {
+          window.indexedDB.deleteDatabase("forehand-pwa");
+        } catch (err) {
+          console.warn("Failed to delete IndexedDB:", err);
+        }
+      }
     }
   }, [supabase]);
 

@@ -53,12 +53,28 @@ export const notificationApi = {
     const rows = Array.isArray(data) ? data : [];
     return rows.map((row: any) => {
       const createdAt = row.createdAt ? new Date(row.createdAt) : null;
-      const timeAgo = createdAt
-        ? `${Math.max(
-            1,
-            Math.floor((Date.now() - createdAt.getTime()) / (1000 * 60)),
-          )} min ago`
-        : "Just now";
+      let timeAgo = "Just now";
+      if (createdAt) {
+        const diffMs = Date.now() - createdAt.getTime();
+        if (diffMs > 0) {
+          const diffSecs = Math.floor(diffMs / 1000);
+          const diffMins = Math.floor(diffSecs / 60);
+          const diffHours = Math.floor(diffMins / 60);
+          const diffDays = Math.floor(diffHours / 24);
+
+          if (diffSecs < 60) {
+            timeAgo = "Just now";
+          } else if (diffMins < 60) {
+            timeAgo = `${diffMins} min ago`;
+          } else if (diffHours < 24) {
+            timeAgo = `${diffHours} hr${diffHours > 1 ? "s" : ""} ago`;
+          } else if (diffDays < 30) {
+            timeAgo = `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+          } else {
+            timeAgo = createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          }
+        }
+      }
 
       // If it's an invite, the backend might provide an inviteId in metadata or as the row id
       // For now we use row.id as the fallback for invite actions

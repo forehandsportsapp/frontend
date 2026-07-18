@@ -408,7 +408,7 @@ export default function OrgMatchSetupPage() {
         {/* ── Initial Server ── */}
         <div>
           <p className="text-sm font-semibold text-[var(--color-text)] mb-2">
-            Initial Server
+            Who'll serve first?
           </p>
           <div className="grid grid-cols-2 gap-2">
             {[1, 2].map((v) => (
@@ -590,55 +590,7 @@ export default function OrgMatchSetupPage() {
             })}
           </div>
 
-          {/* Warm-up Time sub-section */}
-          <div className="mt-3">
-            <p className="text-sm font-bold text-[var(--color-text)] mb-2">
-              Warm-up Time
-            </p>
-            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
-              {(() => {
-                const checked = draft.config.warmupMinutes === 0;
-                return (
-                  <label className="flex items-center justify-between px-4 py-3.5 cursor-pointer transition-colors hover:bg-[var(--color-surface-elevated)]">
-                    <span className="text-sm font-medium text-[var(--color-text)]">
-                      No warm-up
-                    </span>
-                    <div
-                      className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-colors ${
-                        checked
-                          ? "bg-orange-500 border-orange-500"
-                          : "bg-transparent border-[var(--color-border)]"
-                      }`}
-                    >
-                      {checked && (
-                        <svg
-                          width={11}
-                          height={11}
-                          viewBox="0 0 12 12"
-                          fill="none"
-                          stroke="white"
-                          strokeWidth={2.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M2 6l3 3 5-5" />
-                        </svg>
-                      )}
-                    </div>
-                    <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={checked}
-                      disabled={isEventLocked}
-                      onChange={(e) =>
-                        setConfig({ warmupMinutes: e.target.checked ? 0 : 5 })
-                      }
-                    />
-                  </label>
-                );
-              })()}
-            </div>
-          </div>
+
         </div>
 
         {/* ── Serve Rotation ── */}

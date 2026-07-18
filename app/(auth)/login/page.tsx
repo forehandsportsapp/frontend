@@ -90,7 +90,7 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1">
-              <p className="text-xl font-bold text-[var(--color-text)] leading-tight">
+              <p className="text-xl font-bold text-[var(--color-text)] leading-tight whitespace-nowrap">
                 Your all-in-one tournament hub.
               </p>
               <p className="text-[15px] font-medium text-[var(--color-text-secondary)] opacity-70">
