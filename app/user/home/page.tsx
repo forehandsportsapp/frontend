@@ -257,6 +257,7 @@ export default function UserHomePage() {
   const { userProfile } = useApp();
   const upcomingContainerRef = useRef<HTMLDivElement>(null);
   const ongoingContainerRef = useRef<HTMLDivElement>(null);
+  const yourTournamentsContainerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("explore");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -1000,7 +1001,10 @@ export default function UserHomePage() {
                 </Link>
               </div>
 
-              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 px-1">
+              <div
+                ref={yourTournamentsContainerRef}
+                className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 px-1"
+              >
                 {isTournamentsLoading ? (
                   <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0 h-24 rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
                 ) : joinedTournaments.length === 0 ? (
@@ -1025,6 +1029,11 @@ export default function UserHomePage() {
                   ))
                 )}
               </div>
+
+              <SwipingDots
+                itemCount={joinedTournaments.length}
+                containerRef={yourTournamentsContainerRef}
+              />
             </section>
 
             <NextOnCourtSection />

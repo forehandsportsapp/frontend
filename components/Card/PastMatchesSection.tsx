@@ -286,7 +286,17 @@ export default function PastMatchesSection() {
   if (loading) {
     return (
       <section className="space-y-3">
-        <div className="h-6 w-32 animate-pulse rounded bg-surface-elevated" />
+        <div className="flex items-center justify-between px-1 mb-2">
+          <h3 className="text-lg font-bold tracking-tight text-[var(--color-text)]">
+            Past Matches
+          </h3>
+          <Link
+            href="/user/matches/past"
+            className="text-sm font-semibold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
+          >
+            View All
+          </Link>
+        </div>
         <div className="flex gap-3 overflow-x-auto pb-1">
           {[1, 2].map((i) => (
             <div

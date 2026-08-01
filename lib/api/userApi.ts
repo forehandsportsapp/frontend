@@ -217,4 +217,15 @@ export const userApi = {
     if (error) throw error;
     return data as any[];
   },
+
+  /**
+   * Retrieves the current user's upcoming matches.
+   */
+  getUpcomingMatches: async (): Promise<any[]> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/user/matches/upcoming" }),
+    );
+    if (error) throw error;
+    return data as any[];
+  },
 };

@@ -1,7 +1,13 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronRightIcon, MapPinIcon, TimerIcon } from "@/components/Icons";
+import { userApi } from "@/lib/api/userApi";
 
 type UpcomingMatch = {
   id: string;
+  tournamentId: string;
   month: string;
   day: string;
   title: string;
@@ -12,94 +18,127 @@ type UpcomingMatch = {
   accentColor: string;
 };
 
-const upcomingMatches: UpcomingMatch[] = [
-  {
-    id: "upcoming-1",
-    month: "Dec",
-    day: "18",
-    title: "Regional Semi - Final",
-    sport: "Singles",
-    category: "Men's Open",
-    time: "10:00 AM",
-    venue: "City Court",
-    accentColor: "bg-lime-300",
-  },
-  {
-    id: "upcoming-2",
-    month: "Dec",
-    day: "18",
-    title: "Pickleball Quarter Final",
-    sport: "Singles",
-    category: "Singles",
-    time: "10:00 AM",
-    venue: "City Court",
-    accentColor: "bg-orange-500",
-  },
-  {
-    id: "upcoming-3",
-    month: "Dec",
-    day: "18",
-    title: "Regional Semi - Final",
-    sport: "Singles",
-    category: "Men's Open",
-    time: "10:00 AM",
-    venue: "City Court",
-    accentColor: "bg-lime-300",
-  },
+const ACCENT_COLORS = [
+  "bg-lime-300",
+  "bg-orange-500",
 ];
 
 function UpcomingCourtCard({ match }: { match: UpcomingMatch }) {
   return (
-    <div className="flex overflow-hidden border border-border bg-surface shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5">
-      <div className={`flex min-w-[48px] shrink-0 flex-col items-center justify-center px-2 py-3 text-center text-black ${match.accentColor}`}>
-        <span className="text-[11px] font-medium leading-none">
-          {match.month}
-        </span>
-        <span className="mt-1 text-[16px] font-bold leading-none">
-          {match.day}
-        </span>
-      </div>
+    <Link href={`/tournaments/detail?id=${match.tournamentId}`} className="block">
+      <div className="flex overflow-hidden border border-border bg-surface shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5">
+        <div className={`flex min-w-[48px] shrink-0 flex-col items-center justify-center px-2 py-3 text-center text-black ${match.accentColor}`}>
+          <span className="text-[11px] font-medium leading-none">
+            {match.month}
+          </span>
+          <span className="mt-1 text-[16px] font-bold leading-none">
+            {match.day}
+          </span>
+        </div>
 
-      <div className="flex flex-1 items-start justify-between gap-3 px-3 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold text-[var(--color-text)]">
-            {match.title}
-          </p>
-          <p className="mt-1 truncate text-[11px] text-[var(--color-text-secondary)]">
-            {match.sport} {"\u2022"} {match.category}
-          </p>
+        <div className="flex flex-1 items-start justify-between gap-3 px-3 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold text-[var(--color-text)]">
+              {match.title}
+            </p>
+            <p className="mt-1 truncate text-[11px] text-[var(--color-text-secondary)]">
+              {match.sport} {"\u2022"} {match.category}
+            </p>
 
-          <div className="pt-3 text-[10px] text-[var(--color-text-secondary)]">
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1">
-                <TimerIcon size={11} className="text-muted" />
-                {match.time}
-              </span>
-              <span className="text-border">{"\u2022"}</span>
-              <span className="flex items-center gap-1">
-                <MapPinIcon size={11} className="text-muted" />
-                {match.venue}
-              </span>
+            <div className="pt-3 text-[10px] text-[var(--color-text-secondary)]">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1">
+                  <TimerIcon size={11} className="text-muted" />
+                  {match.time}
+                </span>
+                <span className="text-border">{"\u2022"}</span>
+                <span className="flex items-center gap-1">
+                  <MapPinIcon size={11} className="text-muted" />
+                  {match.venue}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="pt-1 text-text">
-          <ChevronRightIcon size={18} />
+          <div className="pt-1 text-text">
+            <ChevronRightIcon size={18} />
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
 export default function NextOnCourtSection() {
+  const [matches, setMatches] = useState<UpcomingMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const fetchMatches = async () => {
+      try {
+        const data = await userApi.getUpcomingMatches();
+        if (active && data) {
+          const formatted = data.map((m: any, index: number) => {
+            const date = new Date(m.scheduledAt || Date.now());
+            return {
+              id: m.id,
+              tournamentId: m.tournamentId || "",
+              month: date.toLocaleString("default", { month: "short" }),
+              day: date.getDate().toString(),
+              title: m.leagueTitle || "Tournament Match",
+              sport: m.type || "Match",
+              category: m.eventName || "Event",
+              time: date.toLocaleTimeString("en-US", {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              }),
+              venue: m.venue || "TBD",
+              accentColor: ACCENT_COLORS[index % ACCENT_COLORS.length],
+            };
+          });
+          setMatches(formatted);
+        }
+      } catch (error) {
+        console.error("Failed to fetch upcoming matches", error);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+    void fetchMatches();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="space-y-3">
       <h3 className="px-1 text-lg font-bold text-[var(--color-text)]">Next On Court</h3>
 
-      {upcomingMatches.map((match) => (
-        <UpcomingCourtCard key={match.id} match={match} />
-      ))}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-[90px] w-full animate-pulse border border-border bg-[var(--color-surface-elevated)] shadow-[var(--shadow-card)]"
+            />
+          ))}
+        </div>
+      ) : matches.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/50 p-6 text-center">
+          <p className="text-sm font-medium text-neutral-500">
+            No upcoming matches scheduled.
+          </p>
+          <p className="mt-1 text-xs text-neutral-400">
+            Matches will appear here once they are generated.
+          </p>
+        </div>
+      ) : (
+        matches.map((match) => (
+          <UpcomingCourtCard key={match.id} match={match} />
+        ))
+      )}
     </section>
   );
 }
