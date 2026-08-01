@@ -142,10 +142,16 @@ export default function UserManagePage() {
               adminTournaments.map((t) => (
                 <OrgTournamentCard
                   key={t.id}
-                  tournament={t}
-                  activeTab={t.tournamentState === "published" ? "upcoming" : (t.tournamentState === "in_progress" ? "live" : "past")}
-                  onPublish={async () => {}}
-                  onDelete={async () => {}}
+                  id={t.id ?? ""}
+                  name={t.name}
+                  subtitle={t.description}
+                  location={[t.venueCity, t.venueState].filter(Boolean).join(", ")}
+                  eventsCount={t.events?.length ?? 0}
+                  date={t.startDate}
+                  entryFee={"—"}
+                  href={`/org/tournaments/${t.id}`}
+                  logoUrl={t.logoUrl ?? undefined}
+                  badgeLabel={t.tournamentState ?? undefined}
                 />
               ))
             )}
