@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import LiveMatchReplica from "@/components/QuickMatch/LiveMatchReplica";
 import { appendScoreLog, pushOfflineQueue } from "@/lib/storage";
 import type {
@@ -59,6 +61,56 @@ export default function LiveMatchPage() {
   const [showSwitchSides, setShowSwitchSides] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  const isNavigatingAwayRef = useRef(false);
+
+  // 1. Intercept page refresh / reload / close tab
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isNavigatingAwayRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
+  // 2. Intercept browser back button and Capacitor back button
+  useEffect(() => {
+    // Push dummy state to browser history to intercept browser back actions
+    window.history.pushState(null, "", window.location.href);
+
+    const handlePopState = () => {
+      if (isNavigatingAwayRef.current) return;
+      
+      // Open the exit confirm dialog
+      setShowExitConfirm(true);
+      
+      // Push state again so back button continues to be intercepted
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Handle Capacitor native/hardware back button
+    let backButtonListener: Promise<{ remove: () => Promise<void> }> | null = null;
+    if (Capacitor.isNativePlatform()) {
+      backButtonListener = App.addListener("backButton", () => {
+        if (isNavigatingAwayRef.current) return;
+        setShowExitConfirm(true);
+      });
+    }
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (backButtonListener) {
+        backButtonListener.then((listener) => listener.remove());
+      }
+    };
+  }, []);
 
   const p1 = searchParams.get("p1") || "Player 1";
   const p2 = searchParams.get("p2") || "Player 2";
@@ -203,7 +255,10 @@ export default function LiveMatchPage() {
       isPaused={isPaused}
       onPauseToggle={() => setIsPaused((p) => !p)}
       onBack={() => setShowExitConfirm(true)}
-      onConfirmExit={() => router.replace("/match/setup?returnToHome=1")}
+      onConfirmExit={() => {
+        isNavigatingAwayRef.current = true;
+        router.replace("/match/setup?returnToHome=1");
+      }}
       onCloseExitConfirm={() => setShowExitConfirm(false)}
       onUndo={undo}
       onSideARally={() => applyRallyAction(0)}
@@ -218,11 +273,12 @@ export default function LiveMatchPage() {
         undo();
         setMatchWinner(null);
       }}
-      onConfirmWinner={() =>
+      onConfirmWinner={() => {
+        isNavigatingAwayRef.current = true;
         router.push(
           `/match/winner?winner=${encodeURIComponent(matchWinner === 1 ? playerBName : playerAName)}&score=${encodeURIComponent(winnerScore)}&player_a=${encodeURIComponent(playerAName)}&player_b=${encodeURIComponent(playerBName)}`,
-        )
-      }
+        );
+      }}
       winnerName={matchWinner === 1 ? playerBName : playerAName}
       winnerScore={winnerScore}
     />

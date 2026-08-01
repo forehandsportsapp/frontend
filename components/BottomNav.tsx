@@ -141,7 +141,7 @@ export default function BottomNav() {
   );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] flex justify-center pointer-events-none">
       <div className="flex justify-around items-end pointer-events-auto">
         {links.map(({ href, label, icon }, index) => {
           const active = isLinkActive(pathname, href);

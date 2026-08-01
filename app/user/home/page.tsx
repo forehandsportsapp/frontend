@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, UIEvent, useMemo } from "react";
+import { useState, useEffect, UIEvent, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import BottomNav from "@/components/BottomNav";
@@ -11,9 +11,12 @@ import QuickStatsSection from "@/components/Card/QuickStatsSection";
 import UserTournamentCard from "@/components/Card/UserTournamentCard";
 import ColorfulTournamentCard from "@/components/Card/ColorfulTournamentCard";
 import OngoingTournamentCard from "@/components/Card/OngoingTournamentCard";
+import NextOnCourtSection from "@/components/Card/NextOnCourtSection";
 import NotificationsSlideOver, {
   NotificationItem,
 } from "@/components/NotificationsSlideOver";
+import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
+import SwipingDots from "@/components/SwipingDots";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { userApi } from "@/lib/api/userApi";
@@ -202,8 +205,58 @@ function isUpcomingTournament(t: TournamentData) {
   return new Date(t.startDate) > new Date();
 }
 
+function LiveFeedGroup({
+  group,
+  onSelectMatch,
+}: {
+  group: any;
+  onSelectMatch: (match: any) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <h4 className="font-heading text-base font-bold text-[var(--color-text)] truncate max-w-[80%]">
+          {group.tournamentName || "Tournament"}
+        </h4>
+        <span className="text-[10px] font-bold text-orange-600 uppercase bg-orange-50 px-2 py-0.5 rounded">
+          {group.matches.length} Live
+        </span>
+      </div>
+      <div
+        ref={containerRef}
+        className="flex gap-4 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-1"
+      >
+        {group.matches.map((match: any) => (
+          <div
+            role="button"
+            tabIndex={0}
+            key={match.id}
+            onClick={() => onSelectMatch(match)}
+            className="text-left min-w-[85vw] sm:min-w-[320px] snap-center shrink-0 cursor-pointer transition-transform active:scale-[0.98] outline-none"
+          >
+            <LiveMatchCard
+              tournamentName={group.tournamentName || "Tournament"}
+              matchTitle={match.matchTitle}
+              teamA={normalizeTeam(match.teamA)}
+              teamB={normalizeTeam(match.teamB)}
+              score={match.score}
+              court={match.court}
+              isLive={true}
+            />
+          </div>
+        ))}
+      </div>
+      <SwipingDots itemCount={group.matches.length} containerRef={containerRef} />
+    </section>
+  );
+}
+
 export default function UserHomePage() {
   const { userProfile } = useApp();
+  const upcomingContainerRef = useRef<HTMLDivElement>(null);
+  const ongoingContainerRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState("explore");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -222,6 +275,7 @@ export default function UserHomePage() {
   const [isLiveMatchLoading, setIsLiveMatchLoading] = useState(true);
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [isLiveFeedLoading, setIsLiveFeedLoading] = useState(true);
+  const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
 
   const attachNotificationActions = (items: NotificationItem[]) =>
     items.map((item) => ({
@@ -378,18 +432,25 @@ export default function UserHomePage() {
                 } = message.data;
 
                 if (matchId === match?.id) {
-                  setLiveMatch((prev: any) =>
-                    prev
-                      ? {
-                          ...prev,
-                          score: {
-                            teamA: teamAScore,
-                            teamB: teamBScore,
-                            currentSet: setNumber,
-                          },
-                        }
-                      : prev,
-                  );
+                  setLiveMatch((prev: any) => {
+                    if (!prev) return prev;
+                    let updatedSets = [...(prev.sets || [])];
+                    const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
+                    if (setIndex >= 0) {
+                      updatedSets[setIndex] = { ...updatedSets[setIndex], teamAScore, teamBScore };
+                    } else {
+                      updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: "in_progress" });
+                    }
+                    return {
+                      ...prev,
+                      score: {
+                        teamA: teamAScore,
+                        teamB: teamBScore,
+                        currentSet: setNumber,
+                      },
+                      sets: updatedSets,
+                    };
+                  });
                 }
 
                 setLiveFeed((prevFeed) =>
@@ -397,18 +458,27 @@ export default function UserHomePage() {
                     if (group.tournamentId === tournamentId) {
                       return {
                         ...group,
-                        matches: group.matches.map((m: any) =>
-                          m.id === matchId
-                            ? {
-                                ...m,
-                                score: {
-                                  teamA: teamAScore,
-                                  teamB: teamBScore,
-                                  currentSet: setNumber,
-                                },
-                              }
-                            : m,
-                        ),
+                        matches: group.matches.map((m: any) => {
+                          if (m.id === matchId) {
+                            let updatedSets = [...(m.sets || [])];
+                            const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
+                            if (setIndex >= 0) {
+                              updatedSets[setIndex] = { ...updatedSets[setIndex], teamAScore, teamBScore };
+                            } else {
+                              updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: "in_progress" });
+                            }
+                            return {
+                              ...m,
+                              score: {
+                                teamA: teamAScore,
+                                teamB: teamBScore,
+                                currentSet: setNumber,
+                              },
+                              sets: updatedSets,
+                            };
+                          }
+                          return m;
+                        }),
                       };
                     }
                     return group;
@@ -688,8 +758,8 @@ export default function UserHomePage() {
                 </Link>
               </div>
               <div
+                ref={upcomingContainerRef}
                 className="flex overflow-x-auto gap-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-2"
-                onScroll={handleUpcomingScroll}
               >
                 {isTournamentsLoading ? (
                   <>
@@ -733,20 +803,10 @@ export default function UserHomePage() {
                   ))
                 )}
               </div>
-              {upcomingTournaments.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-2">
-                  {upcomingTournaments.map((_, idx) => (
-                    <div
-                      key={idx}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        activeUpcomingIndex === idx
-                          ? "w-4 bg-orange-500"
-                          : "w-1.5 bg-dot"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+              <SwipingDots
+                itemCount={upcomingTournaments.length}
+                containerRef={upcomingContainerRef}
+              />
             </section>
 
             <section>
@@ -768,8 +828,8 @@ export default function UserHomePage() {
                 </Link>
               </div>
               <div
+                ref={ongoingContainerRef}
                 className="flex overflow-x-auto gap-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-2"
-                onScroll={handleOngoingScroll}
               >
                 {isTournamentsLoading ? (
                   <>
@@ -809,31 +869,26 @@ export default function UserHomePage() {
                   ))
                 )}
               </div>
-              {ongoingTournaments.length > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-2">
-                  {ongoingTournaments.map((_, idx) => (
-                    <div
-                      key={idx}
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                        activeOngoingIndex === idx
-                          ? "w-4 bg-orange-500"
-                          : "w-1.5 bg-dot"
-                      }`}
-                    />
-                  ))}
-                </div>
-              )}
+              <SwipingDots
+                itemCount={ongoingTournaments.length}
+                containerRef={ongoingContainerRef}
+              />
             </section>
           </div>
         )}
 
         {activeTab === "live" && (
           <div className="space-y-8 animate-fade-in">
-            <div className="flex items-center justify-center py-1 mb-2">
-              <span className="mr-2 h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse" />
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--color-text-secondary)]">
-                Live Feed
-              </h3>
+            <div className="flex flex-col items-center justify-center py-1 mb-2">
+              <div className="flex items-center justify-center">
+                <span className="mr-2 h-2.5 w-2.5 rounded-full bg-orange-500 animate-pulse" />
+                <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--color-text-secondary)]">
+                  Live Feed
+                </h3>
+              </div>
+              <p className="text-[11px] text-center text-[var(--color-text-secondary)] opacity-80 mt-2 max-w-[280px]">
+                Live Feed Screen: Ind. Player. You can view live matches of other tournaments near you
+              </p>
             </div>
 
             {isLiveFeedLoading ? (
@@ -860,34 +915,11 @@ export default function UserHomePage() {
               </div>
             ) : (
               liveFeed.map((group) => (
-                <section key={group.tournamentId} className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <h4 className="font-heading text-base font-bold text-[var(--color-text)] truncate max-w-[80%]">
-                      {group.tournamentName || "Tournament"}
-                    </h4>
-                    <span className="text-[10px] font-bold text-orange-600 uppercase bg-orange-50 px-2 py-0.5 rounded">
-                      {group.matches.length} Live
-                    </span>
-                  </div>
-                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-1">
-                    {group.matches.map((match: any) => (
-                      <div
-                        key={match.id}
-                        className="min-w-[85vw] sm:min-w-[320px] snap-center shrink-0"
-                      >
-                        <LiveMatchCard
-                          tournamentName={group.tournamentName || "Tournament"}
-                          matchTitle={match.matchTitle}
-                          teamA={normalizeTeam(match.teamA)}
-                          teamB={normalizeTeam(match.teamB)}
-                          score={match.score}
-                          court={match.court}
-                          isLive={true}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
+                <LiveFeedGroup
+                  key={group.tournamentId}
+                  group={group}
+                  onSelectMatch={setSelectedLiveMatch}
+                />
               ))
             )}
           </div>
@@ -904,6 +936,14 @@ export default function UserHomePage() {
             </section>
 
             <section>
+              <QuickMatchCard 
+                href="/user/manage" 
+                title="Manage"
+                description="View your Admin and Scorer assignments"
+              />
+            </section>
+
+            <section>
               <h3 className="mb-3 font-heading text-lg font-semibold tracking-tight flex items-center gap-2 px-1">
                 <span
                   className={`h-2 w-2 rounded-full ${liveMatch ? "bg-[var(--color-error)] animate-pulse" : "bg-gray-400"}`}
@@ -914,17 +954,27 @@ export default function UserHomePage() {
               {isLiveMatchLoading ? (
                 <div className="h-48 w-full rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
               ) : liveMatch && liveMatch.teamA && liveMatch.teamB ? (
-                <LiveMatchCard
-                  tournamentName={liveMatch.tournamentName || "Tournament"}
-                  matchTitle={liveMatch.matchTitle || "Live Match"}
-                  teamA={normalizeTeam(liveMatch.teamA)}
-                  teamB={normalizeTeam(liveMatch.teamB)}
-                  score={
-                    liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
-                  }
-                  court={liveMatch.court || "TBD"}
-                  isLive={true}
-                />
+                <>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedLiveMatch(liveMatch)}
+                    className="w-full text-left block cursor-pointer transition-transform active:scale-[0.98] outline-none"
+                  >
+                    <LiveMatchCard
+                      tournamentName={liveMatch.tournamentName || "Tournament"}
+                      matchTitle={liveMatch.matchTitle || "Live Match"}
+                      teamA={normalizeTeam(liveMatch.teamA)}
+                      teamB={normalizeTeam(liveMatch.teamB)}
+                      score={
+                        liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
+                      }
+                      court={liveMatch.court || "TBD"}
+                      isLive={true}
+                    />
+                  </div>
+                  <SwipingDots itemCount={1} />
+                </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/50 p-8 text-center">
                   <p className="text-sm font-medium text-neutral-500">
@@ -938,33 +988,46 @@ export default function UserHomePage() {
             </section>
 
             <section>
-              <h3 className="mb-3 font-heading text-lg font-semibold tracking-tight px-1">
-                Your Tournaments
-              </h3>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h3 className="font-heading text-lg font-semibold tracking-tight">
+                  Your Tournaments
+                </h3>
+                <Link
+                  href="/user/tournaments?tab=history"
+                  className="text-sm font-semibold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
+                >
+                  View All
+                </Link>
+              </div>
 
-              <div className="px-1 space-y-4">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 px-1">
                 {isTournamentsLoading ? (
-                  <div className="h-24 w-full rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
+                  <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0 h-24 rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
                 ) : joinedTournaments.length === 0 ? (
-                  <p className="text-sm text-[var(--color-text-muted)] italic px-2">
-                    You haven't joined any tournaments yet.
-                  </p>
+                  <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0">
+                    <p className="text-sm text-[var(--color-text-muted)] italic px-2">
+                      You haven't joined any tournaments yet.
+                    </p>
+                  </div>
                 ) : (
                   joinedTournaments.map((t) => (
-                    <UserTournamentCard
-                      key={t.id}
-                      href={`/tournaments/detail${toQuery({ id: t.id })}`}
-                      title={t.name}
-                      sport={getPrimarySport(t)}
-                      category={getCategory(t)}
-                      format={getModes(t)}
-                      logoUrl={getTournamentLogoUrl(t)}
-                      ctaLabel="View Tournament Events"
-                    />
+                    <div key={t.id} className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0">
+                      <UserTournamentCard
+                        href={`/tournaments/detail${toQuery({ id: t.id })}`}
+                        title={t.name}
+                        sport={getPrimarySport(t)}
+                        category={getCategory(t)}
+                        format={getModes(t)}
+                        logoUrl={getTournamentLogoUrl(t)}
+                        ctaLabel="View Tournament Events"
+                      />
+                    </div>
                   ))
                 )}
               </div>
             </section>
+
+            <NextOnCourtSection />
 
             <PastMatchesSection />
           </div>
@@ -986,6 +1049,19 @@ export default function UserHomePage() {
           )
         }
         onClearAll={() => setNotifications([])}
+      />
+      <LiveMatchViewerPopup
+        isOpen={!!selectedLiveMatch}
+        onClose={() => setSelectedLiveMatch(null)}
+        match={
+          selectedLiveMatch
+            ? {
+                ...selectedLiveMatch,
+                teamA: normalizeTeam(selectedLiveMatch.teamA),
+                teamB: normalizeTeam(selectedLiveMatch.teamB),
+              }
+            : null
+        }
       />
     </div>
   );

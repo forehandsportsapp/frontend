@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { ChevronLeftIcon } from "lucide-react";
 import { userApi } from "@/lib/api/userApi";
-import SwipingDots from "@/components/SwipingDots";
+import BottomNav from "@/components/BottomNav";
+import Image from "next/image";
 
 type PastMatch = {
   id?: string;
@@ -84,7 +85,7 @@ function TeamAvatarStack({
           key={`${player}-${index}`}
           className={`relative ${index === 0 ? "z-10" : "-ml-3.5 z-20"}`}
         >
-          <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-primary bg-surface shadow-[var(--shadow-card)]">
+          <div className="relative h-10 w-10 overflow-hidden rounded-full border-2 border-[var(--color-primary)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
             <Image
               src={buildAvatar(player, index, images?.[index])}
               alt={player}
@@ -102,7 +103,7 @@ function TeamAvatarStack({
 
 function PastMatchCard({ match }: { match: PastMatch }) {
   return (
-    <article className="min-w-[72vw] max-w-[300px] overflow-hidden rounded-[18px] border border-border bg-surface shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] sm:min-w-[290px]">
+    <article className="w-full overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)]">
       <div className="flex">
         <div className={`w-1.5 shrink-0 ${match.accentColor}`} />
 
@@ -110,11 +111,11 @@ function PastMatchCard({ match }: { match: PastMatch }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[11px]">
-                <span className="font-medium text-text">{match.type}</span>
-                <span className="text-muted">{"\u2022"}</span>
-                <span className="text-muted">{match.timeAgo}</span>
+                <span className="font-medium text-[var(--color-text)]">{match.type}</span>
+                <span className="text-[var(--color-text-secondary)]">{"\u2022"}</span>
+                <span className="text-[var(--color-text-secondary)]">{match.timeAgo}</span>
               </div>
-              <h4 className="mt-2 truncate text-[15px] font-semibold text-text">
+              <h4 className="mt-2 truncate text-[15px] font-semibold text-[var(--color-text)]">
                 {match.leagueTitle}
               </h4>
             </div>
@@ -130,16 +131,16 @@ function PastMatchCard({ match }: { match: PastMatch }) {
                 players={match.leftTeamPlayers}
                 images={match.leftTeamImages}
               />
-              <p className="mt-2 w-full truncate text-[13px] font-medium text-text">
+              <p className="mt-2 w-full truncate text-[13px] font-medium text-[var(--color-text)]">
                 {match.leftTeamName}
               </p>
             </div>
 
             <div className="flex min-w-[88px] flex-col items-center">
-              <div className="text-[28px] font-extrabold leading-none tracking-[-0.04em] text-text">
+              <div className="text-[28px] font-extrabold leading-none tracking-[-0.04em] text-[var(--color-text)]">
                 {match.score}
               </div>
-              <p className="mt-1 text-[11px] font-medium text-muted">
+              <p className="mt-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
                 {match.scoreLabel}
               </p>
             </div>
@@ -149,7 +150,7 @@ function PastMatchCard({ match }: { match: PastMatch }) {
                 players={match.rightTeamPlayers}
                 images={match.rightTeamImages}
               />
-              <p className="mt-2 w-full truncate text-[13px] font-medium text-text">
+              <p className="mt-2 w-full truncate text-[13px] font-medium text-[var(--color-text)]">
                 {match.rightTeamName}
               </p>
             </div>
@@ -184,8 +185,7 @@ const accentColors = [
   "bg-orange-400",
 ];
 
-export default function PastMatchesSection() {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export default function PastMatchesPage() {
   const [matches, setMatches] = useState<PastMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -254,98 +254,111 @@ export default function PastMatchesSection() {
             )
             .filter(Boolean);
 
+          let eventName =
+            m.event?.name || m.tournament?.name || m.leagueTitle || "Match";
+          let categoryStr = m.event?.category || "Unknown";
+          let typeStr =
+            m.event?.format === "doubles" ? "Doubles" : "Singles";
+
+          const currentUserId = "TODO";
+          let statusLabel = "PLAYED";
+          if (m.winningTeamId) {
+            const leftWon = m.winningTeamId === m.leftTeam?.id;
+            const rightWon = m.winningTeamId === m.rightTeam?.id;
+            statusLabel = leftWon ? "TEAM A WON" : rightWon ? "TEAM B WON" : "PLAYED";
+          }
+
+          let scoreStr = "0 - 0";
+          if (m.score) {
+            if (typeof m.score === "string") scoreStr = m.score;
+            else if (m.score.sets) {
+              scoreStr = m.score.sets.map((s: any) => `${s.teamA}-${s.teamB}`).join(" ");
+            } else if (m.score.teamA !== undefined) {
+              scoreStr = `${m.score.teamA} - ${m.score.teamB}`;
+            }
+          }
+
           return {
-            ...m,
-            leftTeamPlayers:
-              normalizedLeftPlayers.length > 0 ? normalizedLeftPlayers : ["Player"],
-            rightTeamPlayers:
-              normalizedRightPlayers.length > 0
-                ? normalizedRightPlayers
-                : ["Player"],
+            id: m.id || String(idx),
+            type: `${typeStr} • ${categoryStr}`,
+            timeAgo: m.endTime ? getTimeAgo(m.endTime) : "Recently",
+            status: statusLabel,
+            leagueTitle: eventName,
+            leftTeamName:
+              m.leftTeam?.name ||
+              normalizedLeftPlayers.join(" & ") ||
+              "Team A",
+            rightTeamName:
+              m.rightTeam?.name ||
+              normalizedRightPlayers.join(" & ") ||
+              "Team B",
+            leftTeamPlayers: normalizedLeftPlayers.length
+              ? normalizedLeftPlayers
+              : ["Team A"],
+            rightTeamPlayers: normalizedRightPlayers.length
+              ? normalizedRightPlayers
+              : ["Team B"],
             leftTeamImages: leftImages,
             rightTeamImages: rightImages,
-            timeAgo: m.endedAt ? getTimeAgo(m.endedAt) : "N/A",
+            score: scoreStr,
+            scoreLabel: "Final Score",
             accentColor: accentColors[idx % accentColors.length],
           };
         });
 
         setMatches(formattedMatches);
       } catch (err) {
-        console.error("Failed to fetch past matches:", err);
+        console.error("Failed to load past matches", err);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     };
-
-    void fetchMatches();
+    fetchMatches();
     return () => {
       active = false;
     };
   }, []);
 
-  if (loading) {
-    return (
-      <section className="space-y-3">
-        <div className="h-6 w-32 animate-pulse rounded bg-surface-elevated" />
-        <div className="flex gap-3 overflow-x-auto pb-1">
-          {[1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-40 min-w-[72vw] animate-pulse rounded-[18px] bg-surface-elevated sm:min-w-[290px]"
-            />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (matches.length === 0) {
-    return (
-      <section className="space-y-3">
-        <h3 className="text-xl font-bold tracking-tight text-[var(--color-text)]">
-          Past Matches
-        </h3>
-        <p className="px-1 text-sm italic text-muted">No past matches found.</p>
-      </section>
-    );
-  }
-
-
-
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between px-1 mb-2">
-        <h3 className="text-lg font-bold tracking-tight text-[var(--color-text)]">
-          Past Matches
-        </h3>
-        <Link
-          href="/user/matches/past"
-          className="text-sm font-semibold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
-        >
-          View All
-        </Link>
-      </div>
-
-      <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 pb-1"
-      >
-        {matches.map((match, index) => (
-          <div
-            key={match.id || index}
-            className="animate-fade-in"
-            style={{
-              animationDelay: `${index * 100}ms`,
-              animationFillMode: "both",
-            }}
+    <div className="flex h-[100dvh] flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-[var(--color-bg)]/90 px-4 py-4 backdrop-blur-md pb-6 pt-12 text-[var(--color-text)] border-b border-neutral-200/50">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/user/home"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm hover:bg-neutral-100 transition-colors"
           >
-            <PastMatchCard match={match} />
-          </div>
-        ))}
-      </div>
+            <ChevronLeftIcon size={24} />
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Past Matches</h1>
+        </div>
+      </header>
 
-      <SwipingDots itemCount={matches.length} containerRef={scrollRef} />
-    </section>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-32">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-40 w-full animate-pulse rounded-2xl bg-neutral-200" />
+            ))}
+          </div>
+        ) : matches.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 text-center text-[var(--color-text-secondary)]">
+            <p className="text-lg font-medium">No Past Matches</p>
+            <p className="text-sm">You haven't played any matches yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {matches.map((match) => (
+              <PastMatchCard key={match.id} match={match} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <BottomNav />
+      </div>
+    </div>
   );
 }
-

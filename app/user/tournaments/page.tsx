@@ -60,94 +60,20 @@ function getTournamentLogoUrl(t: TournamentData) {
   );
 }
 
-function ScorerMatchCard({ match }: { match: any }) {
-  const getTeamName = (t: any) => {
-    if (!t) return "Empty Slot";
-    const participants = t.participants || [];
-    if (participants.length === 0) return t.name || "Unknown Team";
-    if (participants.length === 1) return participants[0].user?.name || t.name || "Player";
-    return participants.map((p: any) => p.user?.name?.[0]?.toUpperCase() || "P").join(" & ");
-  };
 
-  const teamAName = getTeamName(match.teamAData || match.teamA);
-  const teamBName = getTeamName(match.teamBData || match.teamB);
 
-  const eventName = match.event?.name || "Event";
-  const tournamentName = match.event?.tournament?.name || "Tournament";
-
-  const isLive = match.matchState === "in_progress";
-  const isCompleted = match.matchState === "completed" || match.matchState === "abandoned" || match.matchState === "walkover";
-
-  let dateStr = "TBA";
-  if (match.scheduledAt || match.startTime) {
-    const d = new Date(match.scheduledAt || match.startTime);
-    dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-  }
-
-  return (
-    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden mb-4">
-      <div className="bg-orange-500 px-4 py-2 flex items-center justify-between">
-        <span className="text-white font-bold text-sm truncate">{tournamentName} - {eventName}</span>
-        {isLive && <span className="px-2 py-0.5 bg-white text-orange-500 rounded-full text-[10px] font-black uppercase tracking-wider">Live</span>}
-      </div>
-      <div className="p-4 space-y-4">
-        <div className="text-center text-xs font-bold text-[var(--color-text-secondary)]">{dateStr}</div>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col flex-1 items-center">
-            <div className="mb-2 flex items-center justify-center">
-              <TeamLogo team={match.teamAData || match.teamA} size="md" />
-            </div>
-            <span className="text-sm font-bold text-[var(--color-text)] text-center leading-tight">{teamAName}</span>
-          </div>
-          <span className="font-bold text-[var(--color-muted)] px-3 text-lg">VS</span>
-          <div className="flex flex-col flex-1 items-center">
-            <div className="mb-2 flex items-center justify-center">
-              <TeamLogo team={match.teamBData || match.teamB} size="md" />
-            </div>
-            <span className="text-sm font-bold text-[var(--color-text)] text-center leading-tight">{teamBName}</span>
-          </div>
-        </div>
-        {!isCompleted && (
-          <Link
-            href={`/user/tournaments/match/live?matchId=${match.id}`}
-            className="block w-full py-3 rounded-xl text-center text-sm font-bold text-white transition-transform active:scale-95"
-            style={{ background: "var(--gradient-orange)" }}
-          >
-            {isLive ? "Score Match" : "Start Scoring"}
-          </Link>
-        )}
-        {isCompleted && (
-          <div className="w-full py-3 rounded-xl text-center text-sm font-bold bg-[var(--color-surface-elevated)] text-[var(--color-muted)]">
-            Match Completed
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-type TopTab = "browse" | "joined" | "history" | "scorer";
+type TopTab = "browse" | "joined" | "history";
 type FormatTab = "all" | "singles" | "doubles";
-type ScorerSubTab = "pending" | "scored";
 
 export default function UserTournamentsPage() {
   const { userProfile } = useApp();
   const [activeTab, setActiveTab] = useState<TopTab>("browse");
-  const [scorerSubTab, setScorerSubTab] = useState<ScorerSubTab>("pending");
-
-  // Restore scorer tab if returning from a scored match (e.g. ?tab=scorer in URL)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab");
-    if (tab === "scorer") setActiveTab("scorer");
-  }, []);
   const [format, setFormat] = useState<FormatTab>("all");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [tournaments, setTournaments] = useState<TournamentData[]>([]);
-  const [scorerMatches, setScorerMatches] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const attachActions = (items: NotificationItem[]) =>
@@ -203,12 +129,8 @@ export default function UserTournamentsPage() {
           data = await tournamentApi.getJoinedTournaments();
         else if (activeTab === "history")
           data = await tournamentApi.getHistoryTournaments();
-        else if (activeTab === "scorer") {
-          const matches = await matchApi.getScorerMatches();
-          if (active) setScorerMatches(matches || []);
-        }
 
-        if (active && activeTab !== "scorer") {
+        if (active) {
           setTournaments(data);
         }
       } catch (error) {
@@ -334,7 +256,7 @@ export default function UserTournamentsPage() {
 
           {/* Centered Tabs */}
           <div className="flex items-center justify-center gap-6 sm:gap-10 overflow-x-auto hide-scrollbar px-2">
-            {(["browse", "joined", "history", "scorer"] as TopTab[]).map((tab) => (
+            {(["browse", "joined", "history"] as TopTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -344,7 +266,7 @@ export default function UserTournamentsPage() {
                     : "text-white/60 hover:text-white/80"
                 }`}
               >
-                {tab === "scorer" ? "score" : tab}
+                {tab}
                 {activeTab === tab && (
                   <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-white rounded-t-full shadow-[0_-2px_10px_rgba(255,255,255,0.4)]" />
                 )}
@@ -364,8 +286,7 @@ export default function UserTournamentsPage() {
           onClearAll={() => setNotifications([])}
         />
 
-        {activeTab !== "scorer" && (
-          <div className="px-5 py-5 flex items-center gap-4">
+        <div className="px-5 py-5 flex items-center gap-4">
             <button
               onClick={() => setIsFilterOpen(true)}
               className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-primary shadow-sm active:scale-95 transition-transform"
@@ -397,7 +318,6 @@ export default function UserTournamentsPage() {
             })}
           </div>
         </div>
-        )}
 
         <div className="space-y-4 px-4 pb-24 pt-4">
           {isLoading ? (
@@ -407,63 +327,6 @@ export default function UserTournamentsPage() {
                 Loading...
               </p>
             </div>
-          ) : activeTab === "scorer" ? (
-            (() => {
-              const sortByDate = (a: any, b: any) => {
-                const ta = new Date(b.scheduledAt || b.startTime || 0).getTime();
-                const tb = new Date(a.scheduledAt || a.startTime || 0).getTime();
-                return ta - tb;
-              };
-              const pendingMatches = scorerMatches
-                .filter((m: any) => m.matchState !== "completed" && m.matchState !== "abandoned" && m.matchState !== "walkover")
-                .sort(sortByDate);
-              const scoredMatches = scorerMatches
-                .filter((m: any) => m.matchState === "completed" || m.matchState === "abandoned" || m.matchState === "walkover")
-                .sort(sortByDate);
-              const activeList = scorerSubTab === "pending" ? pendingMatches : scoredMatches;
-              return (
-                <>
-                  {/* Sub-tab switcher */}
-                  <div className="flex gap-2 mb-4">
-                    {(["pending", "scored"] as ScorerSubTab[]).map((sub) => (
-                      <button
-                        key={sub}
-                        onClick={() => setScorerSubTab(sub)}
-                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
-                          scorerSubTab === sub
-                            ? "bg-primary text-white shadow-md shadow-primary/20"
-                            : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
-                        }`}
-                      >
-                        {sub === "pending" ? `Pending (${pendingMatches.length})` : `Scored (${scoredMatches.length})`}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Match list */}
-                  {scorerMatches.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-center">
-                      <p className="text-[var(--color-text-muted)] text-lg font-semibold">No Assigned Matches</p>
-                      <p className="text-[var(--color-text-muted)] text-sm mt-1">You have not been assigned to score any matches yet.</p>
-                    </div>
-                  ) : activeList.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <div className="w-14 h-14 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center mb-3">
-                        <span className="text-2xl">{scorerSubTab === "pending" ? "🏸" : "✅"}</span>
-                      </div>
-                      <p className="text-[var(--color-text-muted)] font-semibold">
-                        {scorerSubTab === "pending" ? "No pending matches" : "No scored matches yet"}
-                      </p>
-                      <p className="text-[var(--color-text-muted)] text-sm mt-1">
-                        {scorerSubTab === "pending" ? "All your assigned matches are done!" : "Matches you score will appear here."}
-                      </p>
-                    </div>
-                  ) : (
-                    activeList.map((m: any) => <ScorerMatchCard key={m.id} match={m} />)
-                  )}
-                </>
-              );
-            })()
           ) : list.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <p className="text-[var(--color-text-muted)] text-lg font-semibold">

@@ -5,22 +5,32 @@ import Link from "next/link";
 import { XIcon, TrashIcon, ArrowLeftIcon, ChevronRightIcon, PlusIcon } from "@/components/Icons";
 
 export default function CreateEventPage() {
-    const [formData, setFormData] = useState({
-        eventName: "",
-        sport: "",
-        format: "",
-        registrationDueDate: "",
-        eventStartDate: "",
-        gender: "",
-        participationType: "",
-        setsPerMatch: "",
-        pointsPerSet: "",
-        ageRestriction: "",
-        freeEntry: false,
-        paymentOption: "",
-        upiId: "",
-        entryFee: "",
+    const [formData, setFormData] = useState(() => {
+        if (typeof window !== "undefined") {
+            const saved = sessionStorage.getItem("createEventFormData");
+            if (saved) return JSON.parse(saved);
+        }
+        return {
+            eventName: "",
+            sport: "",
+            format: "",
+            registrationDueDate: "",
+            eventStartDate: "",
+            gender: "",
+            participationType: "",
+            setsPerMatch: "",
+            pointsPerSet: "",
+            ageRestriction: "",
+            freeEntry: false,
+            paymentOption: "",
+            upiId: "",
+            entryFee: "",
+        };
     });
+
+    React.useEffect(() => {
+        sessionStorage.setItem("createEventFormData", JSON.stringify(formData));
+    }, [formData]);
 
     return (
         <div className="min-h-screen bg-[var(--color-background)]">
@@ -109,6 +119,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, registrationDueDate: e.target.value })
                                 }
+                                min={new Date().toISOString().split("T")[0]}
                                 className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>
@@ -123,6 +134,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, eventStartDate: e.target.value })
                                 }
+                                min={formData.registrationDueDate || new Date().toISOString().split("T")[0]}
                                 className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>

@@ -138,33 +138,63 @@ export default function TournamentWizard({
   onComplete,
   onClose,
 }: TournamentWizardProps) {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("tournamentWizardStep");
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
+  });
   const totalSteps = 4;
 
   const [showEventWarning, setShowEventWarning] = useState(false);
   const [hasSeenEventWarning, setHasSeenEventWarning] = useState(false);
 
-  const [formData, setFormData] = useState<TournamentFormData>({
-    // Step 1
-    name: "",
-    description: "",
-    startDate: "",
-    endDate: "",
-    logo: null,
-    // Step 2
-    venueName: "",
-    city: "",
-    state: "",
-    addressLine: "",
-    zipCode: "",
-    numCourts: 1,
-    organizerName: "",
-    organizerPhone: "",
-    organizerEmail: "",
-    upiId: "",
-    // Step 3
-    events: [],
+  const [formData, setFormData] = useState<TournamentFormData>(() => {
+    const initial = {
+      // Step 1
+      name: "",
+      description: "",
+      startDate: "",
+      endDate: "",
+      logo: null as any,
+      // Step 2
+      venueName: "",
+      city: "",
+      state: "",
+      addressLine: "",
+      zipCode: "",
+      numCourts: 1,
+      organizerName: "",
+      organizerPhone: "",
+      organizerEmail: "",
+      upiId: "",
+      // Step 3
+      events: [],
+    };
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("tournamentWizardData");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return { ...initial, ...parsed, logo: null };
+        } catch (e) {
+          // ignore parse errors
+        }
+      }
+    }
+    return initial;
   });
+
+  useEffect(() => {
+    sessionStorage.setItem("tournamentWizardStep", step.toString());
+  }, [step]);
+
+  useEffect(() => {
+    // Cannot serialize File objects, so remove logo before saving
+    const { logo, ...rest } = formData;
+    sessionStorage.setItem("tournamentWizardData", JSON.stringify(rest));
+  }, [formData]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -379,6 +409,8 @@ export default function TournamentWizard({
     }
 
     setErrors({});
+    sessionStorage.removeItem("tournamentWizardStep");
+    sessionStorage.removeItem("tournamentWizardData");
     onComplete(result.data, state);
   };
 
@@ -615,15 +647,51 @@ export default function TournamentWizard({
                     <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
                       State <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Maharashtra"
+                    <select
                       value={formData.state}
                       onChange={(e) =>
                         setFormData({ ...formData, state: e.target.value })
                       }
-                      className={`w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${errors.state ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary outline-none`}
-                    />
+                      className={`w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${errors.state ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary outline-none appearance-none`}
+                    >
+                      <option value="">Select State</option>
+                      <option value="Andhra Pradesh">Andhra Pradesh</option>
+                      <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                      <option value="Assam">Assam</option>
+                      <option value="Bihar">Bihar</option>
+                      <option value="Chhattisgarh">Chhattisgarh</option>
+                      <option value="Goa">Goa</option>
+                      <option value="Gujarat">Gujarat</option>
+                      <option value="Haryana">Haryana</option>
+                      <option value="Himachal Pradesh">Himachal Pradesh</option>
+                      <option value="Jharkhand">Jharkhand</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Kerala">Kerala</option>
+                      <option value="Madhya Pradesh">Madhya Pradesh</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                      <option value="Manipur">Manipur</option>
+                      <option value="Meghalaya">Meghalaya</option>
+                      <option value="Mizoram">Mizoram</option>
+                      <option value="Nagaland">Nagaland</option>
+                      <option value="Odisha">Odisha</option>
+                      <option value="Punjab">Punjab</option>
+                      <option value="Rajasthan">Rajasthan</option>
+                      <option value="Sikkim">Sikkim</option>
+                      <option value="Tamil Nadu">Tamil Nadu</option>
+                      <option value="Telangana">Telangana</option>
+                      <option value="Tripura">Tripura</option>
+                      <option value="Uttar Pradesh">Uttar Pradesh</option>
+                      <option value="Uttarakhand">Uttarakhand</option>
+                      <option value="West Bengal">West Bengal</option>
+                      <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                      <option value="Chandigarh">Chandigarh</option>
+                      <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                      <option value="Delhi">Delhi</option>
+                      <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                      <option value="Ladakh">Ladakh</option>
+                      <option value="Lakshadweep">Lakshadweep</option>
+                      <option value="Puducherry">Puducherry</option>
+                    </select>
                     <InputError message={errors.state} />
                   </div>
                 </div>

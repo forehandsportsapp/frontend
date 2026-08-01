@@ -177,6 +177,7 @@ export default function TournamentFilterDrawer({
                         type="date"
                         value={dateFrom}
                         onChange={(e) => setDateFrom(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
                         className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl py-2.5 pl-10 pr-3 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
@@ -189,6 +190,7 @@ export default function TournamentFilterDrawer({
                         type="date"
                         value={dateTo}
                         onChange={(e) => setDateTo(e.target.value)}
+                        min={dateFrom || new Date().toISOString().split("T")[0]}
                         className="w-full bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl py-2.5 pl-10 pr-3 text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
                     </div>

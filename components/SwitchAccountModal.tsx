@@ -215,7 +215,7 @@ export default function SwitchAccountModal({
                   Personal
                 </p>
                 <AccountTile
-                  href={isIndividualActive ? undefined : "/user/settings"}
+                  href={isIndividualActive ? undefined : "/user/home"}
                   onClick={
                     isIndividualActive
                       ? undefined
@@ -276,7 +276,7 @@ export default function SwitchAccountModal({
                     return (
                       <AccountTile
                         key={org.id}
-                        href={isThisOrgActive ? undefined : "/org/settings"}
+                        href={isThisOrgActive ? undefined : "/org/home"}
                         onClick={
                           isThisOrgActive
                             ? undefined

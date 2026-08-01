@@ -93,22 +93,24 @@ function buildAvatar(name: string, index: number, provided?: string) {
   return avatarDataUri(initials, palette.accent, palette.skin, palette.shirt);
 }
 
-function TeamAvatarStack({
+export function TeamAvatarStack({
   players,
   images,
+  sizeClass = "h-9 w-9",
 }: {
   players: string[];
   images?: string[];
+  sizeClass?: string;
 }) {
   return (
-    <div className="flex items-center">
+    <div className="flex items-center justify-center">
       {(players || []).slice(0, 2).map((player, index) => (
         <div
           key={`${player}-${index}`}
           className={`relative ${index === 0 ? "z-20" : "z-10 -ml-3"}`}
         >
           <div
-            className={`relative h-9 w-9 overflow-hidden rounded-full border-2 bg-[var(--color-surface)] shadow-[0_4px_12px_rgba(15,23,42,0.18)] ${
+            className={`relative ${sizeClass} overflow-hidden rounded-full border-2 bg-[var(--color-surface)] shadow-[0_4px_12px_rgba(15,23,42,0.18)] ${
               index === 0
                 ? "border-orange-400 ring-2 ring-orange-200/80"
                 : "border-white"
@@ -144,7 +146,7 @@ export default function LiveMatchCard({
 
   return (
     <div
-      className={`rounded-2xl border border-neutral-200/80 bg-[var(--color-surface)] shadow-[0_6px_18px_rgba(15,23,42,0.05)] ${isSpacious ? "space-y-4 p-5" : "space-y-3 p-3.5"}`}
+      className={`relative overflow-hidden rounded-2xl border border-neutral-200/80 bg-[var(--color-surface)] shadow-[0_6px_18px_rgba(15,23,42,0.05)] ${isSpacious ? "space-y-4 p-5" : "space-y-3 p-3.5"}`}
     >
       <div
         className={`flex items-start justify-between ${isSpacious ? "gap-4" : "gap-3"}`}
@@ -178,25 +180,29 @@ export default function LiveMatchCard({
         className={`border-t border-neutral-200/70 ${isSpacious ? "pt-4" : "pt-3"}`}
       >
         <div
-          className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ${isSpacious ? "gap-4" : "gap-3"}`}
+          className={`grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center ${isSpacious ? "gap-2 sm:gap-4" : "gap-1 sm:gap-3"}`}
         >
           <div className="flex min-w-0 flex-col items-center text-center">
             <TeamAvatarStack
               players={teamA?.players || []}
               images={teamA?.images}
             />
-            <p
-              className={`mt-1.5 w-full truncate font-semibold text-[var(--color-text)] ${isSpacious ? "max-w-[140px] text-sm" : "max-w-[110px] text-[13px]"}`}
+            <div
+              className={`mt-1.5 flex w-full flex-col font-semibold text-[var(--color-text)] ${isSpacious ? "max-w-[140px] text-sm gap-0.5" : "max-w-[110px] text-[13px] gap-0.5"}`}
             >
-              {(teamA?.players || ["Player"]).join(" & ")}
-            </p>
+              {(teamA?.players?.length ? teamA.players : ["Player"]).map((p, i) => (
+                <span key={i} className="w-full truncate leading-tight">
+                  {p}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div
-            className={`flex flex-col items-center ${isSpacious ? "min-w-[96px]" : "min-w-[74px]"}`}
+            className={`flex flex-col items-center ${isSpacious ? "min-w-[80px] sm:min-w-[96px]" : "min-w-[64px] sm:min-w-[74px]"}`}
           >
             <div
-              className={`font-extrabold leading-none tracking-[-0.04em] text-[var(--color-text)] ${isSpacious ? "text-[42px]" : "text-[34px]"}`}
+              className={`font-extrabold whitespace-nowrap leading-none tracking-[-0.04em] text-[var(--color-text)] ${isSpacious ? "text-[32px] sm:text-[42px]" : "text-2xl sm:text-[34px]"}`}
             >
               {score?.teamA ?? 0}{" "}
               <span className="text-[var(--color-muted)]">{"\u2013"}</span>{" "}
@@ -214,11 +220,15 @@ export default function LiveMatchCard({
               players={teamB?.players || []}
               images={teamB?.images}
             />
-            <p
-              className={`mt-1.5 w-full truncate font-semibold text-[var(--color-text)] ${isSpacious ? "max-w-[140px] text-sm" : "max-w-[110px] text-[13px]"}`}
+            <div
+              className={`mt-1.5 flex w-full flex-col font-semibold text-[var(--color-text)] ${isSpacious ? "max-w-[140px] text-sm gap-0.5" : "max-w-[110px] text-[13px] gap-0.5"}`}
             >
-              {(teamB?.players || ["Player"]).join(" & ")}
-            </p>
+              {(teamB?.players?.length ? teamB.players : ["Player"]).map((p, i) => (
+                <span key={i} className="w-full truncate leading-tight">
+                  {p}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

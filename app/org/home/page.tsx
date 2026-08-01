@@ -3,6 +3,9 @@
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import HomeHeader from "@/components/HomeHeader";
+import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
+import LiveMatchCard from "@/components/Card/LiveMatchCard";
+import SwipingDots from "@/components/SwipingDots";
 import { useApp } from "@/components/AppProvider";
 import {
   CalendarIcon,
@@ -147,6 +150,72 @@ const ScrollIndicator = ({
   );
 };
 
+function OrgLiveMatchGroup({
+  group,
+  resolveTeamLogo,
+  onSelectMatch,
+}: {
+  group: any;
+  resolveTeamLogo: (team: any) => string | null;
+  onSelectMatch: (match: any) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
+          {group.tournamentName}
+        </h4>
+        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+          {group.matches.length} Live
+        </span>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2"
+      >
+        {group.matches.map((match: any) => (
+          <div
+            role="button"
+            tabIndex={0}
+            key={match.id}
+            onClick={() => onSelectMatch(match)}
+            className="text-left min-w-[85%] snap-center cursor-pointer transition-transform active:scale-[0.98] outline-none"
+          >
+            <LiveMatchCard
+              tournamentName={group.tournamentName || "Tournament"}
+              matchTitle={match.matchTitle}
+              teamA={{
+                players: (match.teamA?.name || "Team A").split(/\s+&\s+/),
+                images: resolveTeamLogo(match.teamA)
+                  ? [resolveTeamLogo(match.teamA) as string]
+                  : [],
+              }}
+              teamB={{
+                players: (match.teamB?.name || "Team B").split(/\s+&\s+/),
+                images: resolveTeamLogo(match.teamB)
+                  ? [resolveTeamLogo(match.teamB) as string]
+                  : [],
+              }}
+              score={match.score}
+              court={match.court || "TBD"}
+              isLive={true}
+            />
+          </div>
+        ))}
+      </div>
+
+      <SwipingDots
+        itemCount={group.matches.length}
+        containerRef={containerRef}
+        activeColor="bg-primary"
+      />
+    </div>
+  );
+}
+
 function isLiveTournament(t: TournamentData) {
   if (t.tournamentState === "in_progress") return true;
   if (!t.startDate) return false;
@@ -233,6 +302,7 @@ export default function OrgHomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [isFeedLoading, setIsFeedLoading] = useState(true);
+  const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
 
   useEffect(() => {
     let active = true;
@@ -296,18 +366,38 @@ export default function OrgHomePage() {
                     if (group.tournamentId === tournamentId) {
                       return {
                         ...group,
-                        matches: group.matches.map((m: any) =>
-                          m.id === matchId
-                            ? {
-                                ...m,
-                                score: {
-                                  teamA: teamAScore,
-                                  teamB: teamBScore,
-                                  currentSet: setNumber,
-                                },
-                              }
-                            : m,
-                        ),
+                        matches: group.matches.map((m: any) => {
+                          if (m.id === matchId) {
+                            let updatedSets = [...(m.sets || [])];
+                            const setIndex = updatedSets.findIndex(
+                              (s) => s.setNumber === setNumber,
+                            );
+                            if (setIndex >= 0) {
+                              updatedSets[setIndex] = {
+                                ...updatedSets[setIndex],
+                                teamAScore,
+                                teamBScore,
+                              };
+                            } else {
+                              updatedSets.push({
+                                setNumber,
+                                teamAScore,
+                                teamBScore,
+                                setStatus: "in_progress",
+                              });
+                            }
+                            return {
+                              ...m,
+                              score: {
+                                teamA: teamAScore,
+                                teamB: teamBScore,
+                                currentSet: setNumber,
+                              },
+                              sets: updatedSets,
+                            };
+                          }
+                          return m;
+                        }),
                       };
                     }
                     return group;
@@ -560,12 +650,11 @@ export default function OrgHomePage() {
                 ))}
               </motion.div>
 
-              <div className="mt-1">
-                <ScrollIndicator
-                  itemCount={liveTournaments.length}
-                  containerRef={tournamentContainerRef}
-                />
-              </div>
+              <SwipingDots
+                itemCount={liveTournaments.length}
+                containerRef={tournamentContainerRef}
+                activeColor="bg-primary"
+              />
             </>
           )}
         </section>
@@ -601,107 +690,35 @@ export default function OrgHomePage() {
             </div>
           ) : (
             liveFeed.map((group) => (
-              <div key={group.tournamentId} className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h4 className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wider">
-                    {group.tournamentName}
-                  </h4>
-                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                    {group.matches.length} Live
-                  </span>
-                </div>
-
-                <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2">
-                  {group.matches.map((match: any) => {
-                    const tournamentId = getLiveMatchTournamentId(group, match);
-                    const eventId = getLiveMatchEventId(group, match);
-                    const href =
-                      tournamentId && eventId
-                        ? `/org/tournaments/event/matches${toQuery({
-                            tournamentId,
-                            eventId,
-                          })}`
-                        : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
-
-                    return (
-                      <Link
-                        key={match.id}
-                        href={href}
-                        className="card block min-w-[85%] snap-center p-4 transition-transform active:scale-[0.98]"
-                      >
-                        <div className="mb-3 flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--color-success)]">
-                            <CircleIcon
-                              size={6}
-                              className="text-[var(--color-success)] fill-current"
-                            />
-                            Live
-                          </span>
-                          <p className="truncate text-xs text-[var(--color-text-secondary)] max-w-[150px]">
-                            {match.matchTitle}
-                          </p>
-                        </div>
-
-                        <div className="mb-4 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                              {resolveTeamLogo(match.teamA) ? (
-                                <img
-                                  src={resolveTeamLogo(match.teamA) || ""}
-                                  alt={`${match.teamA?.name || "Team A"} logo`}
-                                  className="h-8 w-8 rounded-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs font-bold text-[var(--color-text-secondary)]">
-                                  {(match.teamA?.name || "A").charAt(0)}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-bold truncate max-w-[80px]">
-                              {match.teamA?.name || "Team A"}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-col items-center">
-                            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-1.5 font-heading text-2xl font-bold tracking-tight whitespace-nowrap">
-                              {String(match.score?.teamA || 0).padStart(2, "0")} -{" "}
-                              {String(match.score?.teamB || 0).padStart(2, "0")}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="grid h-12 w-12 place-items-center rounded-full border border-[var(--color-border)] bg-white shadow-sm overflow-hidden">
-                              {resolveTeamLogo(match.teamB) ? (
-                                <img
-                                  src={resolveTeamLogo(match.teamB) || ""}
-                                  alt={`${match.teamB?.name || "Team B"} logo`}
-                                  className="h-8 w-8 rounded-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-xs font-bold text-[var(--color-text-secondary)]">
-                                  {(match.teamB?.name || "B").charAt(0)}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs font-bold truncate max-w-[80px]">
-                              {match.teamB?.name || "Team B"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-center rounded-lg bg-primary/5 border border-primary/10 py-2 text-sm font-bold text-primary">
-                          Set {match.score?.currentSet || 1}
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
+              <OrgLiveMatchGroup
+                key={group.tournamentId}
+                group={group}
+                resolveTeamLogo={resolveTeamLogo}
+                onSelectMatch={setSelectedLiveMatch}
+              />
             ))
           )}
         </section>
       </div>
-
+      <LiveMatchViewerPopup
+        isOpen={!!selectedLiveMatch}
+        onClose={() => setSelectedLiveMatch(null)}
+        match={
+          selectedLiveMatch
+            ? {
+                ...selectedLiveMatch,
+                teamA: {
+                  players: (selectedLiveMatch.teamA?.name || "Team A").split(/\s+&\s+/),
+                  images: resolveTeamLogo(selectedLiveMatch.teamA) ? [resolveTeamLogo(selectedLiveMatch.teamA) as string] : [],
+                },
+                teamB: {
+                  players: (selectedLiveMatch.teamB?.name || "Team B").split(/\s+&\s+/),
+                  images: resolveTeamLogo(selectedLiveMatch.teamB) ? [resolveTeamLogo(selectedLiveMatch.teamB) as string] : [],
+                },
+              }
+            : null
+        }
+      />
     </Layout>
   );
 }
