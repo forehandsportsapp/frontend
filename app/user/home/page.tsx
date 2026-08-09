@@ -727,13 +727,7 @@ export default function UserHomePage() {
                   href="/user/tournaments"
                   className="flex-1 bg-white text-gray-900 rounded-full h-12 flex items-center justify-center gap-1.5 font-bold shadow-sm hover:bg-gray-50 active:scale-[0.98] transition-all"
                 >
-                  <LightningIcon size={16} /> Register Now
-                </Link>
-                <Link
-                  href="/user/tournaments"
-                  className="flex-1 border-2 border-white/40 text-white rounded-full h-12 flex items-center justify-center font-bold hover:bg-white/10 active:scale-[0.98] transition-all"
-                >
-                  Explore All
+                  <LightningIcon size={16} /> Explore All
                 </Link>
               </div>
             </div>

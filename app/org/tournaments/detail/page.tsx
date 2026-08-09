@@ -588,7 +588,7 @@ const ExtendDueDateModal = ({
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
         onClick={onClose}
       />
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--color-surface)] rounded-t-3xl p-6 shadow-2xl border-t border-[var(--color-border)] animate-in slide-in-from-bottom-4 duration-300">
+      <div className="fixed bottom-0 left-0 right-0 z-50 max-h-[calc(100dvh-1rem)] overflow-y-auto bg-[var(--color-surface)] rounded-t-3xl p-6 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl border-t border-[var(--color-border)] animate-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-bold text-base text-[var(--color-text)]">
             Extend Due Date
@@ -1546,7 +1546,7 @@ export default function TournamentEventDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-background)] px-4 py-3 pb-24 space-y-4">
+    <div className="min-h-screen bg-[var(--color-background)] px-4 py-3 pb-[calc(10rem+env(safe-area-inset-bottom))] space-y-4">
       <TopAppBar
         onShare={handleOpenShareSheet}
         settingsHref={`/org/tournaments/settings${toQuery({ t: tournamentId })}`}

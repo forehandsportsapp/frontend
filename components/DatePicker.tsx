@@ -17,6 +17,15 @@ interface DatePickerProps {
   customTrigger?: React.ReactNode;
 }
 
+const MIN_DOB_AGE_YEARS = 5;
+
+function toLocalDateValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function DatePicker({
   value,
   onChange,
@@ -29,6 +38,12 @@ export default function DatePicker({
 }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const maxDobValue = useMemo(() => {
+    if (!isDob) return null;
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - MIN_DOB_AGE_YEARS);
+    return toLocalDateValue(date);
+  }, [isDob]);
 
   // Initial view date setup
   const initialViewDate = useMemo(() => {
@@ -181,6 +196,11 @@ export default function DatePicker({
     setIsOpen(!isOpen);
   };
 
+  const isDateSelectable = (dateString: string) => {
+    if (!isDob || !maxDobValue) return true;
+    return dateString <= maxDobValue;
+  };
+
   return (
     <div className="relative w-full" ref={containerRef}>
       {customTrigger ? (
@@ -322,18 +342,22 @@ export default function DatePicker({
                     const isSelected = value === dateString;
                     const isToday =
                       new Date().toISOString().split("T")[0] === dateString;
+                    const isDisabled = !isDateSelectable(dateString);
 
                     return (
                       <button
                         key={day}
                         type="button"
-                        onClick={() => selectDay(day)}
+                        onClick={() => !isDisabled && selectDay(day)}
+                        disabled={isDisabled}
                         className={`aspect-square w-full rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-200
                           ${
                             isSelected
                               ? "bg-primary text-white font-bold shadow-md scale-105"
                               : isToday
                               ? "border border-primary text-primary font-bold hover:bg-primary/10"
+                              : isDisabled
+                              ? "cursor-not-allowed text-[var(--color-muted)] opacity-40"
                               : "text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] hover:scale-105"
                           }`}
                       >
@@ -402,27 +426,33 @@ export default function DatePicker({
                   setIsOpen(false);
                 }}
                 className="text-xs font-semibold text-[var(--color-muted)] hover:text-[var(--color-text)] transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const today = new Date();
-                  onChange(
-                    `${today.getFullYear()}-${String(
-                      today.getMonth() + 1
-                    ).padStart(2, "0")}-${String(today.getDate()).padStart(
-                      2,
-                      "0"
-                    )}`
-                  );
-                  setIsOpen(false);
-                }}
-                className="text-xs font-bold text-primary hover:text-orange-600 transition-colors"
-              >
-                Today
-              </button>
+                >
+                  Clear
+                </button>
+              {isDob && maxDobValue ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(maxDobValue);
+                    setIsOpen(false);
+                  }}
+                  className="text-xs font-bold text-primary hover:text-orange-600 transition-colors"
+                >
+                  Age {MIN_DOB_AGE_YEARS}+
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    onChange(toLocalDateValue(today));
+                    setIsOpen(false);
+                  }}
+                  className="text-xs font-bold text-primary hover:text-orange-600 transition-colors"
+                >
+                  Today
+                </button>
+              )}
             </div>
           </div>
         </>

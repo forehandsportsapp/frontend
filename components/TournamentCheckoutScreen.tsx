@@ -17,7 +17,6 @@ import { useApp } from "@/components/AppProvider";
 import { TournamentData, EventData } from "@/lib/models";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  getCurrentAuthRedirect,
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
@@ -72,7 +71,7 @@ export default function TournamentCheckoutScreen() {
   useEffect(() => {
     if (isAuthLoading) return;
 
-    const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+    const nextPath = saveAuthRedirect("/home");
     if (!session?.user) {
       router.replace(withAuthRedirect("/login", nextPath));
       return;
@@ -125,13 +124,13 @@ export default function TournamentCheckoutScreen() {
   const handleConfirmRegistration = async () => {
     const userId = session?.user?.id;
     if (!userId) {
-      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      const nextPath = saveAuthRedirect("/home");
       router.replace(withAuthRedirect("/login", nextPath));
       return;
     }
 
     if (!userProfile) {
-      const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
+      const nextPath = saveAuthRedirect("/home");
       router.replace(withAuthRedirect("/register", nextPath));
       return;
     }
