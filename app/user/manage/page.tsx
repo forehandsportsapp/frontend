@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@/components/Icons";
-import { useApp } from "@/components/AppProvider";
 import { matchApi } from "@/lib/api/matchApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { TournamentData } from "@/lib/models";
@@ -14,7 +13,6 @@ type ManageTab = "admin" | "scorer";
 type ScorerSubTab = "pending" | "scored";
 
 export default function UserManagePage() {
-  const { activeOrganization } = useApp();
   const [activeTab, setActiveTab] = useState<ManageTab>("admin");
   const [scorerSubTab, setScorerSubTab] = useState<ScorerSubTab>("pending");
   const [isLoading, setIsLoading] = useState(true);
@@ -30,12 +28,8 @@ export default function UserManagePage() {
         setIsLoading(true);
 
         if (activeTab === "admin") {
-          if (activeOrganization?.id) {
-            const data = await tournamentApi.getOrganizationTournaments(activeOrganization.id);
-            if (active) setAdminTournaments(Array.isArray(data) ? data : []);
-          } else {
-            if (active) setAdminTournaments([]);
-          }
+          const data = await tournamentApi.getManagedTournaments();
+          if (active) setAdminTournaments(Array.isArray(data) ? data : []);
         } else if (activeTab === "scorer") {
           const matches = await matchApi.getScorerMatches();
           if (active) setScorerMatches(matches || []);
@@ -54,7 +48,7 @@ export default function UserManagePage() {
     return () => {
       active = false;
     };
-  }, [activeTab, activeOrganization]);
+  }, [activeTab]);
 
   // Derived scorer matches
   const sortByDate = (a: any, b: any) => {
@@ -105,7 +99,7 @@ export default function UserManagePage() {
             >
               {tab}
               {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full shadow-[0_-2px_10px_rgba(255,107,0,0.4)]" />
+                <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full" />
               )}
             </button>
           ))}
@@ -120,22 +114,13 @@ export default function UserManagePage() {
           </div>
         ) : activeTab === "admin" ? (
           <div className="space-y-4">
-            {!activeOrganization?.id ? (
+            {adminTournaments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <p className="text-[var(--color-text-muted)] text-lg font-semibold">
-                  No Admin Rights
+                  No Managed Tournaments
                 </p>
                 <p className="text-[var(--color-text-muted)] text-sm mt-1">
-                  You are not an admin of any organization.
-                </p>
-              </div>
-            ) : adminTournaments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <p className="text-[var(--color-text-muted)] text-lg font-semibold">
-                  No Tournaments Found
-                </p>
-                <p className="text-[var(--color-text-muted)] text-sm mt-1">
-                  Your organization does not have any tournaments.
+                  You are not assigned as admin on any tournaments yet.
                 </p>
               </div>
             ) : (
@@ -166,7 +151,7 @@ export default function UserManagePage() {
                   onClick={() => setScorerSubTab(sub)}
                   className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
                     scorerSubTab === sub
-                      ? "bg-primary text-white shadow-md shadow-primary/20"
+                      ? "bg-primary text-white"
                       : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border border-[var(--color-border)]"
                   }`}
                 >

@@ -176,6 +176,20 @@ export const tournamentApi = {
   },
 
   /**
+   * Retrieves tournaments where the current user is assigned as an admin.
+   *
+   * @returns A promise resolving to an array of managed `TournamentData` objects.
+   */
+  getManagedTournaments: async (): Promise<TournamentData[]> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/tournament/list/user/managed" }),
+    );
+    if (error) throw error;
+
+    return data as TournamentData[];
+  },
+
+  /**
    * Fetches all unique participants (users/players) and their associated teams/events for a tournament.
    *
    * @param tournamentId - The unique ID of the tournament.
