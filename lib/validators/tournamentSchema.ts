@@ -113,6 +113,21 @@ export const tournamentFormSchema = tournamentBaseSchema
     },
   )
   .superRefine((data, ctx) => {
+    // 0. Tournament startDate must be today or later
+    if (data.startDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(data.startDate);
+      start.setHours(0, 0, 0, 0);
+      if (start < today) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tournament start date cannot be in the past",
+          path: ["startDate"],
+        });
+      }
+    }
+
     // Cross-event date validation and UPI validation
     data.events.forEach((event, index) => {
       // 1. regDueDate < event.startDate

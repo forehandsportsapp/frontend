@@ -13,6 +13,8 @@ interface DatePickerProps {
   error?: string;
   id?: string;
   isDob?: boolean;
+  minDate?: string;
+  maxDate?: string;
   triggerClassName?: string;
   customTrigger?: React.ReactNode;
 }
@@ -33,6 +35,8 @@ export default function DatePicker({
   error,
   id,
   isDob = false,
+  minDate,
+  maxDate,
   triggerClassName = "",
   customTrigger,
 }: DatePickerProps) {
@@ -197,8 +201,28 @@ export default function DatePicker({
   };
 
   const isDateSelectable = (dateString: string) => {
-    if (!isDob || !maxDobValue) return true;
-    return dateString <= maxDobValue;
+    const date = new Date(dateString);
+    date.setHours(0, 0, 0, 0);
+
+    if (minDate) {
+      const min = new Date(minDate);
+      min.setHours(0, 0, 0, 0);
+      if (date < min) return false;
+    }
+
+    if (maxDate) {
+      const max = new Date(maxDate);
+      max.setHours(0, 0, 0, 0);
+      if (date > max) return false;
+    }
+
+    if (isDob && maxDobValue) {
+      const dobMax = new Date(maxDobValue);
+      dobMax.setHours(0, 0, 0, 0);
+      if (date > dobMax) return false;
+    }
+
+    return true;
   };
 
   return (

@@ -577,6 +577,7 @@ export default function TournamentWizard({
                         }
                         placeholder="Select start date"
                         error={errors.startDate}
+                        minDate={new Date().toISOString().split("T")[0]}
                       />
                     </div>
                     <div>
@@ -590,6 +591,7 @@ export default function TournamentWizard({
                         }
                         placeholder="Select end date"
                         error={errors.endDate}
+                        minDate={formData.startDate || new Date().toISOString().split("T")[0]}
                       />
                     </div>
                   </div>
@@ -964,6 +966,7 @@ export default function TournamentWizard({
                               }
                               placeholder="Select Due Date"
                               error={errors[`events.${index}.regDueDate`]}
+                              minDate={new Date().toISOString().split("T")[0]}
                             />
                           </div>
                           <div>
@@ -978,6 +981,7 @@ export default function TournamentWizard({
                               }
                               placeholder="Select Start Date"
                               error={errors[`events.${index}.startDate`]}
+                              minDate={event.regDueDate || formData.startDate || new Date().toISOString().split("T")[0]}
                             />
                           </div>
                         </div>
