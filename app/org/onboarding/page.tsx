@@ -22,7 +22,21 @@ const orgTypeIconMap: Record<string, IconComponent> = {
   sportsAcademy: TrophyIcon,
   sportsClub: UsersIcon,
   corporate: BuildingIcon,
-  other: BuildingIcon,
+  sportsVenue: BuildingIcon,
+  federation: BuildingIcon,
+  brandSponsor: BuildingIcon,
+  vendorSeller: BuildingIcon,
+};
+
+const orgTypeDescriptionMap: Record<string, string> = {
+  sportsClub: "A local club that runs regular matches, ladders, and weekend tournaments for members.\nNeeds member management, recurring events, scheduling, and simple payments/refunds.",
+  sportsAcademy: "A coaching-led organization managing batches, training schedules, and player progress.\nNeeds players grouped into batches, attendance, coach notes, reports, and action plans.",
+  educationalInstitute: "An institution onboarding students even when they don't have phones, using roll/admission numbers + parent contacts.\nNeeds verified org status, controlled rosters, house teams, and inter-school tournament workflows.\nSimilar to schools, but with more autonomy: college teams, fests, leagues, inter-college circuits.\nNeeds team/department structure, tryouts, tournaments, and event operations across venues.",
+  corporate: "A company running internal leagues and team-bonding sports events for employees.\nNeeds corporate login/access control (often corporate email), employee-only tournaments, and simple onboarding.",
+  sportsVenue: "A physical place that hosts matches/tournaments and wants higher occupancy.\nNeeds venue profile, availability, booking/slot logic, and tournament court assignment.",
+  federation: "An authority that sanctions tournaments and cares about rules + credibility.\nNeeds verification workflows, standardized rule-set templates, certified scorer model, and dispute resolution.",
+  brandSponsor: "A commercial partner funding tournaments or offering rewards/points/redemptions.\nNeeds campaign targeting, measurable outcomes, and integration into tournament prize/sponsor flows.",
+  vendorSeller: "A seller listing sports gear (and potentially rentals like nets/cameras) to your active user base.\nNeeds catalog, local targeting, offer/coupon hooks, and possible loyalty redemption integration.",
 };
 
 function getOrgTypeIcon(code: string): IconComponent {
@@ -164,8 +178,8 @@ export default function OrgOnboardingPage() {
                     <p className="font-medium text-[var(--color-text)]">
                       {type.label}
                     </p>
-                    <p className="text-sm text-[var(--color-muted)]">
-                      This will shape your organization profile setup.
+                    <p className="text-sm text-[var(--color-muted)] whitespace-pre-line mt-1">
+                      {orgTypeDescriptionMap[type.code] || "This will shape your organization profile setup."}
                     </p>
                   </div>
                 </button>
