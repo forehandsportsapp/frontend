@@ -9,8 +9,12 @@ import {
   ChevronRightIcon,
   GraduationCapIcon,
   TrophyIcon,
-  UsersIcon,
+  ClipboardIcon,
   XIcon,
+  MapPinIcon,
+  ShieldIcon,
+  WalletIcon,
+  ZapIcon,
 } from "@/components/Icons";
 import { optionsApi } from "@/lib/api/optionsApi";
 import { type OptionsData } from "@/lib/models";
@@ -19,24 +23,24 @@ type IconComponent = React.ComponentType<{ size?: number; className?: string }>;
 
 const orgTypeIconMap: Record<string, IconComponent> = {
   educationalInstitute: GraduationCapIcon,
-  sportsAcademy: TrophyIcon,
-  sportsClub: UsersIcon,
+  sportsAcademy: ClipboardIcon,
+  sportsClub: TrophyIcon,
   corporate: BuildingIcon,
-  sportsVenue: BuildingIcon,
-  federation: BuildingIcon,
-  brandSponsor: BuildingIcon,
-  vendorSeller: BuildingIcon,
+  sportsVenue: MapPinIcon,
+  federation: ShieldIcon,
+  brandSponsor: ZapIcon,
+  vendorSeller: WalletIcon,
 };
 
 const orgTypeDescriptionMap: Record<string, string> = {
-  sportsClub: "A local club that runs regular matches, ladders, and weekend tournaments for members.\nNeeds member management, recurring events, scheduling, and simple payments/refunds.",
-  sportsAcademy: "A coaching-led organization managing batches, training schedules, and player progress.\nNeeds players grouped into batches, attendance, coach notes, reports, and action plans.",
-  educationalInstitute: "An institution onboarding students even when they don't have phones, using roll/admission numbers + parent contacts.\nNeeds verified org status, controlled rosters, house teams, and inter-school tournament workflows.\nSimilar to schools, but with more autonomy: college teams, fests, leagues, inter-college circuits.\nNeeds team/department structure, tryouts, tournaments, and event operations across venues.",
-  corporate: "A company running internal leagues and team-bonding sports events for employees.\nNeeds corporate login/access control (often corporate email), employee-only tournaments, and simple onboarding.",
-  sportsVenue: "A physical place that hosts matches/tournaments and wants higher occupancy.\nNeeds venue profile, availability, booking/slot logic, and tournament court assignment.",
-  federation: "An authority that sanctions tournaments and cares about rules + credibility.\nNeeds verification workflows, standardized rule-set templates, certified scorer model, and dispute resolution.",
-  brandSponsor: "A commercial partner funding tournaments or offering rewards/points/redemptions.\nNeeds campaign targeting, measurable outcomes, and integration into tournament prize/sponsor flows.",
-  vendorSeller: "A seller listing sports gear (and potentially rentals like nets/cameras) to your active user base.\nNeeds catalog, local targeting, offer/coupon hooks, and possible loyalty redemption integration.",
+  sportsClub: "A local club that runs regular matches, ladders, and weekend tournaments for members. Needs member management, recurring events, scheduling, and simple payments/refunds.",
+  sportsAcademy: "A coaching-led organization managing batches, training schedules, and player progress. Needs players grouped into batches, attendance, coach notes, reports, and action plans.",
+  educationalInstitute: "An institution onboarding students even when they don't have phones, using roll/admission numbers + parent contacts. Needs verified org status, controlled rosters, house teams, and inter-school tournament workflows. Similar to schools, but with more autonomy: college teams, fests, leagues, inter-college circuits. Needs team/department structure, tryouts, tournaments, and event operations across venues.",
+  corporate: "A company running internal leagues and team-bonding sports events for employees. Needs corporate login/access control (often corporate email), employee-only tournaments, and simple onboarding.",
+  sportsVenue: "A physical place that hosts matches/tournaments and wants higher occupancy. Needs venue profile, availability, booking/slot logic, and tournament court assignment.",
+  federation: "An authority that sanctions tournaments and cares about rules + credibility. Needs verification workflows, standardized rule-set templates, certified scorer model, and dispute resolution.",
+  brandSponsor: "A commercial partner funding tournaments or offering rewards/points/redemptions. Needs campaign targeting, measurable outcomes, and integration into tournament prize/sponsor flows.",
+  vendorSeller: "A seller listing sports gear (and potentially rentals like nets/cameras) to your active user base. Needs catalog, local targeting, offer/coupon hooks, and possible loyalty redemption integration.",
 };
 
 function getOrgTypeIcon(code: string): IconComponent {
@@ -162,7 +166,7 @@ export default function OrgOnboardingPage() {
                   }`}
                 >
                   <div
-                    className={`w-11 h-11 rounded-xl flex items-center justify-center ${
+                    className={`w-11 h-11 shrink-0 rounded-xl flex items-center justify-center ${
                       isSelected
                         ? "bg-primary text-white"
                         : "bg-[var(--color-surface-elevated)] text-[var(--color-text)]"
@@ -178,7 +182,7 @@ export default function OrgOnboardingPage() {
                     <p className="font-medium text-[var(--color-text)]">
                       {type.label}
                     </p>
-                    <p className="text-sm text-[var(--color-muted)] whitespace-pre-line mt-1">
+                    <p className="text-sm text-[var(--color-muted)] mt-1">
                       {orgTypeDescriptionMap[type.code] || "This will shape your organization profile setup."}
                     </p>
                   </div>
