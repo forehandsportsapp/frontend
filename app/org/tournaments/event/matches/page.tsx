@@ -629,7 +629,7 @@ export default function OrgManageMatchesPage() {
         </div>
 
         {/* ── Filter Tabs ── */}
-        <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-0.5 no-scrollbar">
           {FILTERS.map((f) => (
             <button
               key={f.id}
@@ -646,7 +646,7 @@ export default function OrgManageMatchesPage() {
         </div>
 
         {/* ── Round Navigator ── */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-2 no-scrollbar">
           {rounds.map((roundNum, i) => (
             <React.Fragment key={roundNum}>
               <button

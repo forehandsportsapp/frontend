@@ -56,6 +56,20 @@ function genderLabel(gender?: string | null) {
   return "Open";
 }
 
+function isEventRegistrationOpen(
+  event?: { eventState?: string | null; dueDate?: string | null } | null,
+) {
+  if (!event) return false;
+  if (event.eventState === "registration_closed") return false;
+  if (!event.dueDate) return true;
+
+  const dueDate = new Date(event.dueDate);
+  if (Number.isNaN(dueDate.getTime())) return true;
+
+  dueDate.setHours(23, 59, 59, 999);
+  return Date.now() <= dueDate.getTime();
+}
+
 // ==========================================
 // 1. SHARED COMPONENTS & TOURNAMENT HEADER
 // ==========================================
@@ -288,7 +302,7 @@ const PrimaryTabs = ({
   setActiveTab: (tab: string) => void;
 }) => (
   <div className="flex justify-center my-2">
-    <div className="flex gap-1 bg-[var(--color-surface-elevated)] p-1 rounded-full overflow-x-auto scrollbar-hide max-w-full items-center">
+    <div className="flex gap-1 bg-[var(--color-surface-elevated)] p-1 rounded-full overflow-x-auto overflow-y-hidden no-scrollbar max-w-full items-center">
       {tabs.map((tab) => (
         <button
           key={tab}
@@ -703,7 +717,7 @@ const EventsTab = ({
         onClose={() => setExtendModalEventId(null)}
         onSave={handleExtendDueDate}
       />
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-1 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
         {filters.map((filter) => (
           <button
             key={filter}
@@ -885,7 +899,9 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
       const amount = Number(event.amount ?? 0);
       const totalCollected = amount * confirmedParticipants;
 
-      let stageText = "Registrations Open";
+      let stageText = isEventRegistrationOpen(event)
+        ? "Registrations Open"
+        : "Registration Closed";
       if (event.eventState === "registration_closed") stageText = "Registration Closed";
       if (event.eventState === "participants_finalized") stageText = "Participants Finalized";
       if (event.eventState === "scheduled") stageText = "Fixtures Scheduled";
@@ -959,11 +975,11 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
     const liveMatches = event.liveMatches ?? 0;
 
     const contextText =
-      event.eventState === "registration_closed" || event.eventState === "created"
-        ? `Closes ${formatDate(event.dueDate)}`
-        : event.eventState === "in_progress"
-          ? `${liveMatches} live | ${completedMatches}/${totalMatches} completed`
-          : `Starts ${formatDate(event.startDate)}`;
+      event.eventState === "in_progress"
+        ? `${liveMatches} live | ${completedMatches}/${totalMatches} completed`
+        : isEventRegistrationOpen(event)
+          ? `Closes ${formatDate(event.dueDate)}`
+          : `Closed ${formatDate(event.dueDate)}`;
 
     const detailItems = [
       {

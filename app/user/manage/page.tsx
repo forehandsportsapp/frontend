@@ -86,7 +86,7 @@ export default function UserManagePage() {
         </div>
 
         {/* Top Tabs */}
-        <div className="flex w-full overflow-x-auto hide-scrollbar px-4 pb-0 mt-2 border-b border-[var(--color-border)]">
+        <div className="flex w-full overflow-x-auto overflow-y-hidden no-scrollbar px-4 pb-0 mt-2 border-b border-[var(--color-border)]">
           {(["admin", "scorer"] as ManageTab[]).map((tab) => (
             <button
               key={tab}

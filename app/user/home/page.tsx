@@ -148,10 +148,10 @@ function normalizeTeam(team: any) {
     typeof player === "string"
       ? player
       : player?.name ||
-          player?.fullName ||
-          player?.displayName ||
-          player?.user?.name ||
-          "Player",
+      player?.fullName ||
+      player?.displayName ||
+      player?.user?.name ||
+      "Player",
   );
 
   const directImages = [
@@ -285,18 +285,18 @@ export default function UserHomePage() {
       onAccept:
         item.type === "invite"
           ? async () => {
-              const targetId = item.inviteId || item.id;
-              await notificationApi.respondToInvite(targetId, "accept");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
-            }
+            const targetId = item.inviteId || item.id;
+            await notificationApi.respondToInvite(targetId, "accept");
+            setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+          }
           : undefined,
       onReject:
         item.type === "invite"
           ? async () => {
-              const targetId = item.inviteId || item.id;
-              await notificationApi.respondToInvite(targetId, "reject");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
-            }
+            const targetId = item.inviteId || item.id;
+            await notificationApi.respondToInvite(targetId, "reject");
+            setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+          }
           : undefined,
     }));
 
@@ -697,11 +697,10 @@ export default function UserHomePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`snap-center shrink-0 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? "bg-white text-orange-600 shadow-md"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`snap-center shrink-0 px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold tracking-wide transition-all duration-200 ${activeTab === tab.id
+                  ? "bg-white text-orange-600 shadow-md"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 {tab.label}
               </button>
@@ -882,7 +881,7 @@ export default function UserHomePage() {
                 </h3>
               </div>
               <p className="text-[11px] text-center text-[var(--color-text-secondary)] opacity-80 mt-2 max-w-[280px]">
-                Live Feed Screen: Ind. Player. You can view live matches of other tournaments near you
+                Watch live matches of tournaments happening around you
               </p>
             </div>
 
@@ -931,8 +930,8 @@ export default function UserHomePage() {
             </section>
 
             <section>
-              <QuickMatchCard 
-                href="/user/manage" 
+              <QuickMatchCard
+                href="/user/manage"
                 title="Manage"
                 description="View your Admin and Scorer assignments"
               />
@@ -997,7 +996,7 @@ export default function UserHomePage() {
 
               <div
                 ref={yourTournamentsContainerRef}
-                className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-2 px-1"
+                className="flex gap-4 overflow-x-auto snap-x snap-mandatory overflow-y-hidden no-scrollbar pb-2 px-1"
               >
                 {isTournamentsLoading ? (
                   <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0 h-24 rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
@@ -1059,10 +1058,10 @@ export default function UserHomePage() {
         match={
           selectedLiveMatch
             ? {
-                ...selectedLiveMatch,
-                teamA: normalizeTeam(selectedLiveMatch.teamA),
-                teamB: normalizeTeam(selectedLiveMatch.teamB),
-              }
+              ...selectedLiveMatch,
+              teamA: normalizeTeam(selectedLiveMatch.teamA),
+              teamB: normalizeTeam(selectedLiveMatch.teamB),
+            }
             : null
         }
       />

@@ -64,6 +64,18 @@ function getTournamentLogoUrl(tournament: TournamentData) {
   );
 }
 
+function isEventRegistrationOpen(event?: EventData | null) {
+  if (!event) return false;
+  if (event.eventState === "registration_closed") return false;
+  if (!event.dueDate) return true;
+
+  const dueDate = new Date(event.dueDate);
+  if (Number.isNaN(dueDate.getTime())) return true;
+
+  dueDate.setHours(23, 59, 59, 999);
+  return Date.now() <= dueDate.getTime();
+}
+
 function isEventEligibleForUser(event: EventData, userGender?: string | null) {
   const eventGender = event.gender?.toLowerCase();
   const normalizedUserGender = userGender?.toLowerCase();
@@ -172,6 +184,11 @@ function TournamentDetailContent() {
     );
   }, [tournament]);
 
+  const isRegistrationOpen = useMemo(() => {
+    const events = tournament?.events ?? [];
+    return events.some((event) => isEventRegistrationOpen(event));
+  }, [tournament?.events]);
+
   const handleAddedChange = (eventId: string, isAdded: boolean) => {
     setSelected((prev) => ({ ...prev, [eventId]: isAdded }));
   };
@@ -236,9 +253,7 @@ function TournamentDetailContent() {
           title={tournament.name}
           subtitle={tournament.organization?.name || "Organizer"}
           registeredCount={registeredCount}
-          registrationStatus={
-            tournament.tournamentState === "published" ? "Open" : "Closed"
-          }
+          registrationStatus={isRegistrationOpen ? "Open" : "Closed"}
           logoUrl={getTournamentLogoUrl(tournament)}
           onBack={() => router.back()}
           onShare={handleOpenShareSheet}

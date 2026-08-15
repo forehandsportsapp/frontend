@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   PlusIcon,
@@ -38,6 +38,7 @@ type LocalState =
   | "PAIRED"
   | "ADDED"
   | "REGISTERED"
+  | "CLOSED"
   | "INELIGIBLE";
 
 export default function RegistrationEventCard({
@@ -54,6 +55,17 @@ export default function RegistrationEventCard({
   const [partnerProfile, setPartnerProfile] =
     useState<Partial<ProfileData> | null>(null);
   const [error, setError] = useState("");
+
+  const isRegistrationClosed = useMemo(() => {
+    if (event.eventState === "registration_closed") return true;
+    if (!event.dueDate) return false;
+
+    const dueDate = new Date(event.dueDate);
+    if (Number.isNaN(dueDate.getTime())) return false;
+
+    dueDate.setHours(23, 59, 59, 999);
+    return Date.now() > dueDate.getTime();
+  }, [event.dueDate, event.eventState]);
 
   const isEligible = !event.gender || event.gender === userProfile?.gender;
   const isDoubles =
@@ -75,6 +87,7 @@ export default function RegistrationEventCard({
 
     try {
       setState("LOADING");
+      setError("");
       const myTeam = await teamApi.getMyTeam(event.id).catch(() => null);
 
       if (myTeam) {
@@ -84,6 +97,12 @@ export default function RegistrationEventCard({
         // If the team is not in 'created' state, it means it's finalized (registered/participating)
         if (status && status !== "created") {
           setState("REGISTERED");
+          return;
+        }
+
+        if (isRegistrationClosed) {
+          setState("CLOSED");
+          setError("Registration is closed for this event.");
           return;
         }
 
@@ -145,6 +164,12 @@ export default function RegistrationEventCard({
           }
         }
       } else {
+        if (isRegistrationClosed) {
+          setState("CLOSED");
+          setError("Registration is closed for this event.");
+          return;
+        }
+
         if (!isEligible) {
           setState("INELIGIBLE");
         } else {
@@ -162,6 +187,7 @@ export default function RegistrationEventCard({
     isDoubles,
     isEligible,
     isInitiallyAdded,
+    isRegistrationClosed,
     onAddedChange,
   ]);
 
@@ -171,6 +197,11 @@ export default function RegistrationEventCard({
 
   const handleAdd = async () => {
     if (!event.id) return;
+    if (isRegistrationClosed) {
+      setError("Registration is closed for this event.");
+      setState("CLOSED");
+      return;
+    }
     if (!session?.user?.id) {
       const nextPath = saveAuthRedirect(getCurrentAuthRedirect());
       router.push(withAuthRedirect("/login", nextPath));
@@ -201,7 +232,13 @@ export default function RegistrationEventCard({
       }
     } catch (err) {
       console.error("Failed to create team", err);
-      setError("Failed to add event");
+      const message =
+        typeof err === "string"
+          ? err
+          : err instanceof Error
+            ? err.message
+            : "";
+      setError(message || "Failed to add event");
       setState("IDLE");
     }
   };
@@ -359,6 +396,8 @@ export default function RegistrationEventCard({
           ? "border-[#ff7a1a] bg-[#ff7a1a]/5"
           : state === "REGISTERED"
             ? "border-green-500 bg-green-500/5"
+            : state === "CLOSED"
+              ? "border-amber-500/30 bg-amber-500/5 opacity-90"
             : state === "INELIGIBLE"
               ? "border-red-500/20 bg-red-500/5 opacity-80"
               : "border-[var(--color-border)] bg-[var(--color-surface-elevated)]"
@@ -379,6 +418,11 @@ export default function RegistrationEventCard({
             {state === "INELIGIBLE" && (
               <span className="ml-2 text-[10px] uppercase tracking-widest text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
                 {event.gender} only
+              </span>
+            )}
+            {state === "CLOSED" && (
+              <span className="ml-2 text-[10px] uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                Closed
               </span>
             )}
           </h3>
@@ -427,12 +471,21 @@ export default function RegistrationEventCard({
             </button>
           )}
 
-          {state === "IDLE" && (
+          {state === "IDLE" && !isRegistrationClosed && (
             <button
               onClick={handleAdd}
               className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-text)] transition-all hover:border-gray-400 active:scale-95"
             >
               <PlusIcon size={14} /> Add
+            </button>
+          )}
+
+          {state === "IDLE" && isRegistrationClosed && (
+            <button
+              disabled
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-amber-500/40 bg-amber-500/10 px-6 text-[16px] font-bold text-amber-500 cursor-not-allowed"
+            >
+              Closed
             </button>
           )}
 
@@ -474,6 +527,12 @@ export default function RegistrationEventCard({
           )}
         </div>
       </div>
+
+      {(error || state === "CLOSED") && (
+        <p className="mt-3 text-[13px] font-medium text-amber-500">
+          {error || "Registration is closed for this event."}
+        </p>
+      )}
 
       {isDoubles &&
         (state === "ADDING_PARTNER" ||

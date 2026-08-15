@@ -255,7 +255,7 @@ export default function UserTournamentsPage() {
           </div>
 
           {/* Centered Tabs */}
-          <div className="flex items-center justify-center gap-6 sm:gap-10 overflow-x-auto hide-scrollbar px-2">
+          <div className="flex items-center justify-center gap-6 sm:gap-10 overflow-x-auto overflow-y-hidden no-scrollbar px-2">
             {(["browse", "joined", "history"] as TopTab[]).map((tab) => (
               <button
                 key={tab}
@@ -293,7 +293,7 @@ export default function UserTournamentsPage() {
             >
               <SlidersIcon size={20} />
             </button>
-          <div className="hide-scrollbar flex items-center gap-3 overflow-x-auto">
+          <div className="no-scrollbar flex items-center gap-3 overflow-x-auto overflow-y-hidden">
             {(
               [
                 { id: "all", label: "All Formats" },

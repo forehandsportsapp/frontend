@@ -209,7 +209,7 @@ export default function SwitchAccountModal({
             </div>
 
             {/* Content List */}
-            <div className="mt-4 space-y-3 overflow-y-auto hide-scrollbar pb-24">
+            <div className="mt-4 space-y-3 overflow-y-auto no-scrollbar pb-24">
               <div className="space-y-2">
                 <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
                   Personal

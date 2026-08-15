@@ -16,7 +16,7 @@ export default function Tabs({ tabs, activeId, onChange, ariaLabel = "Tabs" }: T
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className="flex gap-1 p-1 rounded-lg bg-[var(--color-surface-elevated)] overflow-x-auto"
+      className="flex gap-1 p-1 rounded-lg bg-[var(--color-surface-elevated)] overflow-x-auto overflow-y-hidden no-scrollbar"
     >
       {tabs.map((tab, index) => {
         const isActive = tab.id === activeId;
