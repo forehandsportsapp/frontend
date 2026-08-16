@@ -260,7 +260,7 @@ export default function UserTournamentsPage() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`relative py-2 text-[16px] font-bold capitalize transition-all ${
+                className={`relative pt-2 pb-1 text-[16px] font-bold capitalize transition-all ${
                   activeTab === tab
                     ? "text-white"
                     : "text-white/60 hover:text-white/80"
@@ -268,7 +268,7 @@ export default function UserTournamentsPage() {
               >
                 {tab}
                 {activeTab === tab && (
-                  <div className="absolute -bottom-1 left-0 right-0 h-[3px] bg-white rounded-t-full shadow-[0_-2px_10px_rgba(255,255,255,0.4)]" />
+                  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white rounded-t-full shadow-[0_-2px_10px_rgba(255,255,255,0.4)]" />
                 )}
               </button>
             ))}
