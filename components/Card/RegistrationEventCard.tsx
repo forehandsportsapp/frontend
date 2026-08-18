@@ -309,7 +309,7 @@ export default function RegistrationEventCard({
       setState("INVITED");
     } catch (err) {
       console.error("Failed to send invite", err);
-      setError("Failed to send invite. Player does not exist.");
+      setError("Player does not exist.");
       setState("ADDING_PARTNER");
     }
   };
