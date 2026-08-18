@@ -165,12 +165,8 @@ export function MemberRow({ name, onRemove }: MemberRowProps) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)]">
-          <img
-            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`}
-            alt={name}
-            className="h-full w-full object-cover"
-          />
+        <div className="h-10 w-10 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] flex items-center justify-center">
+          <span className="text-[16px] font-bold text-[var(--color-text-secondary)]">{name.charAt(0).toUpperCase()}</span>
         </div>
         <p className="text-[15px] font-semibold">{name}</p>
       </div>

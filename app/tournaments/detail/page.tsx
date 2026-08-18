@@ -345,15 +345,18 @@ function TournamentDetailContent() {
                 <div className="pt-0">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-md">
-                        <img
-                          src={
-                            tournament.organization?.logoUrl ||
-                            "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?auto=format&fit=crop&q=80&w=100&h=100"
-                          }
-                          alt="Contact"
-                          className="h-full w-full object-cover"
-                        />
+                      <div className="h-14 w-14 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-md flex items-center justify-center">
+                        {tournament.organization?.logoUrl ? (
+                          <img
+                            src={tournament.organization.logoUrl}
+                            alt="Contact"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[24px] font-bold text-[var(--color-text-secondary)]">
+                            {tournament.contactName?.charAt(0)?.toUpperCase() || "O"}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[20px] font-bold text-[var(--color-text)]">
                         {tournament.contactName}

@@ -528,11 +528,6 @@ export default function RegistrationEventCard({
         </div>
       </div>
 
-      {(error || state === "CLOSED") && (
-        <p className="mt-3 text-[13px] font-medium text-amber-500">
-          {error || "Registration is closed for this event."}
-        </p>
-      )}
 
       {isDoubles &&
         (state === "ADDING_PARTNER" ||

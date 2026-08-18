@@ -197,16 +197,16 @@ export default function TournamentFilterDrawer({
                   </div>
                 </div>
               </section>
-            </div>
 
-            {/* Sticky Footer */}
-            <div className="p-6 pt-2 bg-[var(--color-surface)] border-t border-[var(--color-border)]">
-              <button
-                onClick={handleApply}
-                className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
-              >
-                Apply Filters
-              </button>
+              {/* Action Button */}
+              <div className="pt-4 pb-20">
+                <button
+                  onClick={handleApply}
+                  className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-lg shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
+                >
+                  Apply Filters
+                </button>
+              </div>
             </div>
           </motion.div>
         </>

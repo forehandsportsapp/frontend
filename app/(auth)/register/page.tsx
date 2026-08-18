@@ -432,7 +432,7 @@ export default function RegisterPage() {
 
           <InputField
             id="contact"
-            placeholder="Contact Number"
+            placeholder="WhatsApp Contact Number"
             type="tel"
             icon={PhoneIcon}
             value={formData.contactNumber}
