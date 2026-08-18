@@ -153,12 +153,20 @@ export default function UserTournamentsPage() {
       const hasSingles = t.events?.some(
         (e) =>
           e.teamTypeCode?.toLowerCase().includes("singles") ||
-          e.teamType?.label?.toLowerCase().includes("singles"),
+          e.teamType?.code?.toLowerCase().includes("singles") ||
+          e.teamType?.label?.toLowerCase().includes("singles") ||
+          e.eventFormatCode?.toLowerCase().includes("singles") ||
+          e.eventFormat?.code?.toLowerCase().includes("singles") ||
+          e.eventFormat?.label?.toLowerCase().includes("singles")
       );
       const hasDoubles = t.events?.some(
         (e) =>
           e.teamTypeCode?.toLowerCase().includes("doubles") ||
-          e.teamType?.label?.toLowerCase().includes("doubles"),
+          e.teamType?.code?.toLowerCase().includes("doubles") ||
+          e.teamType?.label?.toLowerCase().includes("doubles") ||
+          e.eventFormatCode?.toLowerCase().includes("doubles") ||
+          e.eventFormat?.code?.toLowerCase().includes("doubles") ||
+          e.eventFormat?.label?.toLowerCase().includes("doubles")
       );
 
       if (format === "singles") return hasSingles;
