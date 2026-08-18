@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, XIcon, TrophyIcon, UserIcon } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
 import { eventApi, EventResultStanding } from "@/lib/api/eventApi";
@@ -12,21 +13,28 @@ function initials(name: string) {
 }
 
 export default function EventChampionPage() {
-  const [searchParams, setSearchParams] = useState<URLSearchParams>(
-    new URLSearchParams(),
-  );
+  const searchParams = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [eventName, setEventName] = useState("Event");
   const [champion, setChampion] = useState<EventResultStanding | null>(null);
   const [standings, setStandings] = useState<EventResultStanding[]>([]);
 
-  useEffect(() => {
-    setSearchParams(new URLSearchParams(window.location.search));
-  }, []);
-
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
+  const viewOnly = searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
+  const backHref = viewOnly
+    ? "/user/tournaments"
+    : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
+  const fixtureHref = `/org/tournaments/event/fixture${toQuery({
+    tournamentId: tournamentId || "",
+    eventId: eventId || "",
+  })}`;
+  const matchesHref = `/org/tournaments/event/matches${toQuery({
+    tournamentId: tournamentId || "",
+    eventId: eventId || "",
+    viewOnly: "1",
+  })}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -59,16 +67,16 @@ export default function EventChampionPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-500 to-orange-600">
+    <div className="min-h-screen bg-gradient-to-b from-orange-500 to-orange-600 text-[var(--color-text)]">
       <div className="flex items-center justify-between p-4">
         <Link
-          href={"/org/tournaments/detail" + toQuery({ t: tournamentId })}
+          href={backHref}
           className="p-2 text-white"
         >
           <ArrowLeftIcon size={20} />
         </Link>
         <Link
-          href={"/org/tournaments/detail" + toQuery({ t: tournamentId })}
+          href={backHref}
           className="p-2 text-white"
         >
           <XIcon size={20} />
@@ -80,10 +88,27 @@ export default function EventChampionPage() {
           <div className="absolute -top-4 left-1/2 -translate-x-1/2">
             <TrophyIcon size={56} className="text-yellow-300" />
           </div>
-          <h1 className="mb-2 pt-16 text-4xl font-bold">CHAMPION!</h1>
-          <p className="text-lg opacity-90">
+          <h1 className="mb-2 pt-16 text-4xl font-bold text-white">CHAMPION!</h1>
+          <p className="text-lg text-white/90">
             {loading ? "Loading..." : eventName}
           </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-widest text-orange-500">
+              Leaderboard
+            </span>
+            <Link
+              href={fixtureHref}
+              className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+            >
+              Fixtures
+            </Link>
+            <Link
+              href={matchesHref}
+              className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+            >
+              Matches
+            </Link>
+          </div>
         </div>
 
         <div className="relative mb-4 inline-block">
@@ -103,13 +128,15 @@ export default function EventChampionPage() {
           </div>
         </div>
 
-        <h2 className="mb-2 text-3xl font-bold">
+        <h2 className="mb-2 text-3xl font-bold text-white">
           {loading ? "Loading..." : champion?.teamName || "No Champion Yet"}
         </h2>
       </div>
 
-      <div className="min-h-[50vh] rounded-t-3xl bg-[var(--color-surface)] p-6">
-        <h3 className="mb-4 text-lg font-semibold">Final Standings</h3>
+      <div className="min-h-[50vh] rounded-t-3xl bg-[var(--color-surface)] p-6 text-[var(--color-text)]">
+        <h3 className="mb-4 text-lg font-semibold text-[var(--color-text)]">
+          Final Standings
+        </h3>
 
         <div className="space-y-3">
           {visibleStandings.map((team) => (
@@ -127,7 +154,9 @@ export default function EventChampionPage() {
               )}
 
               <div className="flex-1">
-                <p className="font-medium">{team.teamName}</p>
+                <p className="font-medium text-[var(--color-text)]">
+                  {team.teamName}
+                </p>
                 <p
                   className={`text-sm ${
                     team.rank === 1
@@ -144,7 +173,7 @@ export default function EventChampionPage() {
               </div>
 
               <div className="text-right">
-                <p className="font-bold">
+                <p className="font-bold text-[var(--color-text)]">
                   {team.wins}/{team.played}
                 </p>
                 <p className="text-xs text-[var(--color-muted)]">Wins</p>

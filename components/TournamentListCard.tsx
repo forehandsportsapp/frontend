@@ -23,6 +23,7 @@ export type TournamentListItem = {
   format?: "singles" | "doubles";
   cta: "Register" | "View" | "Chevron";
   joinedStatus?: string;
+  statusLabel?: string;
   logoUrl?: string | null;
 };
 
@@ -74,6 +75,21 @@ export default function TournamentListCard({
   item: TournamentListItem;
 }) {
   const isHistory = item.cta === "Chevron";
+  const statusLabel =
+    item.statusLabel ||
+    (isHistory
+      ? item.joinedStatus || "Completed"
+      : item.cta === "View"
+        ? "Joined"
+        : "Registered");
+  const statusClass =
+    statusLabel.toLowerCase() === "completed" || statusLabel.toLowerCase() === "history"
+      ? "bg-green-500/15 text-green-600 border-green-200"
+      : statusLabel.toLowerCase() === "joined" || statusLabel.toLowerCase() === "participating"
+        ? "bg-[#22c55e]/15 text-[#22c55e] border-[#22c55e]/30"
+        : statusLabel.toLowerCase() === "closed"
+          ? "bg-amber-500/15 text-amber-600 border-amber-300"
+          : "bg-primary/15 text-primary border-primary/20";
 
   if (isHistory) {
     return (
@@ -93,6 +109,18 @@ export default function TournamentListCard({
             <p className="mt-[2px] truncate text-[11px] text-[var(--color-text-muted)]">
               {item.subtitle}
             </p>
+            <div className="mt-2 flex items-center gap-2">
+              <span
+                className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${statusClass}`}
+              >
+                {statusLabel}
+              </span>
+              {item.joinedStatus && item.joinedStatus !== statusLabel && (
+                <span className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)]">
+                  {item.joinedStatus}
+                </span>
+              )}
+            </div>
           </div>
 
           <ChevronRightIcon size={16} className="mt-0.5 text-muted" />
@@ -137,6 +165,18 @@ export default function TournamentListCard({
           <p className="mt-1 truncate text-[13px] font-medium text-[var(--color-text-muted)] opacity-90">
             {item.subtitle}
           </p>
+          <div className="mt-2 flex items-center gap-2">
+            <span
+              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${statusClass}`}
+            >
+              {statusLabel}
+            </span>
+            {item.joinedStatus && item.joinedStatus !== statusLabel && (
+              <span className="inline-flex rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)]">
+                {item.joinedStatus}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="col-span-2 grid grid-cols-2 gap-x-8 gap-y-3.5 text-[13px] font-medium text-[var(--color-text-secondary)]">

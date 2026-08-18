@@ -22,6 +22,7 @@ import {
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
+import { toQuery } from "@/lib/utils";
 
 interface RegistrationEventCardProps {
   event: EventData;
@@ -73,6 +74,55 @@ export default function RegistrationEventCard({
     event.teamTypeCode?.toLowerCase().includes("double") ||
     event.teamType?.label?.toLowerCase().includes("double") ||
     event.name?.toLowerCase().includes("double");
+  const viewableStates = new Set([
+    "registration_closed",
+    "participants_finalized",
+    "scheduled",
+    "in_progress",
+    "round_over",
+    "completed",
+  ]);
+  const canViewEvent =
+    state === "REGISTERED" ||
+    state === "CLOSED" ||
+    viewableStates.has(event.eventState || "");
+  const eventStateLabel =
+    event.eventState === "completed"
+      ? "Completed"
+      : event.eventState === "round_over"
+        ? "Round Over"
+        : event.eventState === "in_progress"
+          ? "Live"
+          : event.eventState === "scheduled"
+            ? "Scheduled"
+            : event.eventState === "participants_finalized"
+              ? "Fixtures Ready"
+              : event.eventState === "registration_closed"
+                ? "Closed"
+                : "Open";
+  const eventStateClass =
+    event.eventState === "completed"
+      ? "bg-green-500/15 text-green-700 border-green-300"
+      : event.eventState === "in_progress"
+        ? "bg-orange-500/15 text-orange-700 border-orange-300"
+        : event.eventState === "registration_closed"
+          ? "bg-amber-500/15 text-amber-700 border-amber-300"
+      : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]";
+  const useChampionPage =
+    event.eventState === "completed" ||
+    event.eventState === "round_over" ||
+    Boolean(event.winnerId);
+  const viewHref = useChampionPage
+    ? `/org/tournaments/event/champion${toQuery({
+        tournamentId: event.tournamentId,
+        eventId: event.id || "",
+        viewOnly: "1",
+      })}`
+    : `/org/tournaments/event/matches${toQuery({
+        tournamentId: event.tournamentId,
+        eventId: event.id || "",
+        viewOnly: "1",
+      })}`;
 
   const loadRegistrationState = useCallback(async () => {
     if (!event.id) return;
@@ -407,8 +457,15 @@ export default function RegistrationEventCard({
         <div>
           <h3 className="text-[20px] font-bold text-[var(--color-text)]">
             {event.name}
+          </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${eventStateClass}`}
+            >
+              {eventStateLabel}
+            </span>
             {state === "REGISTERED" && (
-              <span className="ml-2 text-[10px] uppercase tracking-widest text-green-500 bg-green-500/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex rounded-full border border-green-300 bg-green-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-green-700">
                 {(team?.teamStatus || team?.status)?.toLowerCase() ===
                 "participating"
                   ? "Participating"
@@ -416,16 +473,16 @@ export default function RegistrationEventCard({
               </span>
             )}
             {state === "INELIGIBLE" && (
-              <span className="ml-2 text-[10px] uppercase tracking-widest text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex rounded-full border border-red-300 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-600">
                 {event.gender} only
               </span>
             )}
             {state === "CLOSED" && (
-              <span className="ml-2 text-[10px] uppercase tracking-widest text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+              <span className="inline-flex rounded-full border border-amber-300 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-600">
                 Closed
               </span>
             )}
-          </h3>
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)] opacity-60">
               <CalendarIcon size={14} className="text-[#ff7a1a]" />
@@ -506,14 +563,42 @@ export default function RegistrationEventCard({
           )}
 
           {state === "REGISTERED" && (
+            <>
+              {canViewEvent && (
+                <a
+                  href={viewHref}
+                  className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-white px-6 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
+                >
+                  View
+                </a>
+              )}
+              <button
+                disabled
+                className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 text-white px-6 text-[16px] font-bold cursor-default"
+              >
+                {(team?.teamStatus || team?.status)?.toLowerCase() ===
+                "participating"
+                  ? "Participating"
+                  : "Registered"}
+              </button>
+            </>
+          )}
+
+          {state === "CLOSED" && canViewEvent && (
+            <a
+              href={viewHref}
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-white px-6 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
+            >
+              View
+            </a>
+          )}
+
+          {state === "CLOSED" && !canViewEvent && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 text-white px-6 text-[16px] font-bold cursor-default"
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-amber-500/40 bg-amber-500/10 px-6 text-[16px] font-bold text-amber-500 cursor-not-allowed"
             >
-              {(team?.teamStatus || team?.status)?.toLowerCase() ===
-              "participating"
-                ? "Participating"
-                : "Registered"}
+              Closed
             </button>
           )}
 

@@ -63,13 +63,14 @@ const getTeamName = (t: any) => {
   if (!t) return "Empty Slot";
 
   const participants = t.participants || [];
+  const fallbackName = t.name || t.teamName || t.displayName || t.fullName;
 
   // If no participants, but we have a name, use it
-  if (participants.length === 0) return t.name || "Unknown Team";
+  if (participants.length === 0) return fallbackName || "Unknown Team";
 
   if (participants.length === 1) {
     // Singles: User name of the player
-    return participants[0].user?.name || t.name || "Player";
+    return participants[0].user?.name || fallbackName || "Player";
   }
 
   // Doubles: Mix of both players initials (e.g., "AB & CD")
@@ -118,11 +119,13 @@ function MatchCard({
   tournamentId,
   eventId,
   onScorerClick,
+  viewOnly = false,
 }: {
   match: MatchRow;
   tournamentId: string;
   eventId: string;
-  onScorerClick: (match: MatchRow) => void;
+  onScorerClick?: (match: MatchRow) => void;
+  viewOnly?: boolean;
 }) {
   const headerBg =
     match.status === "live"
@@ -225,13 +228,19 @@ function MatchCard({
           <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
             {match.court}
           </span>
-          <button
-            type="button"
-            onClick={() => onScorerClick(match)}
-            className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
-          >
-            {scorerLabel}
-          </button>
+          {viewOnly ? (
+            <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
+              {scorerLabel}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onScorerClick?.(match)}
+              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
+            >
+              {scorerLabel}
+            </button>
+          )}
         </div>
 
         {/* Set score grid */}
@@ -250,7 +259,7 @@ function MatchCard({
         )}
 
         {/* CTA for live/upcoming */}
-        {match.status !== "ended" && (
+        {!viewOnly && match.status !== "ended" && (
           <Link
             href={
               "/org/tournaments/event/match/setup" +
@@ -275,6 +284,9 @@ export default function OrgManageMatchesPage() {
 
   const tournamentId = searchParams.get("tournamentId") || "";
   const eventId = searchParams.get("eventId") || "";
+  const viewOnly =
+    searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
+  const safeBackHref = "/user/tournaments";
 
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [event, setEvent] = useState<EventData | null>(null);
@@ -303,7 +315,7 @@ export default function OrgManageMatchesPage() {
         setIsLoading(true);
         const [tData, teamsData] = await Promise.all([
           tournamentApi.getInfo(tournamentId),
-          teamApi.getTeamsByEvent(eventId),
+          viewOnly ? Promise.resolve(null) : teamApi.getTeamsByEvent(eventId),
         ]);
 
         setTournament(tData);
@@ -398,8 +410,14 @@ export default function OrgManageMatchesPage() {
               m.team2_id ||
               m.teamB?.id;
 
-            const teamA = tAId && teams[tAId] ? teams[tAId] : m.teamA;
-            const teamB = tBId && teams[tBId] ? teams[tBId] : m.teamB;
+            const teamA =
+              m.teamAData ||
+              (tAId && teams[tAId]) ||
+              (typeof m.teamA === "object" ? m.teamA : null);
+            const teamB =
+              m.teamBData ||
+              (tBId && teams[tBId]) ||
+              (typeof m.teamB === "object" ? m.teamB : null);
             const scheduledStart = m.startTime || m.scheduledAt;
             const scorerName =
               m.scorerUser?.name || m.scorerName || m.scorer?.name || "";
@@ -561,19 +579,23 @@ export default function OrgManageMatchesPage() {
       {/* ── Header ── */}
       <div className="sticky top-0 z-40 bg-[var(--color-surface)] border-b border-[var(--color-border)] px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() =>
+            viewOnly
+              ? router.push(safeBackHref)
+              : router.back()
+          }
           className="p-2 -ml-2 rounded-full hover:bg-[var(--color-surface-elevated)] transition-colors text-[var(--color-text)]"
         >
           <ArrowLeftIcon size={20} />
         </button>
         <h1 className="font-bold text-base text-[var(--color-text)]">
-          Manage Matches
+          {viewOnly ? "Tournament Overview" : "Manage Matches"}
         </h1>
       </div>
 
       <div className="flex-1 p-4 space-y-4 pb-24">
         {/* ── Round Over Banner ── */}
-        {isRoundOver && event?.eventState !== "completed" && (
+        {!viewOnly && isRoundOver && event?.eventState !== "completed" && (
           <div className="bg-green-100 border border-green-200 rounded-2xl p-4 flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-green-800">
               <CheckIcon size={20} className="text-green-600" />
@@ -619,9 +641,11 @@ export default function OrgManageMatchesPage() {
                 {event?.startDate ? formatDate(event.startDate) : "TBA"}
               </p>
             </div>
-            <button className="text-[var(--color-muted)] p-1">
-              <EllipsisIcon size={20} />
-            </button>
+            {!viewOnly && (
+              <button className="text-[var(--color-muted)] p-1">
+                <EllipsisIcon size={20} />
+              </button>
+            )}
           </div>
           <p className="text-xs font-semibold text-orange-500 mt-2">
             Round {activeRound} active
@@ -629,7 +653,7 @@ export default function OrgManageMatchesPage() {
         </div>
 
         {/* ── Filter Tabs ── */}
-        <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-0.5 no-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-0.5 no-scrollbar">
           {FILTERS.map((f) => (
             <button
               key={f.id}
@@ -643,6 +667,16 @@ export default function OrgManageMatchesPage() {
               {f.label}
             </button>
           ))}
+          <Link
+            href={`/org/tournaments/event/champion${toQuery({
+              tournamentId,
+              eventId,
+              viewOnly: "1",
+            })}`}
+            className="shrink-0 rounded-full border border-orange-400 bg-orange-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm shadow-orange-200 transition-colors hover:bg-orange-600"
+          >
+            View Leaderboard
+          </Link>
         </div>
 
         {/* ── Round Navigator ── */}
@@ -687,12 +721,14 @@ export default function OrgManageMatchesPage() {
                 tournamentId={tournamentId}
                 eventId={eventId}
                 onScorerClick={handleOpenScorerSheet}
+                viewOnly={viewOnly}
               />
             ))
           )}
         </div>
+
       </div>
-      {scorerSheetMatch && (
+      {!viewOnly && scorerSheetMatch && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4">
           <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
             <div className="flex items-start justify-between gap-4">

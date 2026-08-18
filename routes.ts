@@ -30,7 +30,26 @@ export const routes = {
   orgDetail: (orgId: string) => `/org/detail${toQuery({ orgId })}`,
   tournamentDetail: (id: string) => `/tournaments/detail${toQuery({ id })}`,
   tournamentEvent: (id: string, event?: string) => `/tournaments/event${toQuery({ id, event })}`,
-  tournamentMatches: (id: string) => `/tournaments/matches${toQuery({ id })}`,
+  tournamentEventOverview: (id: string, eventId: string, tab?: "leaderboard" | "fixtures") =>
+    tab === "leaderboard"
+      ? `/org/tournaments/event/champion${toQuery({
+          tournamentId: id,
+          eventId,
+          viewOnly: "1",
+        })}`
+      : `/org/tournaments/event/matches${toQuery({
+          tournamentId: id,
+          eventId,
+          viewOnly: "1",
+        })}`,
+  tournamentMatches: (id: string) =>
+    `/org/tournaments/event/matches${toQuery({ tournamentId: id, viewOnly: "1" })}`,
+  tournamentEventMatches: (id: string, eventId: string) =>
+    `/org/tournaments/event/matches${toQuery({
+      tournamentId: id,
+      eventId,
+      viewOnly: "1",
+    })}`,
   tournamentCheckout: (id: string) => `/tournaments/checkout${toQuery({ id })}`,
   orgTournamentDetail: (t: string) => `/org/tournaments/detail${toQuery({ t })}`,
   orgEventParticipants: (tournamentId: string, eventId: string) =>

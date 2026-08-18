@@ -194,7 +194,18 @@ export default function UserTournamentsPage() {
         entry: String(t.events?.length || 0),
         location: `${t.venueCity} | ${t.venueState}`,
         cta,
-        joinedStatus: activeTab === "history" ? "Completed" : undefined,
+        statusLabel:
+          activeTab === "browse"
+            ? "Open"
+            : activeTab === "joined"
+              ? "Joined"
+              : "History",
+        joinedStatus:
+          activeTab === "history"
+            ? "Completed"
+            : activeTab === "joined"
+              ? "Joined"
+              : undefined,
         logoUrl: getTournamentLogoUrl(t),
       };
     });

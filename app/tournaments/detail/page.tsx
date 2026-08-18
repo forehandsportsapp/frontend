@@ -95,6 +95,143 @@ function isEventRegisteredByUser(event: EventData, userId?: string | null) {
   });
 }
 
+function isEventViewable(event?: EventData | null) {
+  return [
+    "participants_finalized",
+    "scheduled",
+    "in_progress",
+    "round_over",
+    "completed",
+  ].includes(event?.eventState || "");
+}
+
+function getEventDashboardTab(event?: EventData | null) {
+  return event?.eventState === "completed" ? "leaderboard" : "fixtures";
+}
+
+function shouldShowChampionPage(event?: EventData | null) {
+  return Boolean(
+    event &&
+      (event.eventState === "completed" ||
+        event.eventState === "round_over" ||
+        event.winnerId),
+  );
+}
+
+function getEventDashboardHref(
+  tournamentId: string,
+  eventId: string,
+  event?: EventData | null,
+) {
+  return shouldShowChampionPage(event)
+    ? `/org/tournaments/event/champion${toQuery({
+        tournamentId,
+        eventId,
+        viewOnly: "1",
+      })}`
+    : `/org/tournaments/event/matches${toQuery({
+        tournamentId,
+        eventId,
+        viewOnly: "1",
+      })}`;
+}
+
+function EventAccessCard({
+  event,
+  tournamentId,
+}: {
+  event: EventData;
+  tournamentId: string;
+}) {
+  const eventId = event.id || "";
+  const href = getEventDashboardHref(tournamentId, eventId, event);
+  const status = (event.eventState || "scheduled").replace(/_/g, " ");
+  const statusClass =
+    event.eventState === "completed"
+      ? "bg-green-500/10 text-green-600 border-green-200"
+      : event.eventState === "in_progress"
+        ? "bg-orange-500/10 text-orange-600 border-orange-200"
+        : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]";
+
+  return (
+    <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg transition-all">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-[20px] font-bold text-[var(--color-text)]">
+            {event.name}
+          </h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span
+              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${statusClass}`}
+            >
+              {status}
+            </span>
+            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">
+              Leaderboard, fixtures and matches
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-[13px] text-[var(--color-text-secondary)]">
+        <div className="flex items-center gap-2 opacity-70">
+          <CalendarIcon size={14} className="text-[#ff7a1a]" />
+          <span>
+            Starts:{" "}
+            {event.startDate
+              ? new Date(event.startDate).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "TBA"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 justify-self-end text-right opacity-70">
+          <SearchIcon size={14} className="text-[#ff7a1a]" />
+          <span>
+            Closes:{" "}
+            {event.dueDate
+              ? new Date(event.dueDate).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "TBA"}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-5">
+        <div>
+          <p className="text-[24px] font-bold text-[#ff7a1a]">
+            {event.amount === 0 ? (
+              "Free Entry"
+            ) : (
+              <>
+                <span className="currency-inr mr-0.5">&#8377;</span>
+                {event.amount}
+              </>
+            )}
+          </p>
+          {event.paymentMode?.label && (
+            <p className="mt-1 text-[12px] font-medium text-[var(--color-text-secondary)] opacity-60 uppercase tracking-wider">
+              {event.paymentMode.label}
+            </p>
+          )}
+        </div>
+
+        <Link
+          href={href}
+          className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full bg-[#ff7a1a] px-6 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95"
+        >
+          View
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function TournamentDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,6 +241,7 @@ function TournamentDetailContent() {
   const [error, setError] = useState("");
   const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const safeBackHref = "/user/tournaments";
 
   const id = searchParams.get("id");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -237,7 +375,7 @@ function TournamentDetailContent() {
           {error || "Tournament not found"}
         </p>
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push(safeBackHref)}
           className="mt-4 rounded-full bg-primary px-6 py-2 font-semibold text-white"
         >
           Go Back
@@ -255,7 +393,7 @@ function TournamentDetailContent() {
           registeredCount={registeredCount}
           registrationStatus={isRegistrationOpen ? "Open" : "Closed"}
           logoUrl={getTournamentLogoUrl(tournament)}
-          onBack={() => router.back()}
+          onBack={() => router.push(safeBackHref)}
           onShare={handleOpenShareSheet}
         />
       </div>
@@ -389,14 +527,26 @@ function TournamentDetailContent() {
             </section>
           </>
         ) : (
-          sortedEvents.map((ev) => (
-            <RegistrationEventCard
-              key={ev.id}
-              event={ev}
-              onAddedChange={handleAddedChange}
-              isInitiallyAdded={Boolean(ev.id && selected[ev.id])}
-            />
-          ))
+          sortedEvents.map((ev) => {
+            if (isEventViewable(ev)) {
+              return (
+                <EventAccessCard
+                  key={ev.id}
+                  event={ev}
+                  tournamentId={id || ""}
+                />
+              );
+            }
+
+            return (
+              <RegistrationEventCard
+                key={ev.id}
+                event={ev}
+                onAddedChange={handleAddedChange}
+                isInitiallyAdded={Boolean(ev.id && selected[ev.id])}
+              />
+            );
+          })
         )}
       </div>
 
