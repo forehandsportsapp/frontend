@@ -26,6 +26,7 @@ import { TournamentData, EventData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 import { useApp } from "@/components/AppProvider";
 import RegistrationEventCard from "@/components/Card/RegistrationEventCard";
+import { getEventStatusMeta } from "@/lib/statusLabels";
 
 type MainTab = "about" | "events";
 
@@ -146,13 +147,7 @@ function EventAccessCard({
 }) {
   const eventId = event.id || "";
   const href = getEventDashboardHref(tournamentId, eventId, event);
-  const status = (event.eventState || "scheduled").replace(/_/g, " ");
-  const statusClass =
-    event.eventState === "completed"
-      ? "bg-green-500/10 text-green-600 border-green-200"
-      : event.eventState === "in_progress"
-        ? "bg-orange-500/10 text-orange-600 border-orange-200"
-        : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]";
+  const statusMeta = getEventStatusMeta(event.eventState, event.dueDate);
 
   return (
     <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg transition-all">
@@ -163,12 +158,9 @@ function EventAccessCard({
           </h3>
           <div className="mt-3 flex flex-wrap gap-2">
             <span
-              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${statusClass}`}
+              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${statusMeta.className}`}
             >
-              {status}
-            </span>
-            <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">
-              View event
+              {statusMeta.label}
             </span>
           </div>
         </div>
@@ -572,10 +564,18 @@ function TournamentDetailContent() {
       {tab === "about" ? (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-background)] p-5 pb-[max(env(safe-area-inset-bottom),20px)]">
           <button
-            onClick={() => setTab("events")}
-            className="h-16 w-full rounded-full bg-[#ff811f] text-[20px] font-bold text-white shadow-lg active:scale-[0.98] transition-transform"
+            disabled={!isRegistrationOpen}
+            onClick={() => {
+              if (!isRegistrationOpen) return;
+              setTab("events");
+            }}
+            className={`h-16 w-full rounded-full text-[20px] font-bold shadow-lg transition-transform ${
+              isRegistrationOpen
+                ? "bg-[#ff811f] text-white active:scale-[0.98]"
+                : "cursor-not-allowed bg-[var(--color-surface-elevated)] text-[var(--color-muted)] opacity-60"
+            }`}
           >
-            Select Event
+            {isRegistrationOpen ? "Select Event" : "Registration Closed"}
           </button>
         </div>
       ) : (

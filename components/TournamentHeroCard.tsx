@@ -25,6 +25,10 @@ export default function TournamentHeroCard({
   const [imageFailed, setImageFailed] = React.useState(false);
   const safeLogoUrl = sanitizeLogoUrl(logoUrl);
   const showFallback = imageFailed || !safeLogoUrl;
+  const statusIsClosed = registrationStatus.toLowerCase().includes("closed");
+  const statusClass = statusIsClosed
+    ? "bg-red-500 text-white shadow-[0_6px_20px_rgba(239,68,68,0.25)]"
+    : "bg-[#22c55e] text-white shadow-[0_6px_20px_rgba(34,197,94,0.22)]";
 
   React.useEffect(() => {
     setImageFailed(false);
@@ -99,7 +103,9 @@ export default function TournamentHeroCard({
             Registration
           </p>
           <div className="mt-3">
-            <span className="inline-flex h-9 min-w-[100px] items-center justify-center rounded-full bg-[#ff7a1a] px-5 text-[15px] font-bold text-white shadow-[0_6px_20px_rgba(255,122,26,0.3)]">
+            <span
+              className={`inline-flex h-9 min-w-[100px] items-center justify-center rounded-full px-5 text-[15px] font-bold ${statusClass}`}
+            >
               {registrationStatus}
             </span>
           </div>

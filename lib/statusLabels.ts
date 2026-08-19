@@ -3,9 +3,15 @@ type StatusMeta = {
   className: string;
 };
 
-function baseBadgeClass(kind: "success" | "warning" | "primary" | "neutral") {
+function baseBadgeClass(
+  kind: "success" | "warning" | "primary" | "neutral" | "danger",
+) {
   if (kind === "success") {
     return "bg-green-500/15 text-green-600 border-green-200";
+  }
+
+  if (kind === "danger") {
+    return "bg-red-500/15 text-red-600 border-red-200";
   }
 
   if (kind === "warning") {
@@ -64,6 +70,10 @@ export function getEventStatusMeta(
     return { label: "Live", className: baseBadgeClass("primary") };
   }
 
+  if (isClosedByDate) {
+    return { label: "Closed", className: baseBadgeClass("danger") };
+  }
+
   if (normalized === "scheduled") {
     return { label: "Scheduled", className: baseBadgeClass("primary") };
   }
@@ -72,11 +82,7 @@ export function getEventStatusMeta(
     return { label: "Fixtures Ready", className: baseBadgeClass("success") };
   }
 
-  if (isClosedByDate) {
-    return { label: "Closed", className: baseBadgeClass("warning") };
-  }
-
-  return { label: "Open", className: baseBadgeClass("neutral") };
+  return { label: "Open", className: baseBadgeClass("success") };
 }
 
 export function isEventRegistrationOpen(

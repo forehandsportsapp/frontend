@@ -175,7 +175,35 @@ export default function UserTournamentsPage() {
       return true;
     });
 
-    return filteredTournaments.map((t): TournamentListItem => {
+    const getTournamentSortTime = (tournament: TournamentData) => {
+      const raw = tournament as any;
+      const candidate =
+        raw?.createdAt ||
+        raw?.updatedAt ||
+        raw?.startDate ||
+        raw?.endDate ||
+        "";
+      const timestamp = new Date(candidate).getTime();
+      return Number.isNaN(timestamp) ? 0 : timestamp;
+    };
+
+    const sortedTournaments = [...filteredTournaments].sort((a, b) => {
+      if (activeTab !== "browse") {
+        return getTournamentSortTime(b) - getTournamentSortTime(a);
+      }
+
+      const aOpen = a.events?.some((event) =>
+        isEventRegistrationOpen(event.eventState, event.dueDate),
+      );
+      const bOpen = b.events?.some((event) =>
+        isEventRegistrationOpen(event.eventState, event.dueDate),
+      );
+
+      if (aOpen !== bOpen) return aOpen ? -1 : 1;
+      return getTournamentSortTime(b) - getTournamentSortTime(a);
+    });
+
+    return sortedTournaments.map((t): TournamentListItem => {
       const sports = Array.from(
         new Set(t.events?.map((e) => e.sportsOption?.label).filter(Boolean)),
       ) as string[];
