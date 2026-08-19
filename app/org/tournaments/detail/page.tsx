@@ -36,6 +36,7 @@ import { useApp } from "@/components/AppProvider";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { sanitizeLogoUrl } from "@/lib/logo";
+import { getTournamentStatusMeta } from "@/lib/statusLabels";
 
 function formatDate(value?: string | null) {
   if (!value) return "TBA";
@@ -76,9 +77,11 @@ function isEventRegistrationOpen(
 const TopAppBar = ({
   onShare,
   settingsHref,
+  canManage,
 }: {
   onShare: () => void;
   settingsHref: string;
+  canManage: boolean;
 }) => (
   <div className="flex items-center justify-between">
     <Link
@@ -95,13 +98,19 @@ const TopAppBar = ({
       >
         <ShareIcon size={18} />
       </button>
-      <Link
-        href={settingsHref}
-        className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
-        aria-label="Tournament settings"
-      >
-        <EllipsisIcon size={20} />
-      </Link>
+      {canManage ? (
+        <Link
+          href={settingsHref}
+          className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
+          aria-label="Tournament settings"
+        >
+          <EllipsisIcon size={20} />
+        </Link>
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text-secondary)] border border-[var(--color-border)]">
+          <EllipsisIcon size={20} />
+        </div>
+      )}
     </div>
   </div>
 );
@@ -223,18 +232,26 @@ const EventHeader = ({ tournament }: { tournament: TournamentData | null }) => {
 const EventStats = ({
   tournament,
   onSync,
+  canManage,
 }: {
   tournament: TournamentData | null;
   onSync: () => void;
+  canManage: boolean;
 }) => {
+  const scopedEvents = Array.isArray(tournament?.events)
+    ? tournament.events.map((event: any) => ({
+        ...event,
+        teams: Array.isArray(event?.teams) ? event.teams : [],
+      }))
+    : [];
   const registeredCount =
-    tournament?.events?.reduce(
-      (total, event) =>
-        total + (Array.isArray(event.teams) ? event.teams.length : 0),
-      0,
-    ) ?? 0;
+    scopedEvents.reduce((total, event) => {
+      const eventTeams = Array.isArray(event.teams) ? event.teams : [];
+      return total + eventTeams.length;
+    }, 0) ?? 0;
 
   const isRegistrationOpen = tournament?.tournamentState === "published";
+  const statusMeta = getTournamentStatusMeta(tournament?.tournamentState);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const handleSync = async () => {
@@ -266,25 +283,25 @@ const EventStats = ({
       <div className="rounded-xl bg-[var(--color-surface)] p-4 shadow-sm border border-[var(--color-border)] flex flex-col justify-center">
         <div className="flex justify-between items-center mb-1">
           <p className="font-medium text-[var(--color-text)] text-sm">Status</p>
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="text-[10px] font-bold text-orange-500 uppercase tracking-wider hover:underline disabled:opacity-50"
-          >
-            {isSyncing ? "Syncing..." : "Sync"}
-          </button>
+          {canManage ? (
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="text-[10px] font-bold text-orange-500 uppercase tracking-wider hover:underline disabled:opacity-50"
+            >
+              {isSyncing ? "Syncing..." : "Sync"}
+            </button>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)]">
+              Viewer
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-bold text-center flex-1 capitalize ${
-              tournament?.tournamentState === "in_progress"
-                ? "bg-orange-100 text-orange-700"
-                : tournament?.tournamentState === "published"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-bold text-center flex-1 capitalize border ${statusMeta.className}`}
           >
-            {tournament?.tournamentState?.replace(/_/g, " ") || "Drafted"}
+            {statusMeta.label}
           </span>
         </div>
       </div>
@@ -1400,7 +1417,7 @@ const EventCrewTab = ({
 // 3. MAIN PAGE EXPORT
 // ==========================================
 export default function TournamentEventDetailsPage() {
-  const { session, isLoading: isAuthLoading } = useApp();
+  const { session, isLoading: isAuthLoading, activeOrganization } = useApp();
   const [searchParams, setSearchParams] = useState<URLSearchParams>(
     () => new URLSearchParams(),
   );
@@ -1413,6 +1430,11 @@ export default function TournamentEventDetailsPage() {
 
   const primaryTabs = ["About", "Events", "Summary", "Event Crew"];
   const [activeTab, setActiveTab] = useState("About");
+  const canManage = Boolean(
+    tournament?.organizationId &&
+      activeOrganization?.id &&
+      activeOrganization.id === tournament.organizationId,
+  );
 
   const shareUrl = React.useMemo(() => {
     const id = tournament?.id || tournamentId;
@@ -1566,6 +1588,7 @@ export default function TournamentEventDetailsPage() {
       <TopAppBar
         onShare={handleOpenShareSheet}
         settingsHref={`/org/tournaments/settings${toQuery({ t: tournamentId })}`}
+        canManage={canManage}
       />
       {isLoading && !tournament ? (
         <p className="text-center text-sm text-[var(--color-muted)] py-8">
@@ -1581,6 +1604,7 @@ export default function TournamentEventDetailsPage() {
           <EventStats
             tournament={tournament}
             onSync={() => void loadTournamentData()}
+            canManage={canManage}
           />
 
           {/* Pass our custom handler to PrimaryTabs */}

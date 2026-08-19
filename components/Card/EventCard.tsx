@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { EventData } from "@/lib/models";
+import { getEventStatusMeta } from "@/lib/statusLabels";
 
 type EventCardProps = {
   event: EventData;
@@ -18,12 +19,7 @@ export default function EventCard({
   href,
 }: EventCardProps) {
   const isJoined = cta === "Joined";
-  const statusColor =
-    event.eventState === "created"
-      ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
-      : event.eventState === "completed"
-        ? "bg-[var(--color-muted)]/20 text-[var(--color-muted)]"
-        : "bg-primary/20 text-primary";
+  const statusMeta = getEventStatusMeta(event.eventState, event.dueDate);
 
   const content = (
     <div className="p-4 rounded-[var(--radius-card)] bg-[var(--color-surface)] shadow-[var(--shadow-card)] border border-[var(--color-border)]">
@@ -36,8 +32,8 @@ export default function EventCard({
             {event.startDate}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor}`}>
-              {event.eventState}
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${statusMeta.className}`}>
+              {statusMeta.label}
             </span>
             {event.amount != null && (
               <span className="text-xs">

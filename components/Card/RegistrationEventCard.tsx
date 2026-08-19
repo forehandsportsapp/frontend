@@ -16,6 +16,7 @@ import { teamApi } from "@/lib/api/teamApi";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
 import { notificationApi } from "@/lib/api/notificationApi";
+import { getEventStatusMeta } from "@/lib/statusLabels";
 import { useApp } from "@/components/AppProvider";
 import {
   getCurrentAuthRedirect,
@@ -58,15 +59,8 @@ export default function RegistrationEventCard({
   const [error, setError] = useState("");
 
   const isRegistrationClosed = useMemo(() => {
-    if (event.eventState === "registration_closed") return true;
-    if (!event.dueDate) return false;
-
-    const dueDate = new Date(event.dueDate);
-    if (Number.isNaN(dueDate.getTime())) return false;
-
-    dueDate.setHours(23, 59, 59, 999);
-    return Date.now() > dueDate.getTime();
-  }, [event.dueDate, event.eventState]);
+    return event.eventState === "registration_closed";
+  }, [event.eventState]);
 
   const isEligible = !event.gender || event.gender === userProfile?.gender;
   const isDoubles =
@@ -86,28 +80,7 @@ export default function RegistrationEventCard({
     state === "REGISTERED" ||
     state === "CLOSED" ||
     viewableStates.has(event.eventState || "");
-  const eventStateLabel =
-    event.eventState === "completed"
-      ? "Completed"
-      : event.eventState === "round_over"
-        ? "Round Over"
-        : event.eventState === "in_progress"
-          ? "Live"
-          : event.eventState === "scheduled"
-            ? "Scheduled"
-            : event.eventState === "participants_finalized"
-              ? "Fixtures Ready"
-              : event.eventState === "registration_closed"
-                ? "Closed"
-                : "Open";
-  const eventStateClass =
-    event.eventState === "completed"
-      ? "bg-green-500/15 text-green-700 border-green-300"
-      : event.eventState === "in_progress"
-        ? "bg-orange-500/15 text-orange-700 border-orange-300"
-        : event.eventState === "registration_closed"
-          ? "bg-amber-500/15 text-amber-700 border-amber-300"
-      : "bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] border-[var(--color-border)]";
+  const eventStatusMeta = getEventStatusMeta(event.eventState, event.dueDate);
   const useChampionPage =
     event.eventState === "completed" ||
     event.eventState === "round_over" ||
@@ -288,6 +261,10 @@ export default function RegistrationEventCard({
           : err instanceof Error
             ? err.message
             : "";
+      if (message.toLowerCase().includes("already registered")) {
+        await loadRegistrationState();
+        return;
+      }
       setError(message || "Failed to add event");
       setState("IDLE");
     }
@@ -460,9 +437,9 @@ export default function RegistrationEventCard({
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span
-              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${eventStateClass}`}
+              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${eventStatusMeta.className}`}
             >
-              {eventStateLabel}
+              {eventStatusMeta.label}
             </span>
             {state === "REGISTERED" && (
               <span className="inline-flex rounded-full border border-green-300 bg-green-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-green-700">

@@ -16,6 +16,7 @@ import { tournamentApi } from "@/lib/api/tournamentApi";
 import { matchApi, type AvailableScorer } from "@/lib/api/matchApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
+import { useApp } from "@/components/AppProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -281,10 +282,11 @@ function MatchCard({
 export default function OrgManageMatchesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { activeOrganization } = useApp();
 
   const tournamentId = searchParams.get("tournamentId") || "";
   const eventId = searchParams.get("eventId") || "";
-  const viewOnly =
+  const requestedViewOnly =
     searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
   const safeBackHref = "/user/tournaments";
 
@@ -305,6 +307,13 @@ export default function OrgManageMatchesPage() {
   const [isScorerSheetLoading, setIsScorerSheetLoading] = useState(false);
   const [isAssigningScorer, setIsAssigningScorer] = useState(false);
   const [scorerSheetMessage, setScorerSheetMessage] = useState("");
+  const canManage = Boolean(
+    (tournament?.organizationId || tournament?.organization?.id) &&
+      activeOrganization?.id &&
+      activeOrganization.id ===
+        (tournament?.organizationId || tournament?.organization?.id),
+  );
+  const viewOnly = requestedViewOnly || !canManage;
 
   // 1. Load Tournament, Event and Teams Info
   useEffect(() => {
@@ -333,6 +342,8 @@ export default function OrgManageMatchesPage() {
             map[t.id] = t;
           });
           setTeams(map);
+        } else {
+          setTeams({});
         }
       } catch (error) {
         console.error("Failed to load core data", error);
@@ -449,7 +460,7 @@ export default function OrgManageMatchesPage() {
               scorerName,
               roundNumber: m.roundNumber || activeRound,
             };
-          });
+            });
           if (!cancelled) setMatches(mapped);
         } else {
           if (!cancelled) setMatches([]);

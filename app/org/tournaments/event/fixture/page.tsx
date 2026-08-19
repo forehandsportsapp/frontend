@@ -18,6 +18,7 @@ import { eventApi } from "@/lib/api/eventApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
 import TeamLogo from "@/components/TeamLogo";
+import { useApp } from "@/components/AppProvider";
 
 type FixtureMatch = {
   id: string;
@@ -48,8 +49,11 @@ function isPastStartTime(value: string) {
 function FixtureSetupContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { activeOrganization } = useApp();
   const tournamentId = searchParams.get("tournamentId") || "";
   const eventId = searchParams.get("eventId") || "";
+  const requestedViewOnly =
+    searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
 
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [event, setEvent] = useState<EventData | null>(null);
@@ -65,6 +69,13 @@ function FixtureSetupContent() {
   const [showByeModal, setShowByeModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const minStartTime = getMinStartTimeValue();
+  const canManage = Boolean(
+    (tournament?.organizationId || tournament?.organization?.id) &&
+      activeOrganization?.id &&
+      activeOrganization.id ===
+        (tournament?.organizationId || tournament?.organization?.id),
+  );
+  const viewOnly = requestedViewOnly || !canManage;
 
   // Selection State for Assignment
   const [selectedSlot, setSelectedSlot] = useState<{
@@ -89,7 +100,7 @@ function FixtureSetupContent() {
 
         const participatingTeams = Array.isArray(teamsData)
           ? teamsData.filter(
-              (t) =>
+              (t: any) =>
                 t.teamStatus === "participating" ||
                 t.teamStatus === "confirmed",
             )
@@ -385,7 +396,7 @@ function FixtureSetupContent() {
                 Teams with Bye
               </span>
             </div>
-            {!isAlreadyScheduled && (
+            {!isAlreadyScheduled && !viewOnly && (
               <button
                 onClick={handleResetBrackets}
                 className="px-4 py-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-sm font-bold text-red-500 hover:text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
@@ -448,7 +459,7 @@ function FixtureSetupContent() {
                           {getTeamName(team)}
                         </span>
                       </div>
-                      {!isAlreadyScheduled && (
+                      {!isAlreadyScheduled && !viewOnly && (
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleAssignClick(team)}
@@ -485,7 +496,7 @@ function FixtureSetupContent() {
                     Match {index + 1}
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                    {!isAlreadyScheduled && (
+                    {!isAlreadyScheduled && !viewOnly && (
                       <label className="flex-1 sm:flex-initial flex items-center justify-between sm:justify-start gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs font-bold text-[var(--color-text-secondary)] shadow-sm">
                         <span className="whitespace-nowrap">
                           {match.startTime ? "Start:" : "Set start time:"}
@@ -502,7 +513,7 @@ function FixtureSetupContent() {
                         />
                       </label>
                     )}
-                    {!isAlreadyScheduled && (
+                    {!isAlreadyScheduled && !viewOnly && (
                       <button
                         onClick={() => handleRemoveFixture(match.id)}
                         className="text-[var(--color-muted)] hover:text-red-500 transition-colors p-2 bg-[var(--color-surface-elevated)] border border-[var(--color-border)] rounded-xl shrink-0"
@@ -525,10 +536,10 @@ function FixtureSetupContent() {
                     {/* Team A Slot */}
                     <button
                       onClick={() =>
-                        !isAlreadyScheduled &&
+                        !isAlreadyScheduled && !viewOnly &&
                         handleSlotClick(match.id, "teamA", match.teamA)
                       }
-                      disabled={isAlreadyScheduled}
+                      disabled={isAlreadyScheduled || viewOnly}
                       className="relative group/slot"
                     >
                       <TeamLogo
@@ -539,7 +550,7 @@ function FixtureSetupContent() {
                           selectedSlot?.position === "teamA"
                         }
                       />
-                      {match.teamA && !isAlreadyScheduled && (
+                      {match.teamA && !isAlreadyScheduled && !viewOnly && (
                         <div className="absolute inset-0 bg-red-500/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity backdrop-blur-sm">
                           <XIcon size={16} />
                         </div>
@@ -556,10 +567,10 @@ function FixtureSetupContent() {
                     {/* Team B Slot */}
                     <button
                       onClick={() =>
-                        !isAlreadyScheduled &&
+                        !isAlreadyScheduled && !viewOnly &&
                         handleSlotClick(match.id, "teamB", match.teamB)
                       }
-                      disabled={isAlreadyScheduled}
+                      disabled={isAlreadyScheduled || viewOnly}
                       className="relative group/slot"
                     >
                       <TeamLogo
@@ -570,7 +581,7 @@ function FixtureSetupContent() {
                           selectedSlot?.position === "teamB"
                         }
                       />
-                      {match.teamB && !isAlreadyScheduled && (
+                      {match.teamB && !isAlreadyScheduled && !viewOnly && (
                         <div className="absolute inset-0 bg-red-500/80 text-white rounded-full flex items-center justify-center opacity-0 group-hover/slot:opacity-100 transition-opacity backdrop-blur-sm">
                           <XIcon size={16} />
                         </div>
@@ -593,7 +604,7 @@ function FixtureSetupContent() {
               </div>
             ))}
 
-            {!isAlreadyScheduled && (
+            {!isAlreadyScheduled && !viewOnly && (
               <button
                 onClick={handleAddFixture}
                 className="w-full mt-4 py-4 rounded-2xl border-2 border-dashed border-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)] hover:border-primary hover:bg-primary/5 font-bold text-sm transition-all flex items-center justify-center gap-2 group"
@@ -610,7 +621,7 @@ function FixtureSetupContent() {
       </div>
 
       {/* 6. Publish Fixtures Button */}
-      {!isAlreadyScheduled && (
+      {!isAlreadyScheduled && !viewOnly && (
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-[var(--color-surface)] border-t border-[var(--color-border)] z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
           <div className="max-w-3xl mx-auto">
             <button

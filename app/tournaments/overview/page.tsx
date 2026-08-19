@@ -20,21 +20,10 @@ export default function TournamentOverviewRedirectPage({
     redirect(`/tournaments/detail${toQuery({ id: tournamentId })}`);
   }
 
-  if (tab === "leaderboard") {
-    redirect(
-      `/org/tournaments/event/champion${toQuery({
-        tournamentId,
-        eventId,
-        viewOnly: "1",
-      })}`,
-    );
-  }
-
   redirect(
-    `/org/tournaments/event/matches${toQuery({
-      tournamentId,
-      eventId,
-      viewOnly: "1",
+    `/tournaments/detail${toQuery({
+      id: tournamentId,
+      selected: eventId,
     })}`,
   );
 }

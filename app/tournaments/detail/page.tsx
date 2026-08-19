@@ -21,6 +21,7 @@ import {
   XIcon,
 } from "@/components/Icons";
 import { tournamentApi } from "@/lib/api/tournamentApi";
+import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 import { useApp } from "@/components/AppProvider";
@@ -106,7 +107,7 @@ function isEventViewable(event?: EventData | null) {
 }
 
 function getEventDashboardTab(event?: EventData | null) {
-  return event?.eventState === "completed" ? "leaderboard" : "fixtures";
+  return "fixtures";
 }
 
 function shouldShowChampionPage(event?: EventData | null) {
@@ -167,7 +168,7 @@ function EventAccessCard({
               {status}
             </span>
             <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1 text-[11px] font-semibold text-[var(--color-text-secondary)]">
-              Leaderboard, fixtures and matches
+              View event
             </span>
           </div>
         </div>
@@ -269,8 +270,26 @@ function TournamentDetailContent() {
         setIsLoading(true);
         setError("");
         const data = await tournamentApi.getInfo(id);
+        const eventTeams = await Promise.all(
+          (data?.events ?? []).map(async (event) => {
+            if (!event?.id) return [];
+            try {
+              const teams = await teamApi.getTeamsByEvent(event.id);
+              return Array.isArray(teams) ? teams : [];
+            } catch (err) {
+              console.error("Failed to load teams for event", event.id, err);
+              return [];
+            }
+          }),
+        );
         if (active) {
-          setTournament(data);
+          setTournament({
+            ...data,
+            events: (data?.events ?? []).map((event, index) => ({
+              ...event,
+              teams: eventTeams[index] ?? [],
+            })),
+          });
         }
       } catch (err) {
         console.error("Failed to load tournament info", err);

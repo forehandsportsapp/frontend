@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TournamentData } from "@/lib/models";
 import { ChevronRightIcon } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
+import { getTournamentStatusMeta } from "@/lib/statusLabels";
 
 type TournamentCardProps = {
   tournament: TournamentData;
@@ -19,13 +20,7 @@ export default function TournamentCard({
 }: TournamentCardProps) {
   const url =
     href ?? "/tournaments/detail" + toQuery({ id: tournament.id || "" });
-  const statusColor =
-    tournament.tournamentState === "published" ||
-    tournament.tournamentState === "in_progress"
-      ? "bg-primary/20 text-primary"
-      : tournament.tournamentState === "drafted"
-        ? "bg-[var(--color-success)]/20 text-[var(--color-success)]"
-        : "bg-[var(--color-muted)]/20 text-[var(--color-muted)]";
+  const statusMeta = getTournamentStatusMeta(tournament.tournamentState);
 
   return (
     <Link
@@ -43,8 +38,8 @@ export default function TournamentCard({
             {tournament.startDate}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor}`}>
-              {tournament.tournamentState}
+            <span className={`text-xs px-2 py-0.5 rounded-full border ${statusMeta.className}`}>
+              {statusMeta.label}
             </span>
           </div>
         </div>
