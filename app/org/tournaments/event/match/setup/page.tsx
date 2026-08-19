@@ -10,7 +10,7 @@ import MatchReadyPopup from "@/components/QuickMatch/MatchReadyPopup";
 import { toQuery } from "@/lib/utils";
 import { ChevronDownIcon } from "@/components/Icons";
 import { matchApi } from "@/lib/api/matchApi";
-import { tournamentApi } from "@/lib/api/tournamentApi";
+import { eventApi } from "@/lib/api/eventApi";
 
 type SidePlayer = { name: string; initials: string; avatarUrl?: string | null };
 
@@ -192,13 +192,12 @@ export default function OrgMatchSetupPage() {
     const loadMatchSetup = async () => {
       try {
         setIsLoading(true);
-        const [matchInfo, tournamentInfo] = await Promise.all([
+        const [matchInfo, eventResult] = await Promise.all([
           matchApi.getMatchInfo(matchId),
-          tournamentApi.getInfo(tournamentId),
+          eventApi.getEventByIdSafe(eventId, tournamentId),
         ]);
 
-        const event =
-          tournamentInfo?.events?.find((e: any) => e?.id === eventId) || null;
+        const event = eventResult.event || null;
         const bestOf = Number(
           event?.setsPerMatch || matchInfo?.sets?.length || 1,
         );

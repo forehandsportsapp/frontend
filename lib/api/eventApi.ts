@@ -1,4 +1,5 @@
-import { EventData } from "../models";
+import { EventData, TournamentData } from "../models";
+import { tournamentApi } from "./tournamentApi";
 import { fetchApi, getApiUrl } from "./interceptor";
 
 export type EventResultStanding = {
@@ -93,6 +94,34 @@ export const eventApi = {
     if (error) throw error;
 
     return data as EventData;
+  },
+
+  /**
+   * Fetches a single event and falls back to the parent tournament payload if
+   * the direct event endpoint is unavailable in the running backend build.
+   */
+  getEventByIdSafe: async (
+    eventId: string,
+    tournamentId?: string,
+  ): Promise<{ event: EventData | null; tournament: TournamentData | null }> => {
+    try {
+      const event = await eventApi.getEventById(eventId);
+      return { event, tournament: (event as any)?.tournament ?? null };
+    } catch (error) {
+      if (!tournamentId) throw error;
+
+      const tournament = await tournamentApi.getInfo(tournamentId);
+      const event = (tournament?.events ?? []).find((item) => item.id === eventId) || null;
+      return {
+        event: event
+          ? {
+              ...event,
+              tournamentId: event.tournamentId || tournament.id || tournamentId,
+            }
+          : null,
+        tournament,
+      };
+    }
   },
 
   /**

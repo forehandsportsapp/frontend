@@ -12,7 +12,7 @@ import {
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
 import TeamLogo from "@/components/TeamLogo";
-import { tournamentApi } from "@/lib/api/tournamentApi";
+import { eventApi } from "@/lib/api/eventApi";
 import { matchApi, type AvailableScorer } from "@/lib/api/matchApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
@@ -134,6 +134,13 @@ function MatchCard({
       : match.status === "ended"
         ? "bg-green-600"
         : "bg-green-500";
+  const isEnded = match.status === "ended";
+  const isLive = match.status === "live";
+  const viewMatchHref = isEnded
+    ? "/org/tournaments/event/match/result" +
+      toQuery({ tournamentId, eventId, matchId: match.id, viewOnly: "1" })
+    : "/org/tournaments/event/match/live" +
+      toQuery({ tournamentId, eventId, matchId: match.id, viewOnly: "1" });
 
   const scoreA = String(match.setsWonA).padStart(2, "0");
   const scoreB = String(match.setsWonB).padStart(2, "0");
@@ -198,8 +205,8 @@ function MatchCard({
           {/* Center score */}
           <div className="flex flex-col items-center flex-shrink-0">
             {match.status === "upcoming" ? (
-              <span className="text-base font-bold text-[var(--color-muted)]">
-                VS
+              <span className="text-base font-bold uppercase tracking-widest text-[var(--color-muted)]">
+                Pending
               </span>
             ) : (
               <>
@@ -272,6 +279,23 @@ function MatchCard({
             {match.status === "live" ? "Manage Match" : "Start Match"}
           </Link>
         )}
+        {viewOnly && (
+          <>
+            {match.status === "upcoming" ? (
+              <div className="block w-full py-3 rounded-full text-center text-sm font-bold bg-[var(--color-surface-elevated)] text-[var(--color-muted)]">
+                Pending
+              </div>
+            ) : (
+              <Link
+                href={viewMatchHref}
+                className="block w-full py-3 rounded-full text-center text-sm font-bold text-white transition-all active:scale-[0.98]"
+                style={{ background: "var(--gradient-orange)" }}
+              >
+                {isLive ? "View Live Match" : "View Score"}
+              </Link>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -280,6 +304,14 @@ function MatchCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function OrgManageMatchesPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>}>
+      <OrgManageMatchesContent />
+    </React.Suspense>
+  );
+}
+
+function OrgManageMatchesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeOrganization } = useApp();
@@ -322,23 +354,27 @@ export default function OrgManageMatchesPage() {
     const loadCoreData = async () => {
       try {
         setIsLoading(true);
-        const [tData, teamsData] = await Promise.all([
-          tournamentApi.getInfo(tournamentId),
+        const [eventResult, teamsData] = await Promise.all([
+          eventApi.getEventByIdSafe(eventId, tournamentId),
           viewOnly ? Promise.resolve(null) : teamApi.getTeamsByEvent(eventId),
         ]);
 
-        setTournament(tData);
-        const foundEvent = tData.events?.find((e) => e.id === eventId) || null;
-        setEvent(foundEvent);
+        setTournament((eventResult.tournament as TournamentData) || null);
+        setEvent(eventResult.event || null);
 
-        if (foundEvent?.activeRound) {
-          setActiveRound(foundEvent.activeRound);
+        if (eventResult.event?.activeRound) {
+          setActiveRound(eventResult.event.activeRound);
         }
 
         // Create a teams lookup map
         if (Array.isArray(teamsData)) {
           const map: Record<string, any> = {};
-          teamsData.forEach((t) => {
+          teamsData
+            .filter(
+              (t: any) =>
+                String(t?.eventId || t?.event?.id || "") === eventId,
+            )
+            .forEach((t) => {
             map[t.id] = t;
           });
           setTeams(map);
@@ -370,7 +406,9 @@ export default function OrgManageMatchesPage() {
         );
 
         if (Array.isArray(mData)) {
-          const mapped: MatchRow[] = mData.map((m: any) => {
+          const mapped: MatchRow[] = mData
+            .filter((m: any) => String(m?.eventId || m?.event?.id || "") === eventId)
+            .map((m: any) => {
             let swA = 0;
             let swB = 0;
             const expectedSets = Number(event?.setsPerMatch || 1);
@@ -600,7 +638,7 @@ export default function OrgManageMatchesPage() {
           <ArrowLeftIcon size={20} />
         </button>
         <h1 className="font-bold text-base text-[var(--color-text)]">
-          {viewOnly ? "Tournament Overview" : "Manage Matches"}
+          {viewOnly ? "Event Overview" : "Manage Matches"}
         </h1>
       </div>
 

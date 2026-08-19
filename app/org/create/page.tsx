@@ -53,6 +53,14 @@ function formatOrgTypeLabel(orgTypeCode: string) {
 }
 
 export default function CreateOrgPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div></div>}>
+      <CreateOrgContent />
+    </React.Suspense>
+  );
+}
+
+function CreateOrgContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setOrganization } = useApp();

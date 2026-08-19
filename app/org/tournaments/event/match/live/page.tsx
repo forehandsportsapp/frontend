@@ -115,6 +115,8 @@ export default function OrgLiveMatchPage() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const matchId = searchParams.get("matchId");
+  const viewOnly =
+    searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
 
   const config = useMemo<MatchConfigData>(() => {
     if (!matchId) {
@@ -450,13 +452,22 @@ export default function OrgLiveMatchPage() {
       sideBActionLabel={sideBActionLabel}
       sideAPlayers={players.side0}
       sideBPlayers={players.side1}
-      showSwitchServe={showSwitchServe}
+      showScorerCard={!viewOnly}
+      viewOnly={viewOnly}
+      showSwitchServe={!viewOnly && showSwitchServe}
       showSwitchSides={showSwitchSides}
-      showWinnerConfirm={matchWinner != null}
-      showExitConfirm={showExitConfirm}
+      showWinnerConfirm={!viewOnly && matchWinner != null}
+      showExitConfirm={!viewOnly && showExitConfirm}
       isPaused={isPaused}
-      onPauseToggle={() => setIsPaused((p) => !p)}
-      onBack={() => setShowExitConfirm(true)}
+      onPauseToggle={viewOnly ? (() => {}) : () => setIsPaused((p) => !p)}
+      onBack={() =>
+        viewOnly
+          ? router.replace(
+              "/org/tournaments/event/matches" +
+                toQuery({ tournamentId, eventId, viewOnly: "1" }),
+            )
+          : setShowExitConfirm(true)
+      }
       onConfirmExit={() =>
         router.replace(
           "/org/tournaments/event/match/setup" +
@@ -464,16 +475,17 @@ export default function OrgLiveMatchPage() {
         )
       }
       onCloseExitConfirm={() => setShowExitConfirm(false)}
-      onUndo={undo}
-      onSideARally={() => applyRallyAction(0)}
-      onSideBRally={() => applyRallyAction(1)}
-      onSideAFault={() => applyFaultAction(0)}
-      onSideBFault={() => applyFaultAction(1)}
+      onUndo={viewOnly ? (() => {}) : undo}
+      onSideARally={viewOnly ? (() => {}) : () => applyRallyAction(0)}
+      onSideBRally={viewOnly ? (() => {}) : () => applyRallyAction(1)}
+      onSideAFault={viewOnly ? (() => {}) : () => applyFaultAction(0)}
+      onSideBFault={viewOnly ? (() => {}) : () => applyFaultAction(1)}
       onCloseSwitch={() => {
         setShowSwitchServe(false);
         setShowSwitchSides(false);
       }}
       onRestoreWinner={() => {
+        if (viewOnly) return;
         undo();
         setMatchWinner(null);
       }}

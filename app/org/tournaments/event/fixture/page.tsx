@@ -13,8 +13,8 @@ import {
   TrashIcon,
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
-import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
+import { tournamentApi } from "@/lib/api/tournamentApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
 import TeamLogo from "@/components/TeamLogo";
@@ -89,21 +89,25 @@ function FixtureSetupContent() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [tournamentData, teamsData] = await Promise.all([
-          tournamentApi.getInfo(tournamentId),
+        const [eventResult, teamsData] = await Promise.all([
+          eventApi.getEventByIdSafe(eventId, tournamentId),
           teamApi.getTeamsByEvent(eventId),
         ]);
 
-        setTournament(tournamentData);
-        const foundEvent = tournamentData.events?.find((e) => e.id === eventId);
-        setEvent(foundEvent || null);
+        setTournament((eventResult.tournament as TournamentData) || null);
+        setEvent(eventResult.event || null);
 
         const participatingTeams = Array.isArray(teamsData)
-          ? teamsData.filter(
-              (t: any) =>
-                t.teamStatus === "participating" ||
-                t.teamStatus === "confirmed",
-            )
+          ? teamsData
+              .filter(
+                (t: any) =>
+                  String(t?.eventId || t?.event?.id || "") === eventId,
+              )
+              .filter(
+                (t: any) =>
+                  t.teamStatus === "participating" ||
+                  t.teamStatus === "confirmed",
+              )
           : [];
 
         setTeams(participatingTeams);

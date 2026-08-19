@@ -11,8 +11,8 @@ import {
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
 import { teamApi, TeamState } from "@/lib/api/teamApi";
-import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
+import { tournamentApi } from "@/lib/api/tournamentApi";
 import { EventData } from "@/lib/models";
 import TeamLogo from "@/components/TeamLogo";
 
@@ -43,14 +43,19 @@ function EventParticipantsContent() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [tournamentData, teamsData] = await Promise.all([
-          tournamentApi.getInfo(tournamentId),
+        const [eventResult, teamsData] = await Promise.all([
+          eventApi.getEventByIdSafe(eventId, tournamentId),
           teamApi.getTeamsByEvent(eventId),
         ]);
 
-        const foundEvent = tournamentData.events?.find((e) => e.id === eventId);
-        setEvent(foundEvent || null);
-        setTeams(Array.isArray(teamsData) ? teamsData : []);
+        setEvent(eventResult.event as EventData | null);
+        const scopedTeams = Array.isArray(teamsData)
+          ? teamsData.filter(
+              (team: any) =>
+                String(team?.eventId || team?.event?.id || "") === eventId,
+            )
+          : [];
+        setTeams(scopedTeams);
       } catch (error) {
         console.error("Failed to load participants data", error);
       } finally {

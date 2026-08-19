@@ -16,7 +16,7 @@ import { teamApi } from "@/lib/api/teamApi";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
 import { notificationApi } from "@/lib/api/notificationApi";
-import { getEventStatusMeta } from "@/lib/statusLabels";
+import { getEventStatusMeta, isEventRegistrationOpen } from "@/lib/statusLabels";
 import { useApp } from "@/components/AppProvider";
 import {
   getCurrentAuthRedirect,
@@ -59,8 +59,8 @@ export default function RegistrationEventCard({
   const [error, setError] = useState("");
 
   const isRegistrationClosed = useMemo(() => {
-    return event.eventState === "registration_closed";
-  }, [event.eventState]);
+    return !isEventRegistrationOpen(event.eventState, event.dueDate);
+  }, [event.eventState, event.dueDate]);
 
   const isEligible = !event.gender || event.gender === userProfile?.gender;
   const isDoubles =
@@ -238,6 +238,15 @@ export default function RegistrationEventCard({
 
     try {
       setState("LOADING");
+      const existingTeam = await teamApi.getMyTeam(event.id).catch(() => null);
+      if (existingTeam?.id) {
+        setTeam(existingTeam);
+        setError("");
+        setState("REGISTERED");
+        onAddedChange(event.id, true);
+        return;
+      }
+
       const result = await teamApi.createTeam({
         eventId: event.id,
         participantIds: [session.user.id],

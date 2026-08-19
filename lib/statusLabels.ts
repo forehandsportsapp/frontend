@@ -50,14 +50,7 @@ export function getEventStatusMeta(
   dueDate?: string | null,
 ): StatusMeta {
   const normalized = (state || "").toLowerCase();
-  const isClosedByDate = (() => {
-    if (normalized === "registration_closed") return true;
-    if (!dueDate) return false;
-    const date = new Date(dueDate);
-    if (Number.isNaN(date.getTime())) return false;
-    date.setHours(23, 59, 59, 999);
-    return Date.now() > date.getTime();
-  })();
+  const isClosedByDate = !isEventRegistrationOpen(state, dueDate);
 
   if (normalized === "completed") {
     return { label: "Completed", className: baseBadgeClass("success") };
@@ -84,4 +77,17 @@ export function getEventStatusMeta(
   }
 
   return { label: "Open", className: baseBadgeClass("neutral") };
+}
+
+export function isEventRegistrationOpen(
+  state?: string | null,
+  dueDate?: string | null,
+) {
+  const normalized = (state || "").toLowerCase();
+  if (normalized === "registration_closed") return false;
+  if (!dueDate) return true;
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return true;
+  date.setHours(23, 59, 59, 999);
+  return Date.now() <= date.getTime();
 }

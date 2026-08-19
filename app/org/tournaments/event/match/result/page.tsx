@@ -42,6 +42,9 @@ export default function OrgMatchResultPage() {
 
   const tournamentId = searchParams.get("tournamentId");
   const matchId = searchParams.get("matchId");
+  const eventId = searchParams.get("eventId");
+  const viewOnly =
+    searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
 
   useEffect(() => {
     let cancelled = false;
@@ -114,11 +117,16 @@ export default function OrgMatchResultPage() {
 
   return (
     <Layout
-      title="Live Match"
+      title={viewOnly ? "Match Result" : "Live Match"}
       showBack
       showBottomNav={false}
       onBack={() =>
-        router.replace("/org/tournaments/detail" + toQuery({ t: tournamentId }))
+        router.replace(
+          viewOnly
+            ? "/org/tournaments/event/matches" +
+                toQuery({ tournamentId, eventId, viewOnly: "1" })
+            : "/org/tournaments/detail" + toQuery({ t: tournamentId }),
+        )
       }
     >
       <div className="relative min-h-screen">
@@ -176,25 +184,27 @@ export default function OrgMatchResultPage() {
           </motion.p>
         </div>
 
-        <motion.div
-          initial={{ y: 60 }}
-          animate={{ y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="fixed inset-x-0 bottom-0 z-50 bg-transparent px-6 pb-6 pt-4"
-        >
-          <button
-            type="button"
-            onClick={() => {
-              if (matchId) removeItem(`match:${matchId}:state`);
-              router.replace(
-                "/org/tournaments/detail" + toQuery({ t: tournamentId }),
-              );
-            }}
-            className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-white shadow-lg active:scale-[0.98] transition"
+        {!viewOnly && (
+          <motion.div
+            initial={{ y: 60 }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="fixed inset-x-0 bottom-0 z-50 bg-transparent px-6 pb-6 pt-4"
           >
-            Confirm Results
-          </button>
-        </motion.div>
+            <button
+              type="button"
+              onClick={() => {
+                if (matchId) removeItem(`match:${matchId}:state`);
+                router.replace(
+                  "/org/tournaments/detail" + toQuery({ t: tournamentId }),
+                );
+              }}
+              className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-white shadow-lg active:scale-[0.98] transition"
+            >
+              Confirm Results
+            </button>
+          </motion.div>
+        )}
       </div>
     </Layout>
   );

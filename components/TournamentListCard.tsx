@@ -87,7 +87,7 @@ export default function TournamentListCard({
       ? "bg-green-500/15 text-green-600 border-green-200"
       : statusLabel.toLowerCase() === "joined" || statusLabel.toLowerCase() === "participating"
         ? "bg-[#22c55e]/15 text-[#22c55e] border-[#22c55e]/30"
-        : statusLabel.toLowerCase() === "closed"
+        : statusLabel.toLowerCase().includes("closed")
           ? "bg-amber-500/15 text-amber-600 border-amber-300"
           : "bg-primary/15 text-primary border-primary/20";
 

@@ -11,7 +11,7 @@ function toQuery(params: Record<string, Primitive>): string {
 }
 
 export const routes = {
-  learnTopic: (topic: string) => `/learn/topic${toQuery({ topic })}`,
+  learnTopic: (topic: string) => `/learn/topic/${toQuery({ topic })}`,
   matchLive: (params: {
     matchId: string;
     format?: string;
@@ -26,51 +26,50 @@ export const routes = {
     p4?: string;
     court?: string;
     quick?: string | number;
-  }) => `/match/live${toQuery(params)}`,
-  orgDetail: (orgId: string) => `/org/detail${toQuery({ orgId })}`,
-  tournamentDetail: (id: string) => `/tournaments/detail${toQuery({ id })}`,
-  tournamentEvent: (id: string, event?: string) => `/tournaments/event${toQuery({ id, event })}`,
+  }) => `/match/live/${toQuery(params)}`,
+  orgDetail: (orgId: string) => `/org/detail/${toQuery({ orgId })}`,
+  tournamentDetail: (id: string) => `/tournaments/detail/${toQuery({ id })}`,
+  tournamentEvent: (id: string, event?: string) => `/tournaments/event/${toQuery({ id, event })}`,
   tournamentEventOverview: (id: string, eventId: string, tab?: "leaderboard" | "fixtures") =>
     tab === "leaderboard"
-      ? `/org/tournaments/event/champion${toQuery({
+      ? `/org/tournaments/event/champion/${toQuery({
           tournamentId: id,
           eventId,
           viewOnly: "1",
         })}`
-      : `/org/tournaments/event/matches${toQuery({
+      : `/org/tournaments/event/matches/${toQuery({
           tournamentId: id,
           eventId,
           viewOnly: "1",
         })}`,
   tournamentMatches: (id: string) =>
-    `/org/tournaments/event/matches${toQuery({ tournamentId: id, viewOnly: "1" })}`,
+    `/org/tournaments/event/matches/${toQuery({ tournamentId: id, viewOnly: "1" })}`,
   tournamentEventMatches: (id: string, eventId: string) =>
-    `/org/tournaments/event/matches${toQuery({
+    `/org/tournaments/event/matches/${toQuery({
       tournamentId: id,
       eventId,
       viewOnly: "1",
     })}`,
-  tournamentCheckout: (id: string) => `/tournaments/checkout${toQuery({ id })}`,
-  orgTournamentDetail: (t: string) => `/org/tournaments/detail${toQuery({ t })}`,
+  tournamentCheckout: (id: string) => `/tournaments/checkout/${toQuery({ id })}`,
+  orgTournamentDetail: (t: string) => `/org/tournaments/detail/${toQuery({ t })}`,
   orgEventParticipants: (tournamentId: string, eventId: string) =>
-    `/org/tournaments/event/participants${toQuery({ tournamentId, eventId })}`,
+    `/org/tournaments/event/participants/${toQuery({ tournamentId, eventId })}`,
   orgEventFixture: (tournamentId: string, eventId: string) =>
-    `/org/tournaments/event/fixture${toQuery({ tournamentId, eventId })}`,
+    `/org/tournaments/event/fixture/${toQuery({ tournamentId, eventId })}`,
   orgEventChampion: (tournamentId: string, eventId: string) =>
-    `/org/tournaments/event/champion${toQuery({ tournamentId, eventId })}`,
+    `/org/tournaments/event/champion/${toQuery({ tournamentId, eventId })}`,
   orgEventMatches: (tournamentId: string, eventId: string) =>
-    `/org/tournaments/event/matches${toQuery({ tournamentId, eventId })}`,
+    `/org/tournaments/event/matches/${toQuery({ tournamentId, eventId })}`,
   orgMatchSetup: (tournamentId: string, eventId: string, matchId: string) =>
-    `/org/tournaments/event/match/setup${toQuery({ tournamentId, eventId, matchId })}`,
+    `/org/tournaments/event/match/setup/${toQuery({ tournamentId, eventId, matchId })}`,
   orgMatchLive: (tournamentId: string, eventId: string, matchId: string) =>
-    `/org/tournaments/event/match/live${toQuery({ tournamentId, eventId, matchId })}`,
+    `/org/tournaments/event/match/live/${toQuery({ tournamentId, eventId, matchId })}`,
   orgMatchResult: (tournamentId: string, eventId: string, matchId: string) =>
-    `/org/tournaments/event/match/result${toQuery({ tournamentId, eventId, matchId })}`,
-  userSettings: () => "/user/settings",
-  userSettingsProfile: () => "/user/settings/profile",
-  userSettingsNotifications: () => "/user/settings/notifications",
-  userSettingsPrivacy: () => "/user/settings/privacy",
-  userSettingsPreferences: () => "/user/settings/preferences",
-  userSettingsHelp: () => "/user/settings/help",
+    `/org/tournaments/event/match/result/${toQuery({ tournamentId, eventId, matchId })}`,
+  userSettings: () => "/user/settings/",
+  userSettingsProfile: () => "/user/settings/profile/",
+  userSettingsNotifications: () => "/user/settings/notifications/",
+  userSettingsPrivacy: () => "/user/settings/privacy/",
+  userSettingsPreferences: () => "/user/settings/preferences/",
+  userSettingsHelp: () => "/user/settings/help/",
 };
-

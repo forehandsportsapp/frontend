@@ -33,6 +33,7 @@ interface LiveMatchReplicaProps {
   sideAPlayers?: PlayerIcon[];
   sideBPlayers?: PlayerIcon[];
   showScorerCard?: boolean;
+  viewOnly?: boolean;
   showSwitchServe: boolean;
   showWinnerConfirm: boolean;
   showExitConfirm: boolean;
@@ -147,6 +148,7 @@ export default function LiveMatchReplica({
   sideAPlayers = [],
   sideBPlayers = [],
   showScorerCard = true,
+  viewOnly = false,
   showSwitchServe,
   showWinnerConfirm,
   showExitConfirm,
@@ -192,13 +194,15 @@ export default function LiveMatchReplica({
         <section className="mb-4 rounded-[24px] border border-border bg-surface p-5 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-[15px] font-bold">Match Overview</h2>
-            <button
-              type="button"
-              onClick={onUndo}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary active:scale-95 transition-transform"
-            >
-              <RotateCcwIcon size={14} strokeWidth={2.5} /> Undo
-            </button>
+            {!viewOnly && (
+              <button
+                type="button"
+                onClick={onUndo}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-primary active:scale-95 transition-transform"
+              >
+                <RotateCcwIcon size={14} strokeWidth={2.5} /> Undo
+              </button>
+            )}
           </div>
 
           <div
@@ -223,14 +227,16 @@ export default function LiveMatchReplica({
                 <span className="text-[10px] text-muted font-bold uppercase tracking-wider">
                   Match Timer
                 </span>
-                <button
-                  type="button"
-                  onClick={onPauseToggle}
-                  className="text-muted hover:text-primary active:scale-[0.85] transition-all cursor-pointer flex items-center justify-center p-0.5 rounded"
-                  title="Pause Match"
-                >
-                  <TimerResetIcon size={12} />
-                </button>
+                {!viewOnly && (
+                  <button
+                    type="button"
+                    onClick={onPauseToggle}
+                    className="text-muted hover:text-primary active:scale-[0.85] transition-all cursor-pointer flex items-center justify-center p-0.5 rounded"
+                    title="Pause Match"
+                  >
+                    <TimerResetIcon size={12} />
+                  </button>
+                )}
               </div>
               <p className="py-1 text-center text-sm font-bold tabular-nums">
                 {matchTimer}
@@ -295,36 +301,38 @@ export default function LiveMatchReplica({
         </section>
 
         {/* Action Buttons */}
-        <section className="grid grid-cols-2 gap-2.5">
-          <button
-            type="button"
-            onClick={onSideARally}
-            className="h-10 rounded-[10px] bg-primary text-[13px] font-semibold text-primary-contrast"
-          >
-            {sideAActionLabel} Won Rally
-          </button>
-          <button
-            type="button"
-            onClick={onSideBRally}
-            className="h-10 rounded-[10px] bg-primary text-[13px] font-semibold text-primary-contrast"
-          >
-            {sideBActionLabel} Scored
-          </button>
-          <button
-            type="button"
-            onClick={onSideAFault}
-            className="surface-row h-10 rounded-[10px] text-[13px] font-semibold"
-          >
-            {sideAActionLabel} Fault
-          </button>
-          <button
-            type="button"
-            onClick={onSideBFault}
-            className="surface-row h-10 rounded-[10px] text-[13px] font-semibold"
-          >
-            {sideBActionLabel} Fault
-          </button>
-        </section>
+        {!viewOnly && (
+          <section className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={onSideARally}
+              className="h-10 rounded-[10px] bg-primary text-[13px] font-semibold text-primary-contrast"
+            >
+              {sideAActionLabel} Won Rally
+            </button>
+            <button
+              type="button"
+              onClick={onSideBRally}
+              className="h-10 rounded-[10px] bg-primary text-[13px] font-semibold text-primary-contrast"
+            >
+              {sideBActionLabel} Scored
+            </button>
+            <button
+              type="button"
+              onClick={onSideAFault}
+              className="surface-row h-10 rounded-[10px] text-[13px] font-semibold"
+            >
+              {sideAActionLabel} Fault
+            </button>
+            <button
+              type="button"
+              onClick={onSideBFault}
+              className="surface-row h-10 rounded-[10px] text-[13px] font-semibold"
+            >
+              {sideBActionLabel} Fault
+            </button>
+          </section>
+        )}
 
       </div>
 

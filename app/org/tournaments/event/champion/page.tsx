@@ -13,6 +13,14 @@ function initials(name: string) {
 }
 
 export default function EventChampionPage() {
+  return (
+    <React.Suspense fallback={<div className="min-h-screen bg-gradient-to-b from-orange-500 to-orange-600 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent"></div></div>}>
+      <EventChampionContent />
+    </React.Suspense>
+  );
+}
+
+function EventChampionContent() {
   const searchParams = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,11 +54,28 @@ export default function EventChampionPage() {
       try {
         const result = await eventApi.getEventResults(eventId);
         if (cancelled) return;
+        if (result.event?.id !== eventId) {
+          console.warn("Ignored champion data for a mismatched event", {
+            expectedEventId: eventId,
+            receivedEventId: result.event?.id ?? null,
+          });
+          setEventName("Event");
+          setChampion(null);
+          setStandings([]);
+          return;
+        }
         setEventName(result.event?.name || "Event");
         setChampion(result.champion ?? null);
-        setStandings(result.standings ?? []);
+        setStandings(
+          Array.isArray(result.standings) ? result.standings : [],
+        );
       } catch (error) {
         console.error("Failed to load event results", error);
+        if (!cancelled) {
+          setEventName("Event");
+          setChampion(null);
+          setStandings([]);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

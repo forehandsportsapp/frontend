@@ -14,6 +14,7 @@ import { useApp } from "@/components/AppProvider";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { matchApi } from "@/lib/api/matchApi";
+import { isEventRegistrationOpen } from "@/lib/statusLabels";
 import { TournamentData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 import TournamentFilterDrawer from "@/components/TournamentFilterDrawer";
@@ -131,7 +132,7 @@ export default function UserTournamentsPage() {
           data = await tournamentApi.getHistoryTournaments();
 
         if (active) {
-          setTournaments(data);
+          console.log('Received tournaments:', data.map(t => t.id)); setTournaments(data);
         }
       } catch (error) {
         console.error(`Failed to load ${activeTab} tournaments`, error);
@@ -178,12 +179,17 @@ export default function UserTournamentsPage() {
       const sports = Array.from(
         new Set(t.events?.map((e) => e.sportsOption?.label).filter(Boolean)),
       ) as string[];
+      const isRegistrationOpen =
+        t.events?.some((event) =>
+          isEventRegistrationOpen(event.eventState, event.dueDate),
+        ) || false;
 
       const subtitle = sports.slice(0, 3).join(" | ") || "Multiple Sports";
 
       let cta: "Register" | "View" | "Chevron" = "Register";
       if (activeTab === "joined") cta = "View";
       else if (activeTab === "history") cta = "Chevron";
+      else if (!isRegistrationOpen) cta = "View";
 
       return {
         id: t.id!,
@@ -196,7 +202,9 @@ export default function UserTournamentsPage() {
         cta,
         statusLabel:
           activeTab === "browse"
-            ? "Open"
+            ? isRegistrationOpen
+              ? "Open"
+              : "Registration Closed"
             : activeTab === "joined"
               ? "Joined"
               : "History",
