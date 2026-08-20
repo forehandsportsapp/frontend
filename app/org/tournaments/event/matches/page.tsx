@@ -334,7 +334,9 @@ function OrgManageMatchesContent() {
   const eventId = searchParams.get("eventId") || "";
   const requestedViewOnly =
     searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
-  const safeBackHref = "/user/tournaments";
+  const safeBackHref = tournamentId
+    ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
+    : "/user/tournaments";
 
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [event, setEvent] = useState<EventData | null>(null);

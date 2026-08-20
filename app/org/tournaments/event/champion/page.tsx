@@ -32,9 +32,12 @@ function EventChampionContent() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const viewOnly = searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
-  const backHref = viewOnly
-    ? "/user/tournaments"
-    : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
+  const backHref =
+    viewOnly && tournamentId
+      ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
+      : viewOnly
+        ? "/user/tournaments"
+        : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
   const fixtureHref = `/org/tournaments/event/fixture${toQuery({
     tournamentId: tournamentId || "",
     eventId: eventId || "",

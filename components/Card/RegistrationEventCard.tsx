@@ -51,6 +51,8 @@ export default function RegistrationEventCard({
   const router = useRouter();
   const { userProfile, session } = useApp();
   const [state, setState] = useState<LocalState>("LOADING");
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
   const [team, setTeam] = useState<TeamData | null>(null);
   const [invite, setInvite] = useState<any>(null);
   const [partnerPhone, setPartnerPhone] = useState("");
@@ -98,18 +100,27 @@ export default function RegistrationEventCard({
       })}`;
 
   const loadRegistrationState = useCallback(async () => {
-    if (!event.id) return;
+    if (!event.id) {
+      setHasLoaded(true);
+      return;
+    }
     if (!session?.user?.id) {
       setState("IDLE");
+      setHasLoaded(true);
       return;
     }
     if (!userProfile) {
       setState("IDLE");
+      setHasLoaded(true);
       return;
     }
 
     try {
-      setState("LOADING");
+      if (!hasLoaded) {
+        setState("LOADING");
+      } else {
+        setIsBusy(true);
+      }
       setError("");
       const myTeam = await teamApi.getMyTeam(event.id).catch(() => null);
 
@@ -125,7 +136,6 @@ export default function RegistrationEventCard({
 
         if (isRegistrationClosed) {
           setState("CLOSED");
-          setError("Registration is closed for this event.");
           return;
         }
 
@@ -189,7 +199,6 @@ export default function RegistrationEventCard({
       } else {
         if (isRegistrationClosed) {
           setState("CLOSED");
-          setError("Registration is closed for this event.");
           return;
         }
 
@@ -202,6 +211,9 @@ export default function RegistrationEventCard({
     } catch (err) {
       console.error("Failed to load registration state", err);
       setError("Failed to load state");
+    } finally {
+      setHasLoaded(true);
+      setIsBusy(false);
     }
   }, [
     event.id,
@@ -212,6 +224,7 @@ export default function RegistrationEventCard({
     isInitiallyAdded,
     isRegistrationClosed,
     onAddedChange,
+    hasLoaded,
   ]);
 
   useEffect(() => {
@@ -237,7 +250,8 @@ export default function RegistrationEventCard({
     }
 
     try {
-      setState("LOADING");
+      setIsBusy(true);
+      setError("");
       const existingTeam = await teamApi.getMyTeam(event.id).catch(() => null);
       if (existingTeam?.id) {
         setTeam(existingTeam);
@@ -276,6 +290,8 @@ export default function RegistrationEventCard({
       }
       setError(message || "Failed to add event");
       setState("IDLE");
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -512,9 +528,16 @@ export default function RegistrationEventCard({
           {state === "IDLE" && !isRegistrationClosed && (
             <button
               onClick={handleAdd}
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-text)] transition-all hover:border-gray-400 active:scale-95"
+              disabled={isBusy}
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-text)] transition-all hover:border-gray-400 active:scale-95 disabled:cursor-wait disabled:opacity-70"
             >
-              <PlusIcon size={14} /> Add
+              {isBusy ? (
+                "Adding..."
+              ) : (
+                <>
+                  <PlusIcon size={14} /> Add
+                </>
+              )}
             </button>
           )}
 
@@ -777,7 +800,7 @@ export default function RegistrationEventCard({
           </div>
         )}
 
-      {error && (
+      {error && state !== "CLOSED" && (
         <p className="mt-3 text-[12px] text-red-500 font-medium">{error}</p>
       )}
     </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
@@ -15,7 +15,6 @@ import {
   MapPinIcon,
   PhoneIcon,
   PlusIcon,
-  SearchIcon,
   TimerIcon,
   TrashIcon,
   XIcon,
@@ -153,16 +152,16 @@ function EventAccessCard({
   return (
     <Link
       href={href}
-      className="block rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg transition-all hover:border-[#ff7a1a]/30 active:scale-[0.99]"
+      className="block rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg transition-all hover:border-[#ff7a1a]/30 active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-[20px] font-bold text-[var(--color-text)]">
+          <h3 className="truncate text-[20px] font-bold leading-tight text-[var(--color-text)] max-[380px]:text-[18px]">
             {event.name}
           </h3>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2.5 flex flex-wrap gap-2">
             <span
-              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest ${statusMeta.className}`}
+              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest max-[380px]:px-2.5 max-[380px]:text-[10px] ${statusMeta.className}`}
             >
               {statusMeta.label}
             </span>
@@ -170,10 +169,10 @@ function EventAccessCard({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 text-[13px] text-[var(--color-text-secondary)]">
-        <div className="flex items-center gap-2 opacity-70">
-          <CalendarIcon size={14} className="text-[#ff7a1a]" />
-          <span>
+      <div className="mt-4 grid grid-cols-1 gap-2.5 text-[13px] text-[var(--color-text-secondary)] min-[430px]:grid-cols-2 max-[380px]:text-[12px]">
+        <div className="flex min-w-0 items-start gap-2 opacity-70">
+          <CalendarIcon size={14} className="mt-0.5 shrink-0 text-[#ff7a1a]" />
+          <span className="leading-snug">
             Starts:{" "}
             {event.startDate
               ? new Date(event.startDate).toLocaleDateString("en-IN", {
@@ -184,9 +183,9 @@ function EventAccessCard({
               : "TBA"}
           </span>
         </div>
-        <div className="flex items-center gap-2 justify-self-end text-right opacity-70">
-          <SearchIcon size={14} className="text-[#ff7a1a]" />
-          <span>
+        <div className="flex min-w-0 items-start gap-2 opacity-70 min-[430px]:justify-self-end min-[430px]:text-right">
+          <TimerIcon size={14} className="mt-0.5 shrink-0 text-[#ff7a1a]" />
+          <span className="leading-snug">
             Closes:{" "}
             {event.dueDate
               ? new Date(event.dueDate).toLocaleDateString("en-IN", {
@@ -199,9 +198,9 @@ function EventAccessCard({
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-5">
-        <div>
-          <p className="text-[24px] font-bold text-[#ff7a1a]">
+      <div className="mt-4 flex flex-col gap-3 border-t border-[var(--color-border)] pt-4 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
+        <div className="min-w-0">
+          <p className="text-[24px] font-bold leading-tight text-[#ff7a1a] max-[380px]:text-[22px]">
             {event.amount === 0 ? (
               "Free Entry"
             ) : (
@@ -219,7 +218,7 @@ function EventAccessCard({
         </div>
 
         <span
-          className={`inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full px-6 text-[16px] font-bold transition-all ${
+          className={`inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full px-6 text-[16px] font-bold transition-all max-[380px]:h-10 max-[380px]:min-w-[112px] max-[380px]:px-5 max-[380px]:text-[15px] ${
             isRegistrationOpen
               ? "bg-[#ff7a1a] text-white shadow-lg shadow-orange-500/20"
               : "cursor-not-allowed border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-muted)] opacity-70"
@@ -304,7 +303,15 @@ function TournamentDetailContent() {
     };
   }, [id]);
 
-  const [tab, setTab] = useState<MainTab>("about");
+  const [tab, setTab] = useState<MainTab>(
+    searchParams.get("tab") === "events" ? "events" : "about",
+  );
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "events") {
+      setTab("events");
+    }
+  }, [searchParams]);
 
   const sortedEvents = useMemo(() => {
     const events = tournament?.events || [];
@@ -345,9 +352,9 @@ function TournamentDetailContent() {
     return events.some((event) => isEventRegistrationOpen(event));
   }, [tournament?.events]);
 
-  const handleAddedChange = (eventId: string, isAdded: boolean) => {
+  const handleAddedChange = useCallback((eventId: string, isAdded: boolean) => {
     setSelected((prev) => ({ ...prev, [eventId]: isAdded }));
-  };
+  }, []);
 
   const handleOpenShareSheet = () => {
     setIsCopied(false);
