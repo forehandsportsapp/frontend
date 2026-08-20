@@ -7,7 +7,7 @@ import {
   TrashIcon,
   InfoIcon,
   CalendarIcon,
-  SearchIcon,
+  TimerIcon,
   CheckIcon,
   XIcon,
 } from "@/components/Icons";
@@ -464,14 +464,14 @@ export default function RegistrationEventCard({
               </span>
             )}
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)] opacity-60">
-              <CalendarIcon size={14} className="text-[#ff7a1a]" />
-              <span>Starts: {formatDate(event.startDate)}</span>
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[max-content_max-content] sm:gap-x-6 sm:gap-y-4">
+            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)] opacity-60">
+              <CalendarIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
+              <span className="leading-snug">Starts: {formatDate(event.startDate)}</span>
             </div>
-            <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)] opacity-60">
-              <SearchIcon size={14} className="text-[#ff7a1a]" />
-              <span>Closes: {formatDate(event.dueDate)}</span>
+            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)] opacity-60">
+              <TimerIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
+              <span className="leading-snug">Closes: {formatDate(event.dueDate)}</span>
             </div>
           </div>
         </div>
