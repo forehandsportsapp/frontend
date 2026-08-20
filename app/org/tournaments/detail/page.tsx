@@ -547,7 +547,7 @@ const getWorkflowSteps = (event: EventData, tournamentId: string) => {
       title: "Results",
       state: "inactive",
       subtext: undefined as string | undefined,
-      actionLabel: "View Champion",
+      actionLabel: "View Winners",
       href: championHref,
       isLast: true,
     },
@@ -594,7 +594,7 @@ const getWorkflowSteps = (event: EventData, tournamentId: string) => {
   // Results step
   if (state === "completed") {
     steps[3].state = "completed";
-    steps[3].actionLabel = "View Champion";
+    steps[3].actionLabel = "View Winners";
   }
 
   return steps;
@@ -1591,9 +1591,29 @@ export default function TournamentEventDetailsPage() {
         canManage={canManage}
       />
       {isLoading && !tournament ? (
-        <p className="text-center text-sm text-[var(--color-muted)] py-8">
-          Loading tournament...
-        </p>
+        <div className="space-y-4 animate-pulse">
+          <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-[var(--color-surface-elevated)]" />
+              <div className="min-w-0 flex-1">
+                <div className="h-5 w-40 rounded-full bg-[var(--color-surface-elevated)]" />
+                <div className="mt-2 h-4 w-24 rounded-full bg-[var(--color-surface-elevated)]" />
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="h-24 rounded-2xl bg-[var(--color-surface-elevated)]" />
+              <div className="h-24 rounded-2xl bg-[var(--color-surface-elevated)]" />
+            </div>
+          </div>
+          <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+            <div className="h-6 w-36 rounded-full bg-[var(--color-surface-elevated)]" />
+            <div className="mt-4 space-y-3">
+              <div className="h-16 rounded-2xl bg-[var(--color-surface-elevated)]" />
+              <div className="h-16 rounded-2xl bg-[var(--color-surface-elevated)]" />
+              <div className="h-16 rounded-2xl bg-[var(--color-surface-elevated)]" />
+            </div>
+          </div>
+        </div>
       ) : errorMessage ? (
         <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
           {errorMessage}

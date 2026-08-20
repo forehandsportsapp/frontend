@@ -61,6 +61,31 @@ function getTournamentLogoUrl(t: TournamentData) {
   );
 }
 
+function TournamentCardSkeleton() {
+  return (
+    <div className="rounded-[22px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] animate-pulse">
+      <div className="grid grid-cols-[48px_minmax(0,1fr)] gap-x-4 gap-y-5">
+        <div className="h-12 w-12 rounded-full bg-[var(--color-surface-elevated)]" />
+        <div className="min-w-0">
+          <div className="h-5 w-3/5 rounded-full bg-[var(--color-surface-elevated)]" />
+          <div className="mt-2 h-4 w-4/5 rounded-full bg-[var(--color-surface-elevated)]" />
+          <div className="mt-3 flex gap-2">
+            <div className="h-5 w-16 rounded-full bg-[var(--color-surface-elevated)]" />
+            <div className="h-5 w-20 rounded-full bg-[var(--color-surface-elevated)]" />
+          </div>
+        </div>
+        <div className="col-span-2 grid grid-cols-2 gap-x-8 gap-y-3.5">
+          <div className="h-4 rounded-full bg-[var(--color-surface-elevated)]" />
+          <div className="h-4 rounded-full bg-[var(--color-surface-elevated)]" />
+          <div className="h-4 rounded-full bg-[var(--color-surface-elevated)]" />
+          <div className="h-4 rounded-full bg-[var(--color-surface-elevated)]" />
+        </div>
+        <div className="col-span-2 h-12 rounded-xl bg-[var(--color-surface-elevated)]" />
+      </div>
+    </div>
+  );
+}
+
 
 
 type TopTab = "browse" | "joined" | "history";
@@ -376,11 +401,10 @@ export default function UserTournamentsPage() {
 
         <div className="space-y-4 px-4 pb-24 pt-4">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-              <p className="mt-4 text-[var(--color-text-muted)]">
-                Loading...
-              </p>
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <TournamentCardSkeleton key={index} />
+              ))}
             </div>
           ) : list.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">

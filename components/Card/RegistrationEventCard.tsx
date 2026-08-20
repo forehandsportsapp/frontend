@@ -463,11 +463,6 @@ export default function RegistrationEventCard({
                 {event.gender} only
               </span>
             )}
-            {state === "CLOSED" && (
-              <span className="inline-flex rounded-full border border-amber-300 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-600">
-                Closed
-              </span>
-            )}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 text-[13px] text-[var(--color-text-secondary)] opacity-60">

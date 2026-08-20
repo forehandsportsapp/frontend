@@ -346,6 +346,7 @@ function OrgManageMatchesContent() {
         (tournament?.organizationId || tournament?.organization?.id),
   );
   const viewOnly = requestedViewOnly || !canManage;
+  const canViewWinners = event?.eventState === "completed";
 
   // 1. Load Tournament, Event and Teams Info
   useEffect(() => {
@@ -716,16 +717,18 @@ function OrgManageMatchesContent() {
               {f.label}
             </button>
           ))}
-          <Link
-            href={`/org/tournaments/event/champion${toQuery({
-              tournamentId,
-              eventId,
-              viewOnly: "1",
-            })}`}
-            className="shrink-0 rounded-full border border-orange-400 bg-orange-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm shadow-orange-200 transition-colors hover:bg-orange-600"
-          >
-            View Leaderboard
-          </Link>
+          {canViewWinners && (
+            <Link
+              href={`/org/tournaments/event/champion${toQuery({
+                tournamentId,
+                eventId,
+                viewOnly: "1",
+              })}`}
+              className="shrink-0 rounded-full border border-[var(--color-primary)] bg-[var(--color-primary)] px-4 py-1.5 text-sm font-semibold text-[var(--color-primary-contrast)] shadow-sm shadow-orange-200 transition-colors hover:bg-[var(--color-primary-hover)]"
+            >
+              View Winners
+            </Link>
+          )}
         </div>
 
         {/* ── Round Navigator ── */}

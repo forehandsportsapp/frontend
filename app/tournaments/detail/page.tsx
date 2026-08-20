@@ -148,9 +148,13 @@ function EventAccessCard({
   const eventId = event.id || "";
   const href = getEventDashboardHref(tournamentId, eventId, event);
   const statusMeta = getEventStatusMeta(event.eventState, event.dueDate);
+  const isRegistrationOpen = isEventRegistrationOpen(event);
 
   return (
-    <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg transition-all">
+    <Link
+      href={href}
+      className="block rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-lg transition-all hover:border-[#ff7a1a]/30 active:scale-[0.99]"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-[20px] font-bold text-[var(--color-text)]">
@@ -214,14 +218,17 @@ function EventAccessCard({
           )}
         </div>
 
-        <Link
-          href={href}
-          className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full bg-[#ff7a1a] px-6 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95"
+        <span
+          className={`inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full px-6 text-[16px] font-bold transition-all ${
+            isRegistrationOpen
+              ? "bg-[#ff7a1a] text-white shadow-lg shadow-orange-500/20"
+              : "cursor-not-allowed border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-muted)] opacity-70"
+          }`}
         >
-          View
-        </Link>
+          Register
+        </span>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -373,8 +380,25 @@ function TournamentDetailContent() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)] p-4">
+        <div className="w-full max-w-md space-y-4">
+          <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm animate-pulse">
+            <div className="h-8 w-28 rounded-full bg-[var(--color-surface-elevated)]" />
+            <div className="mt-4 h-6 w-3/4 rounded-full bg-[var(--color-surface-elevated)]" />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="h-28 rounded-2xl bg-[var(--color-surface-elevated)]" />
+              <div className="h-28 rounded-2xl bg-[var(--color-surface-elevated)]" />
+            </div>
+            <div className="mt-4 h-36 rounded-2xl bg-[var(--color-surface-elevated)]" />
+          </div>
+          <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm animate-pulse">
+            <div className="h-5 w-40 rounded-full bg-[var(--color-surface-elevated)]" />
+            <div className="mt-4 space-y-3">
+              <div className="h-24 rounded-2xl bg-[var(--color-surface-elevated)]" />
+              <div className="h-24 rounded-2xl bg-[var(--color-surface-elevated)]" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -686,8 +710,30 @@ export default function TournamentDetailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#ff7a1a] border-t-transparent" />
+        <div className="min-h-screen bg-[var(--color-background)] p-4">
+          <div className="mx-auto w-full max-w-md space-y-4 animate-pulse">
+            <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-full bg-[var(--color-surface-elevated)]" />
+                <div className="h-10 w-10 rounded-full bg-[var(--color-surface-elevated)]" />
+              </div>
+              <div className="mt-8 flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-[var(--color-surface-elevated)]" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-7 w-3/4 rounded-full bg-[var(--color-surface-elevated)]" />
+                  <div className="h-4 w-1/2 rounded-full bg-[var(--color-surface-elevated)]" />
+                </div>
+              </div>
+              <div className="mt-8 grid grid-cols-2 gap-4">
+                <div className="h-28 rounded-[28px] bg-[var(--color-surface-elevated)]" />
+                <div className="h-28 rounded-[28px] bg-[var(--color-surface-elevated)]" />
+              </div>
+            </div>
+            <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm space-y-3">
+              <div className="h-12 rounded-full bg-[var(--color-surface-elevated)]" />
+              <div className="h-52 rounded-[28px] bg-[var(--color-surface-elevated)]" />
+            </div>
+          </div>
         </div>
       }
     >
