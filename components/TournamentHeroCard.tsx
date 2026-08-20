@@ -35,19 +35,19 @@ export default function TournamentHeroCard({
   }, [safeLogoUrl]);
 
   return (
-    <section className="bg-[var(--color-background)] px-4 pb-6 pt-[calc(max(env(safe-area-inset-top),12px)+4px)]">
+    <section className="bg-[var(--color-background)] px-4 pb-5 pt-[calc(max(env(safe-area-inset-top),10px)+4px)]">
       {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="grid h-10 w-10 place-content-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] backdrop-blur-md transition-colors hover:bg-[var(--color-surface-elevated)]"
+          className="grid h-10 w-10 place-content-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] backdrop-blur-md transition-colors hover:bg-[var(--color-surface-elevated)] max-[380px]:h-9 max-[380px]:w-9"
           aria-label="Back"
         >
           <ArrowLeftIcon size={20} />
         </button>
         <button
           onClick={onShare}
-          className="grid h-10 w-10 place-content-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] backdrop-blur-md transition-colors hover:bg-[var(--color-surface-elevated)]"
+          className="grid h-10 w-10 place-content-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] backdrop-blur-md transition-colors hover:bg-[var(--color-surface-elevated)] max-[380px]:h-9 max-[380px]:w-9"
           aria-label="Share"
         >
           <ShareIcon size={18} />
@@ -55,8 +55,8 @@ export default function TournamentHeroCard({
       </div>
 
       {/* Info Section */}
-      <div className="mt-8 flex items-center gap-4">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-lg">
+      <div className="mt-6 flex items-center gap-3.5 max-[380px]:mt-5 max-[380px]:gap-3">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-lg max-[380px]:h-14 max-[380px]:w-14">
           {!showFallback ? (
             <img
               src={safeLogoUrl || ""}
@@ -71,40 +71,40 @@ export default function TournamentHeroCard({
           )}
         </div>
         <div className="min-w-0">
-          <h1 className="text-[28px] font-bold leading-tight text-[var(--color-text)]">
+          <h1 className="text-[28px] font-bold leading-tight text-[var(--color-text)] max-[380px]:text-[24px]">
             {title}
           </h1>
-          <p className="mt-1 text-[16px] font-medium text-[var(--color-text-secondary)]">
+          <p className="mt-1 text-[16px] font-medium text-[var(--color-text-secondary)] max-[380px]:text-[15px]">
             {subtitle}
           </p>
         </div>
       </div>
 
       {/* Stats/Action Cards */}
-      <div className="mt-8 grid grid-cols-2 gap-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 max-[380px]:mt-5">
         {/* Registered Card */}
-        <div className="flex h-[110px] items-center gap-4 rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
-          <div className="grid h-12 w-12 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[#ff7a1a]">
-            <UsersIcon size={24} />
+        <div className="flex h-[98px] items-center gap-3 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm max-[380px]:h-[92px] max-[380px]:gap-2.5 max-[380px]:p-3">
+          <div className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[#ff7a1a] max-[380px]:h-10 max-[380px]:w-10">
+            <UsersIcon size={22} />
           </div>
-          <div>
-            <p className="text-[28px] font-bold leading-none text-[var(--color-text)]">
+          <div className="min-w-0">
+            <p className="text-[26px] font-bold leading-none text-[var(--color-text)] max-[380px]:text-[24px]">
               {registeredCount}
             </p>
-            <p className="mt-1.5 text-[14px] font-medium text-[var(--color-text-secondary)]">
+            <p className="mt-1 text-[13px] font-medium text-[var(--color-text-secondary)]">
               Registered
             </p>
           </div>
         </div>
 
         {/* Registration Card */}
-        <div className="flex h-[110px] flex-col items-center justify-center rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-center shadow-sm">
-          <p className="text-[17px] font-bold text-[var(--color-text)]">
+        <div className="flex h-[98px] flex-col items-center justify-center rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 text-center shadow-sm max-[380px]:h-[92px] max-[380px]:p-3">
+          <p className="text-[16px] font-bold text-[var(--color-text)] max-[380px]:text-[15px]">
             Registration
           </p>
-          <div className="mt-3">
+          <div className="mt-2.5">
             <span
-              className={`inline-flex h-9 min-w-[100px] items-center justify-center rounded-full px-5 text-[15px] font-bold ${statusClass}`}
+              className={`inline-flex h-8 min-w-[92px] items-center justify-center rounded-full px-4 text-[14px] font-bold ${statusClass}`}
             >
               {registrationStatus}
             </span>

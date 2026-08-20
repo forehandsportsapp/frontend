@@ -145,6 +145,9 @@ function MatchCard({
   const scoreA = String(match.setsWonA).padStart(2, "0");
   const scoreB = String(match.setsWonB).padStart(2, "0");
   const scorerLabel = match.scorerName?.trim() || "Select Scorer";
+  const selectedCourt = match.court?.trim();
+  const selectedScorer = match.scorerName?.trim();
+  const showViewOnlyMeta = Boolean(selectedCourt || selectedScorer);
 
   return (
     <div className="rounded-2xl overflow-hidden border border-[var(--color-border)] shadow-sm bg-[var(--color-surface)]">
@@ -232,15 +235,26 @@ function MatchCard({
         </div>
 
         {/* Court / Scorer pills */}
-        <div className="flex gap-2 justify-center">
-          <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
-            {match.court}
-          </span>
-          {viewOnly ? (
+        {viewOnly ? (
+          showViewOnlyMeta && (
+            <div className="flex gap-2 justify-center">
+              {selectedCourt && (
+                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
+                  {selectedCourt}
+                </span>
+              )}
+              {selectedScorer && (
+                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
+                  {selectedScorer}
+                </span>
+              )}
+            </div>
+          )
+        ) : (
+          <div className="flex gap-2 justify-center">
             <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
-              {scorerLabel}
+              {match.court}
             </span>
-          ) : (
             <button
               type="button"
               onClick={() => onScorerClick?.(match)}
@@ -248,8 +262,8 @@ function MatchCard({
             >
               {scorerLabel}
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Set score grid */}
         <SetScoreGrid sets={match.sets} />

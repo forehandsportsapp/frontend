@@ -138,9 +138,11 @@ export function CheckCircleIcon(props: IconProps) {
 export function ShareIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>
-      <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
-      <path d="M16 6l-4-4-4 4" />
-      <path d="M12 2v13" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.59 13.51 6.83 3.98" />
+      <path d="m15.41 6.51-6.82 3.98" />
     </SvgIcon>
   );
 }
