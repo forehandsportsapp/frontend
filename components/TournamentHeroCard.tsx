@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeftIcon, ShareIcon, TrophyIcon, UsersIcon } from "@/components/Icons";
+import { ArrowLeftIcon, GroupUsersIcon, ShareIcon, TrophyIcon } from "@/components/Icons";
 import { sanitizeLogoUrl } from "@/lib/logo";
 type TournamentHeroCardProps = {
   title: string;
@@ -85,7 +85,7 @@ export default function TournamentHeroCard({
         {/* Registered Card */}
         <div className="flex h-[98px] items-center gap-3 rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 shadow-sm max-[380px]:h-[92px] max-[380px]:gap-2.5 max-[380px]:p-3">
           <div className="grid h-11 w-11 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[#ff7a1a] max-[380px]:h-10 max-[380px]:w-10">
-            <UsersIcon size={22} />
+            <GroupUsersIcon size={23} strokeWidth={2.25} />
           </div>
           <div className="min-w-0">
             <p className="text-[26px] font-bold leading-none text-[var(--color-text)] max-[380px]:text-[24px]">

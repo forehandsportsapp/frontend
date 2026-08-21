@@ -187,6 +187,17 @@ export function UsersIcon(props: IconProps) {
   );
 }
 
+export function GroupUsersIcon(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <circle cx="9" cy="8" r="3.25" />
+      <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
+      <path d="M15.5 6.25a3 3 0 0 1 0 5.5" />
+      <path d="M17.5 14.5a4.75 4.75 0 0 1 3 4.5" />
+    </SvgIcon>
+  );
+}
+
 export function UserIcon(props: IconProps) {
   return (
     <SvgIcon {...props}>

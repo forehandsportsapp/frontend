@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   CalendarIcon,
+  GroupUsersIcon,
   ShareIcon,
   TimerIcon,
   TrophyIcon,
-  UsersIcon,
 } from "@/components/Icons";
 import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
 import TeamLogo from "@/components/TeamLogo";
@@ -1052,7 +1052,7 @@ function UserTournamentEventMatchesContent() {
           <div className="mt-6 grid grid-cols-2 gap-4">
             <div className="flex items-center gap-3 rounded-xl border border-white/20 bg-white/95 px-4 py-3 text-zinc-900 dark:border-[var(--color-border)] dark:bg-[var(--color-surface-elevated)] dark:text-[var(--color-text)]">
               <div className="grid h-10 w-10 place-items-center rounded-full border border-orange-100 text-orange-500 dark:border-[var(--color-border)]">
-                <UsersIcon size={20} />
+                <GroupUsersIcon size={21} strokeWidth={2.25} />
               </div>
               <div>
                 <p className="text-lg font-black leading-none">
