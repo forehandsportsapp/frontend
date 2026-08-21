@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { ArrowLeftIcon, XIcon, TrophyIcon, UserIcon } from "@/components/Icons";
+import { usePathname, useSearchParams } from "next/navigation";
+import { ArrowLeftIcon, TrophyIcon, UserIcon } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
 import { eventApi, EventResultStanding } from "@/lib/api/eventApi";
 
@@ -21,6 +21,7 @@ export default function EventChampionPage() {
 }
 
 function EventChampionContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,21 +32,32 @@ function EventChampionContent() {
 
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
-  const viewOnly = searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
+  const isUserViewerRoute = pathname.startsWith("/user/");
+  const viewOnly =
+    isUserViewerRoute ||
+    searchParams.get("viewOnly") === "1" ||
+    searchParams.get("mode") === "view";
   const backHref =
-    viewOnly && tournamentId
+    isUserViewerRoute && tournamentId && eventId
+      ? `/user/tournaments/event/matches${toQuery({ tournamentId, eventId })}`
+      : viewOnly && tournamentId
       ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
       : viewOnly
         ? "/user/tournaments"
         : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
-  const fixtureHref = `/org/tournaments/event/fixture${toQuery({
+  const fixtureHref = isUserViewerRoute
+    ? `/user/tournaments/event/matches${toQuery({
+        tournamentId: tournamentId || "",
+        eventId: eventId || "",
+      })}`
+    : `/org/tournaments/event/fixture${toQuery({
+        tournamentId: tournamentId || "",
+        eventId: eventId || "",
+      })}`;
+  const matchesHref = `${isUserViewerRoute ? "/user" : "/org"}/tournaments/event/matches${toQuery({
     tournamentId: tournamentId || "",
     eventId: eventId || "",
-  })}`;
-  const matchesHref = `/org/tournaments/event/matches${toQuery({
-    tournamentId: tournamentId || "",
-    eventId: eventId || "",
-    viewOnly: "1",
+    viewOnly: isUserViewerRoute ? undefined : "1",
   })}`;
 
   useEffect(() => {
@@ -108,12 +120,6 @@ function EventChampionContent() {
           >
             <ArrowLeftIcon size={20} />
           </Link>
-          <Link
-            href={backHref}
-            className="grid h-10 w-10 place-content-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm transition-colors hover:bg-[var(--color-surface-elevated)]"
-          >
-            <XIcon size={20} />
-          </Link>
         </div>
 
         <section className="relative overflow-hidden rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]">
@@ -124,7 +130,7 @@ function EventChampionContent() {
             <div className="mx-auto mb-4 grid h-16 w-16 place-content-center rounded-full bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
               <TrophyIcon size={56} className="text-yellow-300" />
             </div>
-            <h1 className="mb-2 text-4xl font-bold">WINNERS</h1>
+            <h1 className="mb-2 text-4xl font-bold text-white">WINNERS</h1>
             <p className="text-base text-white/90">
               {loading ? "Loading..." : eventName}
             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import { removeItem } from "@/lib/storage";
 import { TrophyIcon, UserIcon } from "@/components/Icons";
@@ -30,6 +30,7 @@ function getTeamName(players: Player[]): string {
 
 export default function OrgMatchResultPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchParams, setSearchParams] = useState<URLSearchParams>(
     new URLSearchParams(),
   );
@@ -43,8 +44,19 @@ export default function OrgMatchResultPage() {
   const tournamentId = searchParams.get("tournamentId");
   const matchId = searchParams.get("matchId");
   const eventId = searchParams.get("eventId");
+  const isUserViewerRoute = pathname.startsWith("/user/");
   const viewOnly =
-    searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
+    isUserViewerRoute ||
+    searchParams.get("viewOnly") === "1" ||
+    searchParams.get("mode") === "view";
+  const viewerMatchesPath = isUserViewerRoute
+    ? "/user/tournaments/event/matches"
+    : "/org/tournaments/event/matches";
+  const viewerMatchesQuery = {
+    tournamentId,
+    eventId,
+    viewOnly: isUserViewerRoute ? undefined : "1",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -123,8 +135,7 @@ export default function OrgMatchResultPage() {
       onBack={() =>
         router.replace(
           viewOnly
-            ? "/org/tournaments/event/matches" +
-                toQuery({ tournamentId, eventId, viewOnly: "1" })
+            ? viewerMatchesPath + toQuery(viewerMatchesQuery)
             : "/org/tournaments/detail" + toQuery({ t: tournamentId }),
         )
       }

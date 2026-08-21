@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeftIcon,
@@ -122,6 +122,7 @@ function MatchCard({
   onScorerClick,
   onCourtClick,
   viewOnly = false,
+  viewerBasePath = "/org/tournaments/event/match",
 }: {
   match: MatchRow;
   tournamentId: string;
@@ -129,6 +130,7 @@ function MatchCard({
   onScorerClick?: (match: MatchRow) => void;
   onCourtClick?: (match: MatchRow) => void;
   viewOnly?: boolean;
+  viewerBasePath?: string;
 }) {
   const headerBg =
     match.status === "live"
@@ -138,11 +140,16 @@ function MatchCard({
         : "bg-green-500";
   const isEnded = match.status === "ended";
   const isLive = match.status === "live";
+  const isUserViewerLink = viewerBasePath.startsWith("/user/");
+  const viewerQuery = {
+    tournamentId,
+    eventId,
+    matchId: match.id,
+    viewOnly: isUserViewerLink ? undefined : "1",
+  };
   const viewMatchHref = isEnded
-    ? "/org/tournaments/event/match/result" +
-      toQuery({ tournamentId, eventId, matchId: match.id, viewOnly: "1" })
-    : "/org/tournaments/event/match/live" +
-      toQuery({ tournamentId, eventId, matchId: match.id, viewOnly: "1" });
+    ? `${viewerBasePath}/result` + toQuery(viewerQuery)
+    : `${viewerBasePath}/live` + toQuery(viewerQuery);
 
   const scoreA = String(match.setsWonA).padStart(2, "0");
   const scoreB = String(match.setsWonB).padStart(2, "0");
@@ -334,6 +341,7 @@ export default function OrgManageMatchesPage() {
 
 function OrgManageMatchesContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { activeOrganization } = useApp();
 
@@ -373,8 +381,23 @@ function OrgManageMatchesContent() {
       activeOrganization.id ===
         (tournament?.organizationId || tournament?.organization?.id),
   );
-  const viewOnly = requestedViewOnly || !canManage;
+  const isUserViewerRoute = pathname.startsWith("/user/");
+  const viewOnly = isUserViewerRoute || requestedViewOnly || !canManage;
   const canViewWinners = event?.eventState === "completed";
+  const viewerMatchBasePath = isUserViewerRoute
+    ? "/user/tournaments/event/match"
+    : "/org/tournaments/event/match";
+
+  useEffect(() => {
+    if (!requestedViewOnly || isUserViewerRoute || !tournamentId) return;
+
+    router.replace(
+      `/user/tournaments/event/matches${toQuery({
+        tournamentId,
+        eventId,
+      })}`,
+    );
+  }, [eventId, isUserViewerRoute, requestedViewOnly, router, tournamentId]);
 
   // 1. Load Tournament, Event and Teams Info
   useEffect(() => {
@@ -462,6 +485,12 @@ function OrgManageMatchesContent() {
               setScores.push({ a: "--", b: "--" });
             }
 
+            const hasLiveSet = (m.sets || []).some(
+              (s: any) =>
+                s.setStatus === "in_progress" ||
+                Number(s.teamAScore || 0) > 0 ||
+                Number(s.teamBScore || 0) > 0,
+            );
             let status: "upcoming" | "live" | "ended" = "upcoming";
             if (
               m.matchState === "completed" ||
@@ -469,7 +498,7 @@ function OrgManageMatchesContent() {
               m.matchState === "walkover"
             )
               status = "ended";
-            else if (m.matchState === "in_progress") status = "live";
+            else if (m.matchState === "in_progress" || hasLiveSet) status = "live";
 
             // Robust team enrichment
             // Check all common property names for team IDs, including if teamA/teamB are direct strings
@@ -816,10 +845,10 @@ function OrgManageMatchesContent() {
           ))}
           {canViewWinners && (
             <Link
-              href={`/org/tournaments/event/champion${toQuery({
+              href={`${isUserViewerRoute ? "/user" : "/org"}/tournaments/event/champion${toQuery({
                 tournamentId,
                 eventId,
-                viewOnly: "1",
+                viewOnly: isUserViewerRoute ? undefined : "1",
               })}`}
               className="shrink-0 rounded-full border border-[var(--color-primary)] bg-[var(--color-primary)] px-4 py-1.5 text-sm font-semibold text-[var(--color-primary-contrast)] shadow-sm shadow-orange-200 transition-colors hover:bg-[var(--color-primary-hover)]"
             >
@@ -872,6 +901,7 @@ function OrgManageMatchesContent() {
                 onScorerClick={handleOpenScorerSheet}
                 onCourtClick={handleOpenCourtSheet}
                 viewOnly={viewOnly}
+                viewerBasePath={viewerMatchBasePath}
               />
             ))
           )}

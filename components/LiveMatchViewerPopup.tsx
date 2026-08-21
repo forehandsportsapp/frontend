@@ -11,12 +11,65 @@ interface LiveMatchViewerPopupProps {
   match: any; // The match object from live feed
 }
 
+function getSetStatus(set: any) {
+  return String(set?.setStatus ?? set?.set_status ?? "").toLowerCase();
+}
+
+function getSetNumber(set: any) {
+  return Number(set?.setNumber ?? set?.set_number ?? set?.setInteger ?? set?.set_integer);
+}
+
+function getSetTeamAScore(set: any) {
+  return Number(set?.teamAScore ?? set?.team_a_score ?? 0);
+}
+
+function getSetTeamBScore(set: any) {
+  return Number(set?.teamBScore ?? set?.team_b_score ?? 0);
+}
+
+function getSetWinnerId(set: any) {
+  return set?.winnerId ?? set?.winner_id ?? null;
+}
+
+function getTeamId(team: any) {
+  return team?.id ?? team?.teamId ?? null;
+}
+
+function normalizeSets(sets: any[] = []) {
+  return sets
+    .filter((set) => Number.isFinite(getSetNumber(set)))
+    .sort((a, b) => getSetNumber(a) - getSetNumber(b));
+}
+
+function getSetsWon(match: any) {
+  const teamAId = getTeamId(match?.teamA);
+  const teamBId = getTeamId(match?.teamB);
+  return normalizeSets(match?.sets).reduce(
+    (score, set) => {
+      if (getSetStatus(set) !== "completed") return score;
+      const winnerId = getSetWinnerId(set);
+      const teamAScore = getSetTeamAScore(set);
+      const teamBScore = getSetTeamBScore(set);
+
+      if (winnerId && winnerId === teamAId) score.teamA += 1;
+      else if (winnerId && winnerId === teamBId) score.teamB += 1;
+      else if (teamAScore > teamBScore) score.teamA += 1;
+      else if (teamBScore > teamAScore) score.teamB += 1;
+
+      return score;
+    },
+    { teamA: 0, teamB: 0 },
+  );
+}
+
 export default function LiveMatchViewerPopup({
   isOpen,
   onClose,
   match,
 }: LiveMatchViewerPopupProps) {
   if (!match) return null;
+  const sets = normalizeSets(match.sets);
+  const setsWon = getSetsWon(match);
 
   return (
     <AnimatePresence>
@@ -80,8 +133,7 @@ export default function LiveMatchViewerPopup({
                 <div className="flex flex-col items-center">
                   <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-2 sm:px-6 sm:py-3 shadow-inner">
                     <span className="whitespace-nowrap font-heading text-3xl sm:text-4xl font-black tracking-tight text-[var(--color-text)]">
-                      {String(match.score?.teamA || 0).padStart(2, "0")} -{" "}
-                      {String(match.score?.teamB || 0).padStart(2, "0")}
+                      {setsWon.teamA} - {setsWon.teamB}
                     </span>
                   </div>
                   <span className="mt-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
@@ -107,45 +159,45 @@ export default function LiveMatchViewerPopup({
               </div>
 
               {/* Set-wise Score History */}
-              {match.sets && match.sets.length > 0 && (
+              {sets.length > 0 && (
                 <div className="mt-8 border-t border-[var(--color-border)] pt-6">
                   <h4 className="mb-4 text-center text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
                     Set-by-Set Scores
                   </h4>
                   <div className="flex justify-center gap-3 overflow-x-auto pb-2 no-scrollbar">
-                    {match.sets.map((set: any) => (
+                    {sets.map((set: any, index: number) => (
                       <div
-                        key={set.setNumber}
+                        key={set.id || `${set.setNumber}-${set.setStatus}-${index}`}
                         className={`flex min-w-[70px] flex-col items-center rounded-lg border p-2 ${
-                          set.setNumber === match.score?.currentSet
+                          getSetNumber(set) === match.score?.currentSet
                             ? "border-primary bg-primary/5 shadow-sm"
                             : "border-[var(--color-border)] bg-[var(--color-surface-elevated)]"
                         }`}
                       >
                         <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
-                          Set {set.setNumber}
+                          Set {getSetNumber(set)}
                         </span>
                         <div className="mt-1 flex items-center gap-1 font-heading text-lg font-bold">
                           <span
                             className={
-                              set.teamAScore > set.teamBScore
+                              getSetTeamAScore(set) > getSetTeamBScore(set)
                                 ? "text-[var(--color-text)]"
                                 : "text-[var(--color-text-muted)]"
                             }
                           >
-                            {set.teamAScore}
+                            {getSetTeamAScore(set)}
                           </span>
                           <span className="text-[var(--color-text-muted)] opacity-50">
                             -
                           </span>
                           <span
                             className={
-                              set.teamBScore > set.teamAScore
+                              getSetTeamBScore(set) > getSetTeamAScore(set)
                                 ? "text-[var(--color-text)]"
                                 : "text-[var(--color-text-muted)]"
                             }
                           >
-                            {set.teamBScore}
+                            {getSetTeamBScore(set)}
                           </span>
                         </div>
                       </div>

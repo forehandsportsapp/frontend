@@ -205,6 +205,122 @@ function isUpcomingTournament(t: TournamentData) {
   return new Date(t.startDate) > new Date();
 }
 
+function isLiveFeedMatch(match: any) {
+  const state = String(
+    match?.matchState ?? match?.state ?? match?.status ?? "",
+  ).toLowerCase();
+  const sets = normalizeMatchSets(match?.sets);
+  const isTerminal = ["completed", "abandoned", "walkover"].includes(state);
+
+  if (isTerminal || (Array.isArray(match?.sets) && sets.length === 0)) {
+    return false;
+  }
+
+  if (sets.length > 0) {
+    return sets.some(
+      (set: any) =>
+        set?.setStatus === "in_progress" ||
+        set?.setStatus === "completed" ||
+        Number(set?.teamAScore || 0) > 0 ||
+        Number(set?.teamBScore || 0) > 0,
+    );
+  }
+
+  return state === "in_progress" || state === "live";
+}
+
+function normalizeMatchSets(sets: any[] = []) {
+  const statusRank: Record<string, number> = {
+    in_progress: 3,
+    completed: 2,
+    not_started: 1,
+  };
+  const byNumber = new Map<number, any>();
+
+  sets.forEach((set) => {
+    const setNumber = Number(set?.setNumber);
+    if (!Number.isFinite(setNumber)) return;
+
+    const existing = byNumber.get(setNumber);
+    const setRank = statusRank[set?.setStatus] ?? 0;
+    const existingRank = existing ? statusRank[existing.setStatus] ?? 0 : -1;
+
+    if (!existing || setRank > existingRank) {
+      byNumber.set(setNumber, set);
+    }
+  });
+
+  return [...byNumber.values()].sort((a, b) => a.setNumber - b.setNumber);
+}
+
+function getLiveMatchScoreFromSets(match: any, sets: any[]) {
+  const score = sets.reduce(
+    (current, set) => {
+      if (set?.setStatus !== "completed") return current;
+      const winnerId = set?.winnerId ?? set?.winner_id ?? null;
+      const teamAId = match?.teamA?.id ?? match?.teamA?.teamId ?? null;
+      const teamBId = match?.teamB?.id ?? match?.teamB?.teamId ?? null;
+      const teamAScore = Number(set?.teamAScore || 0);
+      const teamBScore = Number(set?.teamBScore || 0);
+
+      if (winnerId && winnerId === teamAId) current.teamA += 1;
+      else if (winnerId && winnerId === teamBId) current.teamB += 1;
+      else if (teamAScore > teamBScore) current.teamA += 1;
+      else if (teamBScore > teamAScore) current.teamB += 1;
+
+      return current;
+    },
+    { teamA: 0, teamB: 0 },
+  );
+  return score;
+}
+
+function normalizeLiveFeedMatch(match: any) {
+  const sets = normalizeMatchSets(match?.sets);
+
+  if (Array.isArray(match?.sets)) {
+    const currentSet =
+      sets.find((set: any) => set?.setStatus === "in_progress") ||
+      [...sets]
+        .filter(
+          (set: any) =>
+            set?.setStatus !== "not_started" ||
+            Number(set?.teamAScore || 0) > 0 ||
+            Number(set?.teamBScore || 0) > 0,
+        )
+        .sort((a, b) => b.setNumber - a.setNumber)[0] ||
+      sets[0];
+
+    return {
+      ...match,
+      sets,
+      score: currentSet
+        ? {
+            ...getLiveMatchScoreFromSets(match, sets),
+            currentSet: currentSet.setNumber ?? match?.score?.currentSet ?? 1,
+          }
+        : match?.score,
+    };
+  }
+
+  return match;
+}
+
+function normalizeLiveFeed(feed: any[]) {
+  if (!Array.isArray(feed)) return [];
+
+  return feed
+    .map((group) => ({
+      ...group,
+      matches: Array.isArray(group?.matches)
+        ? group.matches
+            .map(normalizeLiveFeedMatch)
+            .filter(isLiveFeedMatch)
+        : [],
+    }))
+    .filter((group) => group.matches.length > 0);
+}
+
 function LiveFeedGroup({
   group,
   onSelectMatch,
@@ -359,7 +475,10 @@ export default function UserHomePage() {
 
         const match =
           matchResult.status === "fulfilled" ? matchResult.value : null;
-        const feed = feedResult.status === "fulfilled" ? feedResult.value : [];
+        const feed =
+          feedResult.status === "fulfilled"
+            ? normalizeLiveFeed(feedResult.value)
+            : [];
 
         if (matchResult.status === "rejected") {
           // It's normal for live matches to fail if the user isn't in one or the endpoint isn't ready
@@ -430,6 +549,7 @@ export default function UserHomePage() {
                   teamAScore,
                   teamBScore,
                   setNumber,
+                  setStatus,
                 } = message.data;
 
                 if (matchId === match?.id) {
@@ -438,52 +558,59 @@ export default function UserHomePage() {
                     let updatedSets = [...(prev.sets || [])];
                     const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
                     if (setIndex >= 0) {
-                      updatedSets[setIndex] = { ...updatedSets[setIndex], teamAScore, teamBScore };
+                      updatedSets[setIndex] = {
+                        ...updatedSets[setIndex],
+                        teamAScore,
+                        teamBScore,
+                        setStatus: setStatus || "in_progress",
+                      };
                     } else {
-                      updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: "in_progress" });
+                      updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: setStatus || "in_progress" });
                     }
-                    return {
+                    return normalizeLiveFeedMatch({
                       ...prev,
-                      score: {
-                        teamA: teamAScore,
-                        teamB: teamBScore,
-                        currentSet: setNumber,
-                      },
                       sets: updatedSets,
-                    };
+                    });
                   });
                 }
 
                 setLiveFeed((prevFeed) =>
-                  prevFeed.map((group) => {
-                    if (group.tournamentId === tournamentId) {
-                      return {
-                        ...group,
-                        matches: group.matches.map((m: any) => {
-                          if (m.id === matchId) {
-                            let updatedSets = [...(m.sets || [])];
-                            const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
-                            if (setIndex >= 0) {
-                              updatedSets[setIndex] = { ...updatedSets[setIndex], teamAScore, teamBScore };
-                            } else {
-                              updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: "in_progress" });
+                  normalizeLiveFeed(
+                    prevFeed.map((group) => {
+                      if (group.tournamentId === tournamentId) {
+                        return {
+                          ...group,
+                          matches: group.matches.map((m: any) => {
+                            if (m.id === matchId) {
+                              let updatedSets = [...(m.sets || [])];
+                              const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
+                              if (setIndex >= 0) {
+                                updatedSets[setIndex] = {
+                                  ...updatedSets[setIndex],
+                                  teamAScore,
+                                  teamBScore,
+                                  setStatus: setStatus || "in_progress",
+                                };
+                              } else {
+                                updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: setStatus || "in_progress" });
+                              }
+                              return {
+                                ...m,
+                                score: {
+                                  teamA: teamAScore,
+                                  teamB: teamBScore,
+                                  currentSet: setNumber,
+                                },
+                                sets: updatedSets,
+                              };
                             }
-                            return {
-                              ...m,
-                              score: {
-                                teamA: teamAScore,
-                                teamB: teamBScore,
-                                currentSet: setNumber,
-                              },
-                              sets: updatedSets,
-                            };
-                          }
-                          return m;
-                        }),
-                      };
-                    }
-                    return group;
-                  }),
+                            return m;
+                          }),
+                        };
+                      }
+                      return group;
+                    }),
+                  ),
                 );
               } else if (message.type === "MATCH_COMPLETE") {
                 const { matchId, tournamentId } = message.data;
@@ -506,7 +633,7 @@ export default function UserHomePage() {
                 );
               } else if (message.type === "MATCH_START") {
                 void userApi.getLiveFeed().then((newFeed) => {
-                  if (active) setLiveFeed(newFeed);
+                  if (active) setLiveFeed(normalizeLiveFeed(newFeed));
                 });
               }
             } catch (e) {

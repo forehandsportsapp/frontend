@@ -156,7 +156,7 @@ export default function OrgMatchSetupPage() {
   const defaultDraft: MatchSetupDraft = useMemo(
     () => ({
       config: {
-        scoringSystem: "sideout",
+        scoringSystem: "rally",
         format: "doubles",
         bestOf: 3,
         pointsToWin: 11,
@@ -234,7 +234,7 @@ export default function OrgMatchSetupPage() {
         if (!cancelled) {
           setDraft({
             config: {
-              scoringSystem: "sideout",
+              scoringSystem: "rally",
               format,
               bestOf: normalizedBestOf,
               pointsToWin: Number(event?.pointsPerSet || 11),

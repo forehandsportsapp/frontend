@@ -73,15 +73,13 @@ export default function RegistrationEventCard({
     event.eventState === "round_over" ||
     Boolean(event.winnerId);
   const viewHref = useChampionPage
-    ? `/org/tournaments/event/champion${toQuery({
+    ? `/user/tournaments/event/champion${toQuery({
         tournamentId: event.tournamentId,
         eventId: event.id || "",
-        viewOnly: "1",
       })}`
-    : `/org/tournaments/event/matches${toQuery({
+    : `/user/tournaments/event/matches${toQuery({
         tournamentId: event.tournamentId,
         eventId: event.id || "",
-        viewOnly: "1",
       })}`;
 
   const loadRegistrationState = useCallback(async () => {

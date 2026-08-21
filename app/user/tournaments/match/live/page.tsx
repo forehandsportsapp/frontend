@@ -38,6 +38,60 @@ function getTeamPlayers(team: any): SidePlayer[] {
   });
 }
 
+function getMatchSetRows(match: any) {
+  return Array.isArray(match?.setRows)
+    ? match.setRows
+    : Array.isArray(match?.sets)
+      ? match.sets
+      : [];
+}
+
+function getSetNumber(set: any) {
+  return Number(set?.setNumber ?? set?.set_number ?? set?.setInteger ?? set?.set_integer);
+}
+
+function getSetStatus(set: any) {
+  return String(set?.setStatus ?? set?.set_status ?? "").toLowerCase();
+}
+
+function getSetTeamAScore(set: any) {
+  return Number(set?.teamAScore ?? set?.team_a_score ?? 0);
+}
+
+function getSetTeamBScore(set: any) {
+  return Number(set?.teamBScore ?? set?.team_b_score ?? 0);
+}
+
+function stateFromMatchSets(
+  matchId: string,
+  config: MatchConfigData,
+  sets: any[],
+): LiveMatchStateData | null {
+  const normalizedSets = sets
+    .filter((set) => Number.isFinite(getSetNumber(set)))
+    .sort((a, b) => getSetNumber(a) - getSetNumber(b));
+
+  if (normalizedSets.length === 0) return null;
+
+  const setScores = normalizedSets.map((set) => [
+    getSetTeamAScore(set),
+    getSetTeamBScore(set),
+  ]);
+  const inProgressIndex = normalizedSets.findIndex(
+    (set) => getSetStatus(set) === "in_progress",
+  );
+  const nextSetIndex = Math.min(
+    setScores.length - 1,
+    Math.max(0, inProgressIndex >= 0 ? inProgressIndex : setScores.length - 1),
+  );
+
+  return {
+    ...createInitialLiveState(matchId, config),
+    currentSet: nextSetIndex,
+    setScores,
+  };
+}
+
 function ensurePlayers(players: unknown, format: MatchConfigData["format"]) {
   const fallbackSingles = {
     side0: [{ initials: "P1", name: "Player 1", avatarUrl: null }],
@@ -109,6 +163,7 @@ export default function ScorerLiveMatchPage() {
         setIsLoading(true);
         const info = await matchApi.getMatchInfo(matchId);
         if (cancelled) return;
+
         setMatchInfo(info);
         setMatchScorerName(
           info?.scorerUser?.name || info?.scorerName || info?.scorer?.name || "Match Scorer"
@@ -124,10 +179,16 @@ export default function ScorerLiveMatchPage() {
         const isDoubles = side0.length > 1 || side1.length > 1;
 
         const config: MatchConfigData = {
-          scoringSystem: "sideout",
+          scoringSystem: "rally",
           format: isDoubles ? "doubles" : "singles",
-          bestOf: Number(info?.sets?.length || info?.event?.setsPerMatch || 1),
-          pointsToWin: Number(info?.event?.pointsPerSet || 11),
+          bestOf: Number(
+            info?.setsPerMatchId ||
+              info?.setsPerMatch ||
+              info?.event?.setsPerMatch ||
+              getMatchSetRows(info).length ||
+              1,
+          ),
+          pointsToWin: Number(info?.pointsPerSet || info?.event?.pointsPerSet || 11),
           winByTwo: true,
           initialServer: 1,
           warmupMinutes: 0,
@@ -140,6 +201,17 @@ export default function ScorerLiveMatchPage() {
           side0: isDoubles ? side0.slice(0, 2) : side0.slice(0, 1),
           side1: isDoubles ? side1.slice(0, 2) : side1.slice(0, 1),
         });
+
+        const dbState = stateFromMatchSets(matchId, config, getMatchSetRows(info));
+        if (dbState) {
+          console.log("[ScorerLive] hydrated DB set rows", {
+            matchId,
+            sets: getMatchSetRows(info),
+            state: dbState,
+          });
+          setState(dbState);
+          setItem(`match:${matchId}:state`, dbState);
+        }
       } catch (err) {
         console.error("[ScorerLive] Failed to load match info", err);
       } finally {
@@ -151,9 +223,9 @@ export default function ScorerLiveMatchPage() {
   }, [matchId]);
 
   const config = useMemo<MatchConfigData>(() => {
-    if (!matchId) return { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 };
+    if (!matchId) return { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 };
     return getItem<MatchConfigData>(`match:${matchId}:config`) ?? {
-      scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1,
+      scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1,
     };
   }, [matchId, isLoading]); // re-derive after loading
 
@@ -163,10 +235,10 @@ export default function ScorerLiveMatchPage() {
   );
 
   const [state, setState] = useState<LiveMatchStateData>(() => {
-    if (!matchId) return createInitialLiveState("temp", { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
+    if (!matchId) return createInitialLiveState("temp", { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
     const stored = getItem<LiveMatchStateData>(`match:${matchId}:state`);
     if (stored) return stored;
-    return createInitialLiveState(matchId, { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
+    return createInitialLiveState(matchId, { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
   });
 
   // Re-initialize state once config is loaded
@@ -252,6 +324,18 @@ export default function ScorerLiveMatchPage() {
         }
 
         if (matchId) {
+          console.log("[ScorerLive] syncing score", {
+            matchId,
+            setNumber: updatedSetIndex + 1,
+            teamAScore: setScore[0] ?? 0,
+            teamBScore: setScore[1] ?? 0,
+            setStatus: setFinished ? "completed" : "in_progress",
+            winnerId: setWinnerId,
+            matchFinished: winner != null,
+            matchWinnerId,
+            teamAId: teamIds.a,
+            teamBId: teamIds.b,
+          });
           await matchApi.updateScore({
             matchId,
             setNumber: updatedSetIndex + 1,

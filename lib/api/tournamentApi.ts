@@ -190,6 +190,18 @@ export const tournamentApi = {
   },
 
   /**
+   * Retrieves tournaments where the current user is assigned as a scorer.
+   */
+  getScorerTournaments: async (): Promise<TournamentData[]> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/tournament/list/user/scorer" }),
+    );
+    if (error) throw error;
+
+    return data as TournamentData[];
+  },
+
+  /**
    * Fetches all unique participants (users/players) and their associated teams/events for a tournament.
    *
    * @param tournamentId - The unique ID of the tournament.

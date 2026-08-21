@@ -56,6 +56,53 @@ type LiveTournamentCardData = {
   subtitle: string;
 };
 
+function normalizeMatchSets(sets: any[] = []) {
+  const statusRank: Record<string, number> = {
+    in_progress: 3,
+    completed: 2,
+    not_started: 1,
+  };
+  const byNumber = new Map<number, any>();
+
+  sets.forEach((set) => {
+    const setNumber = Number(set?.setNumber);
+    if (!Number.isFinite(setNumber)) return;
+    const existing = byNumber.get(setNumber);
+    const setRank = statusRank[set?.setStatus] ?? 0;
+    const existingRank = existing ? statusRank[existing.setStatus] ?? 0 : -1;
+    if (!existing || setRank > existingRank) byNumber.set(setNumber, set);
+  });
+
+  return [...byNumber.values()].sort((a, b) => a.setNumber - b.setNumber);
+}
+
+function normalizeLiveScore(match: any) {
+  const sets = normalizeMatchSets(match?.sets);
+  const currentSet =
+    sets.find((set: any) => set?.setStatus === "in_progress") ||
+    [...sets].sort((a, b) => b.setNumber - a.setNumber)[0];
+  const score = sets.reduce(
+    (current, set) => {
+      if (set?.setStatus !== "completed") return current;
+      const teamAScore = Number(set?.teamAScore || 0);
+      const teamBScore = Number(set?.teamBScore || 0);
+      if (teamAScore > teamBScore) current.teamA += 1;
+      else if (teamBScore > teamAScore) current.teamB += 1;
+      return current;
+    },
+    { teamA: 0, teamB: 0 },
+  );
+
+  return {
+    ...match,
+    sets,
+    score: {
+      ...score,
+      currentSet: currentSet?.setNumber ?? match?.score?.currentSet ?? 1,
+    },
+  };
+}
+
 const AnimatedCard = ({
   children,
   containerRef,
@@ -359,6 +406,7 @@ export default function OrgHomePage() {
                   teamAScore,
                   teamBScore,
                   setNumber,
+                  setStatus,
                 } = message.data;
 
                 setLiveFeed((prevFeed) =>
@@ -377,24 +425,20 @@ export default function OrgHomePage() {
                                 ...updatedSets[setIndex],
                                 teamAScore,
                                 teamBScore,
+                                setStatus: setStatus || "in_progress",
                               };
                             } else {
                               updatedSets.push({
                                 setNumber,
                                 teamAScore,
                                 teamBScore,
-                                setStatus: "in_progress",
+                                setStatus: setStatus || "in_progress",
                               });
                             }
-                            return {
+                            return normalizeLiveScore({
                               ...m,
-                              score: {
-                                teamA: teamAScore,
-                                teamB: teamBScore,
-                                currentSet: setNumber,
-                              },
                               sets: updatedSets,
-                            };
+                            });
                           }
                           return m;
                         }),

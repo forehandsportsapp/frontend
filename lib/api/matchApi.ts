@@ -122,6 +122,7 @@ export const matchApi = {
    * @returns A promise that resolves when the score update is successful.
    */
   updateScore: async (payload: UpdateScorePayload) => {
+    console.log("[matchApi.updateScore] request", payload);
     const { error } = await fetchApi(
       getApiUrl({ path: "/match/update-score" }),
       {
@@ -131,6 +132,13 @@ export const matchApi = {
       },
     );
     if (error) throw error;
+    console.log("[matchApi.updateScore] success", {
+      matchId: payload.matchId,
+      setNumber: payload.setNumber,
+      teamAScore: payload.teamAScore,
+      teamBScore: payload.teamBScore,
+      setStatus: payload.setStatus,
+    });
   },
 
   /**
@@ -310,6 +318,7 @@ export const matchApi = {
    * @returns A promise resolving to the created set's ID.
    */
   initializeSet: async (matchId: string, setNumber: number) => {
+    console.log("[matchApi.initializeSet] request", { matchId, setNumber });
     const { data, error } = await fetchApi(
       getApiUrl({ path: "/match/set/initialize" }),
       {
@@ -319,6 +328,11 @@ export const matchApi = {
       },
     );
     if (error) throw error;
+    console.log("[matchApi.initializeSet] success", {
+      matchId,
+      setNumber,
+      setId: data?.setId ?? null,
+    });
     return data?.setId as string;
   },
 

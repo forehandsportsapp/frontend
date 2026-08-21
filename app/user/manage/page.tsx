@@ -2,18 +2,25 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftIcon } from "@/components/Icons";
 import { matchApi } from "@/lib/api/matchApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { TournamentData } from "@/lib/models";
 import ScorerMatchCard from "@/components/Card/ScorerMatchCard";
 import OrgTournamentCard from "@/components/OrgTournamentCard";
+import { useApp } from "@/components/AppProvider";
+import { toQuery } from "@/lib/utils";
 
 type ManageTab = "admin" | "scorer";
 type ScorerSubTab = "pending" | "scored";
 
 export default function UserManagePage() {
-  const [activeTab, setActiveTab] = useState<ManageTab>("admin");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { session, isLoading: isSessionLoading } = useApp();
+  const requestedTab = searchParams.get("tab") === "scorer" ? "scorer" : "admin";
+  const [activeTab, setActiveTab] = useState<ManageTab>(requestedTab);
   const [scorerSubTab, setScorerSubTab] = useState<ScorerSubTab>("pending");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,6 +28,24 @@ export default function UserManagePage() {
   const [scorerMatches, setScorerMatches] = useState<any[]>([]);
 
   useEffect(() => {
+    setActiveTab(requestedTab);
+  }, [requestedTab]);
+
+  const handleTabChange = (tab: ManageTab) => {
+    setActiveTab(tab);
+    router.replace(`/user/manage${tab === "scorer" ? "?tab=scorer" : ""}`);
+  };
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (isSessionLoading) return;
+    if (!userId) {
+      setAdminTournaments([]);
+      setScorerMatches([]);
+      setIsLoading(false);
+      return;
+    }
+
     let active = true;
 
     const loadData = async () => {
@@ -32,12 +57,31 @@ export default function UserManagePage() {
           if (active) setAdminTournaments(Array.isArray(data) ? data : []);
         } else if (activeTab === "scorer") {
           const matches = await matchApi.getScorerMatches();
-          if (active) setScorerMatches(matches || []);
+          const assignedMatches = Array.isArray(matches)
+            ? matches.filter((match: any) => match?.scorer === userId)
+            : [];
+          console.log("[user/manage] scorer matches loaded", {
+            userId,
+            matches: assignedMatches.map((match: any) => ({
+              matchId: match?.id,
+              matchState: match?.matchState,
+              scorer: match?.scorer,
+              setCount: Array.isArray(match?.setRows)
+                ? match.setRows.length
+                : Array.isArray(match?.sets)
+                  ? match.sets.length
+                  : 0,
+              sets: match?.setRows || match?.sets || [],
+            })),
+          });
+          if (active) setScorerMatches(assignedMatches);
         }
       } catch (error) {
         console.error(`Failed to load ${activeTab} data`, error);
         if (activeTab === "admin" && active) setAdminTournaments([]);
-        if (activeTab === "scorer" && active) setScorerMatches([]);
+        if (activeTab === "scorer" && active) {
+          setScorerMatches([]);
+        }
       } finally {
         if (active) setIsLoading(false);
       }
@@ -48,13 +92,13 @@ export default function UserManagePage() {
     return () => {
       active = false;
     };
-  }, [activeTab]);
+  }, [activeTab, isSessionLoading, session?.user?.id]);
 
   // Derived scorer matches
   const sortByDate = (a: any, b: any) => {
-    const ta = new Date(b.scheduledAt || b.startTime || 0).getTime();
-    const tb = new Date(a.scheduledAt || a.startTime || 0).getTime();
-    return ta - tb;
+    const aTime = new Date(a.scheduledAt || a.startTime || 0).getTime();
+    const bTime = new Date(b.scheduledAt || b.startTime || 0).getTime();
+    return aTime - bTime;
   };
 
   const pendingMatches = scorerMatches
@@ -90,7 +134,7 @@ export default function UserManagePage() {
           {(["admin", "scorer"] as ManageTab[]).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleTabChange(tab)}
               className={`relative flex-1 py-3 text-[16px] font-bold capitalize transition-all ${
                 activeTab === tab
                   ? "text-[var(--color-text)]"
@@ -133,8 +177,8 @@ export default function UserManagePage() {
                   location={[t.venueCity, t.venueState].filter(Boolean).join(", ")}
                   eventsCount={t.events?.length ?? 0}
                   date={t.startDate}
-                  entryFee={"—"}
-                  href={`/org/tournaments/${t.id}`}
+                  entryFee={"-"}
+                  href={`/org/tournaments/detail${toQuery({ t: t.id })}`}
                   logoUrl={t.logoUrl ?? undefined}
                   badgeLabel={t.tournamentState ?? undefined}
                 />
@@ -186,7 +230,7 @@ export default function UserManagePage() {
                 </p>
                 <p className="text-[var(--color-text-muted)] text-sm mt-1">
                   {scorerSubTab === "pending"
-                    ? "All your assigned matches are done!"
+                    ? "No pending matches assigned yet."
                     : "Matches you score will appear here."}
                 </p>
               </div>
