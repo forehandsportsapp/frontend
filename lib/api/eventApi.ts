@@ -33,6 +33,63 @@ export type EventResultsResponse = {
   totalMatches: number;
 };
 
+function getProfilePicUrl(value: any): string | null {
+  const user = value?.user || value?.profile || value;
+  return (
+    user?.profilePicUrl ||
+    user?.profile_pic_url ||
+    user?.avatarUrl ||
+    user?.avatar_url ||
+    user?.imageUrl ||
+    user?.image_url ||
+    user?.photoUrl ||
+    user?.photo_url ||
+    null
+  );
+}
+
+function normalizeResultStanding(row: any): EventResultStanding {
+  const participants = Array.isArray(row?.participants) ? row.participants : [];
+  const playersSource = Array.isArray(row?.players)
+    ? row.players
+    : participants.length > 0
+      ? participants
+      : [];
+  const players = playersSource.map((player: any) => {
+    const user = player?.user || player?.profile || player;
+    return {
+      id: user?.id || player?.userId || player?.id || "",
+      name: user?.name || player?.name || "Player",
+      avatarUrl: getProfilePicUrl(player),
+    };
+  });
+
+  return {
+    ...row,
+    avatarUrl:
+      getProfilePicUrl(row) ||
+      players.find((player: { avatarUrl: string | null }) => player.avatarUrl)
+        ?.avatarUrl ||
+      null,
+    players,
+  } as EventResultStanding;
+}
+
+function normalizeEventResults(data: any): EventResultsResponse {
+  const standings = Array.isArray(data?.standings)
+    ? data.standings.map(normalizeResultStanding)
+    : [];
+  const champion = data?.champion
+    ? normalizeResultStanding(data.champion)
+    : standings[0] || null;
+
+  return {
+    ...data,
+    champion,
+    standings,
+  } as EventResultsResponse;
+}
+
 export type FinalizeScheduleMatchPayload = {
   roundNumber: number;
   teamA: string;
@@ -165,7 +222,7 @@ export const eventApi = {
       getApiUrl({ path: "/event/results", param: eventId }),
     );
     if (error) throw error;
-    return data as EventResultsResponse;
+    return normalizeEventResults(data);
   },
 
   /**
