@@ -90,6 +90,8 @@ export default function TournamentListCard({
         : statusLabel.toLowerCase().includes("closed")
           ? "bg-amber-500/15 text-amber-600 border-amber-300"
           : "bg-primary/15 text-primary border-primary/20";
+  const isRegistrationClosed =
+    !isHistory && statusLabel.toLowerCase().includes("closed");
 
   if (isHistory) {
     return (
@@ -205,7 +207,13 @@ export default function TournamentListCard({
         </div>
 
         <div className="col-span-2 pt-2">
-          <span className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-[16px] font-bold text-white shadow-[0_4px_12px_rgba(255,122,26,0.3)] active:scale-[0.98] transition-all">
+          <span
+            className={`flex h-12 w-full items-center justify-center rounded-xl text-[16px] font-bold transition-all ${
+              isRegistrationClosed
+                ? "cursor-not-allowed border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-muted)] opacity-70"
+                : "bg-primary text-white shadow-[0_4px_12px_rgba(255,122,26,0.3)] active:scale-[0.98]"
+            }`}
+          >
             {item.cta}
           </span>
         </div>

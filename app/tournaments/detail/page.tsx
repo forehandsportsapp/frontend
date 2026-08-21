@@ -6,17 +6,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import TournamentHeroCard from "@/components/TournamentHeroCard";
 import {
-  ArrowLeftIcon,
-  CalendarIcon,
   CheckIcon,
   ClipboardIcon,
-  InfoIcon,
   MailIcon,
   MapPinIcon,
   PhoneIcon,
-  PlusIcon,
   TimerIcon,
-  TrashIcon,
   XIcon,
 } from "@/components/Icons";
 import { tournamentApi } from "@/lib/api/tournamentApi";
@@ -25,7 +20,6 @@ import { TournamentData, EventData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 import { useApp } from "@/components/AppProvider";
 import RegistrationEventCard from "@/components/Card/RegistrationEventCard";
-import { getEventStatusMeta } from "@/lib/statusLabels";
 
 type MainTab = "about" | "events";
 
@@ -94,141 +88,6 @@ function isEventRegisteredByUser(event: EventData, userId?: string | null) {
       : false;
     return hasUser && state !== "created";
   });
-}
-
-function isEventViewable(event?: EventData | null) {
-  return [
-    "participants_finalized",
-    "scheduled",
-    "in_progress",
-    "round_over",
-    "completed",
-  ].includes(event?.eventState || "");
-}
-
-function getEventDashboardTab(event?: EventData | null) {
-  return "fixtures";
-}
-
-function shouldShowChampionPage(event?: EventData | null) {
-  return Boolean(
-    event &&
-      (event.eventState === "completed" ||
-        event.eventState === "round_over" ||
-        event.winnerId),
-  );
-}
-
-function getEventDashboardHref(
-  tournamentId: string,
-  eventId: string,
-  event?: EventData | null,
-) {
-  return shouldShowChampionPage(event)
-    ? `/org/tournaments/event/champion${toQuery({
-        tournamentId,
-        eventId,
-        viewOnly: "1",
-      })}`
-    : `/org/tournaments/event/matches${toQuery({
-        tournamentId,
-        eventId,
-        viewOnly: "1",
-      })}`;
-}
-
-function EventAccessCard({
-  event,
-  tournamentId,
-}: {
-  event: EventData;
-  tournamentId: string;
-}) {
-  const eventId = event.id || "";
-  const href = getEventDashboardHref(tournamentId, eventId, event);
-  const statusMeta = getEventStatusMeta(event.eventState, event.dueDate);
-  const isRegistrationOpen = isEventRegistrationOpen(event);
-
-  return (
-    <Link
-      href={href}
-      className="block rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg transition-all hover:border-[#ff7a1a]/30 active:scale-[0.99]"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-[20px] font-bold leading-tight text-[var(--color-text)] max-[380px]:text-[18px]">
-            {event.name}
-          </h3>
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            <span
-              className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-widest max-[380px]:px-2.5 max-[380px]:text-[10px] ${statusMeta.className}`}
-            >
-              {statusMeta.label}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-2.5 text-[13px] text-[var(--color-text-secondary)] min-[430px]:grid-cols-2 max-[380px]:text-[12px]">
-        <div className="flex min-w-0 items-start gap-2 opacity-70">
-          <CalendarIcon size={14} className="mt-0.5 shrink-0 text-[#ff7a1a]" />
-          <span className="leading-snug">
-            Starts:{" "}
-            {event.startDate
-              ? new Date(event.startDate).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "TBA"}
-          </span>
-        </div>
-        <div className="flex min-w-0 items-start gap-2 opacity-70 min-[430px]:justify-self-end min-[430px]:text-right">
-          <TimerIcon size={14} className="mt-0.5 shrink-0 text-[#ff7a1a]" />
-          <span className="leading-snug">
-            Closes:{" "}
-            {event.dueDate
-              ? new Date(event.dueDate).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "TBA"}
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-col gap-3 border-t border-[var(--color-border)] pt-4 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
-        <div className="min-w-0">
-          <p className="text-[24px] font-bold leading-tight text-[#ff7a1a] max-[380px]:text-[22px]">
-            {event.amount === 0 ? (
-              "Free Entry"
-            ) : (
-              <>
-                <span className="currency-inr mr-0.5">&#8377;</span>
-                {event.amount}
-              </>
-            )}
-          </p>
-          {event.paymentMode?.label && (
-            <p className="mt-1 text-[12px] font-medium text-[var(--color-text-secondary)] opacity-60 uppercase tracking-wider">
-              {event.paymentMode.label}
-            </p>
-          )}
-        </div>
-
-        <span
-          className={`inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full px-6 text-[16px] font-bold transition-all max-[380px]:h-10 max-[380px]:min-w-[112px] max-[380px]:px-5 max-[380px]:text-[15px] ${
-            isRegistrationOpen
-              ? "bg-[#ff7a1a] text-white shadow-lg shadow-orange-500/20"
-              : "cursor-not-allowed border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-muted)] opacity-70"
-          }`}
-        >
-          Register
-        </span>
-      </div>
-    </Link>
-  );
 }
 
 function TournamentDetailContent() {
@@ -570,16 +429,6 @@ function TournamentDetailContent() {
           </>
         ) : (
           sortedEvents.map((ev) => {
-            if (isEventViewable(ev)) {
-              return (
-                <EventAccessCard
-                  key={ev.id}
-                  event={ev}
-                  tournamentId={id || ""}
-                />
-              );
-            }
-
             return (
               <RegistrationEventCard
                 key={ev.id}

@@ -242,7 +242,6 @@ export default function UserTournamentsPage() {
       let cta: "Register" | "View" | "Chevron" = "Register";
       if (activeTab === "joined") cta = "View";
       else if (activeTab === "history") cta = "Chevron";
-      else if (!isRegistrationOpen) cta = "View";
 
       return {
         id: t.id!,

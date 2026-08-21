@@ -4,14 +4,12 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   PlusIcon,
-  TrashIcon,
   InfoIcon,
   CalendarIcon,
   TimerIcon,
-  CheckIcon,
   XIcon,
 } from "@/components/Icons";
-import { EventData, TeamData, TeamStatus, ProfileData } from "@/lib/models";
+import { EventData, TeamData, ProfileData } from "@/lib/models";
 import { teamApi } from "@/lib/api/teamApi";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
@@ -23,7 +21,6 @@ import {
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
-import { toQuery } from "@/lib/utils";
 
 interface RegistrationEventCardProps {
   event: EventData;
@@ -70,34 +67,7 @@ export default function RegistrationEventCard({
     event.teamTypeCode?.toLowerCase().includes("double") ||
     event.teamType?.label?.toLowerCase().includes("double") ||
     event.name?.toLowerCase().includes("double");
-  const viewableStates = new Set([
-    "registration_closed",
-    "participants_finalized",
-    "scheduled",
-    "in_progress",
-    "round_over",
-    "completed",
-  ]);
-  const canViewEvent =
-    state === "REGISTERED" ||
-    state === "CLOSED" ||
-    viewableStates.has(event.eventState || "");
   const eventStatusMeta = getEventStatusMeta(event.eventState, event.dueDate);
-  const useChampionPage =
-    event.eventState === "completed" ||
-    event.eventState === "round_over" ||
-    Boolean(event.winnerId);
-  const viewHref = useChampionPage
-    ? `/org/tournaments/event/champion${toQuery({
-        tournamentId: event.tournamentId,
-        eventId: event.id || "",
-        viewOnly: "1",
-      })}`
-    : `/org/tournaments/event/matches${toQuery({
-        tournamentId: event.tournamentId,
-        eventId: event.id || "",
-        viewOnly: "1",
-      })}`;
 
   const loadRegistrationState = useCallback(async () => {
     if (!event.id) {
@@ -544,9 +514,9 @@ export default function RegistrationEventCard({
           {state === "IDLE" && isRegistrationClosed && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-amber-500/40 bg-amber-500/10 px-6 text-[16px] font-bold text-amber-500 cursor-not-allowed"
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
             >
-              Closed
+              Register
             </button>
           )}
 
@@ -567,42 +537,23 @@ export default function RegistrationEventCard({
           )}
 
           {state === "REGISTERED" && (
-            <>
-              {canViewEvent && (
-                <a
-                  href={viewHref}
-                  className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-white px-6 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
-                >
-                  View
-                </a>
-              )}
-              <button
-                disabled
-                className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 text-white px-6 text-[16px] font-bold cursor-default"
-              >
-                {(team?.teamStatus || team?.status)?.toLowerCase() ===
-                "participating"
-                  ? "Participating"
-                  : "Registered"}
-              </button>
-            </>
-          )}
-
-          {state === "CLOSED" && canViewEvent && (
-            <a
-              href={viewHref}
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-white px-6 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
-            >
-              View
-            </a>
-          )}
-
-          {state === "CLOSED" && !canViewEvent && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-amber-500/40 bg-amber-500/10 px-6 text-[16px] font-bold text-amber-500 cursor-not-allowed"
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 text-white px-6 text-[16px] font-bold cursor-default"
             >
-              Closed
+              {(team?.teamStatus || team?.status)?.toLowerCase() ===
+              "participating"
+                ? "Participating"
+                : "Registered"}
+            </button>
+          )}
+
+          {state === "CLOSED" && (
+            <button
+              disabled
+              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
+            >
+              Register
             </button>
           )}
 
