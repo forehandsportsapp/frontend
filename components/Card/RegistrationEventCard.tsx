@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  PlusIcon,
   InfoIcon,
   CalendarIcon,
   TimerIcon,
@@ -21,6 +20,7 @@ import {
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
+import { toQuery } from "@/lib/utils";
 
 interface RegistrationEventCardProps {
   event: EventData;
@@ -68,6 +68,21 @@ export default function RegistrationEventCard({
     event.teamType?.label?.toLowerCase().includes("double") ||
     event.name?.toLowerCase().includes("double");
   const eventStatusMeta = getEventStatusMeta(event.eventState, event.dueDate);
+  const useChampionPage =
+    event.eventState === "completed" ||
+    event.eventState === "round_over" ||
+    Boolean(event.winnerId);
+  const viewHref = useChampionPage
+    ? `/org/tournaments/event/champion${toQuery({
+        tournamentId: event.tournamentId,
+        eventId: event.id || "",
+        viewOnly: "1",
+      })}`
+    : `/org/tournaments/event/matches${toQuery({
+        tournamentId: event.tournamentId,
+        eventId: event.id || "",
+        viewOnly: "1",
+      })}`;
 
   const loadRegistrationState = useCallback(async () => {
     if (!event.id) {
@@ -463,8 +478,8 @@ export default function RegistrationEventCard({
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-[var(--color-border)] pt-5">
-        <div>
+      <div className="mt-5 border-t border-[var(--color-border)] pt-5">
+        <div className="mb-4">
           <p className="text-[24px] font-bold text-[#ff7a1a]">
             {event.amount === 0 ? (
               "Free Entry"
@@ -482,14 +497,21 @@ export default function RegistrationEventCard({
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-3">
+          <a
+            href={viewHref}
+            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 border-[#ff7a1a] bg-white px-4 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
+          >
+            View
+          </a>
+
           {(state === "ADDING_PARTNER" ||
             state === "INVITED" ||
             state === "PAIRED" ||
             state === "REJECTED") && (
             <button
               onClick={handleDiscard}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border-2 border-red-500/50 px-6 text-[16px] font-bold text-red-500 transition-all active:scale-95"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-red-500/50 px-4 text-[16px] font-bold text-red-500 transition-all active:scale-95"
             >
               Discard
             </button>
@@ -499,22 +521,16 @@ export default function RegistrationEventCard({
             <button
               onClick={handleAdd}
               disabled={isBusy}
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-text)] transition-all hover:border-gray-400 active:scale-95 disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-[#ff7a1a] px-4 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70"
             >
-              {isBusy ? (
-                "Adding..."
-              ) : (
-                <>
-                  <PlusIcon size={14} /> Add
-                </>
-              )}
+              {isBusy ? "Registering..." : "Register"}
             </button>
           )}
 
           {state === "IDLE" && isRegistrationClosed && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
             >
               Register
             </button>
@@ -530,7 +546,7 @@ export default function RegistrationEventCard({
                   handleDiscard();
                 }
               }}
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-[#ff7a1a] text-white shadow-lg shadow-orange-500/20 px-6 text-[16px] font-bold transition-all active:scale-95"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-[#ff7a1a] px-4 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95"
             >
               Added
             </button>
@@ -539,7 +555,7 @@ export default function RegistrationEventCard({
           {state === "REGISTERED" && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 text-white px-6 text-[16px] font-bold cursor-default"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 px-4 text-[16px] font-bold text-white cursor-default"
             >
               {(team?.teamStatus || team?.status)?.toLowerCase() ===
               "participating"
@@ -551,7 +567,7 @@ export default function RegistrationEventCard({
           {state === "CLOSED" && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
             >
               Register
             </button>
@@ -560,7 +576,7 @@ export default function RegistrationEventCard({
           {state === "INELIGIBLE" && (
             <button
               disabled
-              className="inline-flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-full border-2 border-red-500/50 text-red-500 bg-red-500/10 px-6 text-[16px] font-bold cursor-not-allowed"
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-red-500/50 bg-red-500/10 px-4 text-[16px] font-bold text-red-500 cursor-not-allowed"
             >
               Ineligible
             </button>
