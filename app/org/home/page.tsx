@@ -379,11 +379,9 @@ export default function OrgHomePage() {
           const wsBase = baseUrl.replace(/^http/, "ws").replace(/\/$/, "");
           const wsUrl = `${wsBase}/ws`;
 
-          console.log(`[WS] Attempting connection: ${wsUrl}`);
           socket = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
 
           socket.onopen = () => {
-            console.log("[WS] Connected successfully");
             if (active) {
               (feed || []).forEach((group: any) => {
                 socket?.send(
@@ -474,16 +472,11 @@ export default function OrgHomePage() {
             }
           };
 
-          socket.onerror = () =>
-            console.warn(
-              `[WS] Org Feed Connection failed for ${wsUrl}. Real-time updates disabled.`,
-            );
-          socket.onclose = (event) =>
-            console.log(`[WS] Closed: ${event.code} ${event.reason}`);
+          socket.onerror = () => undefined;
+          socket.onclose = () => undefined;
         }
       } catch (error) {
         if (!active) return;
-        console.log("[OrgHome] Org live feed fetch skipped or unavailable");
         setLiveFeed([]); // Reset to empty on error
       } finally {
         if (active) setIsFeedLoading(false);

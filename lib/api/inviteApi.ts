@@ -17,7 +17,9 @@ type SendInviteArgs = {
  */
 type InviteResponse = {
   inviteId?: string;
+  receiverId?: string;
   receiverName?: string;
+  receiverPhone?: string;
   receiverProfilePicUrl?: string | null;
   inviteState?: "pending" | "accepted" | "rejected";
 };
@@ -27,6 +29,8 @@ type InviteResponse = {
  */
 type CrewMemberResponse = {
   id: string;
+  inviteId?: string;
+  userId?: string;
   role: CrewRole;
   name: string;
   phone?: string;

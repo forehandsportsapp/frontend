@@ -32,11 +32,13 @@ export default function PageHeader({
   subtitle,
   action,
   hideTopRow = false,
+  showNotifications = false,
 }: {
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
   hideTopRow?: boolean;
+  showNotifications?: boolean;
 }) {
   const { userProfile: profile, activeOrganization: organization } = useApp();
   const pathname = usePathname();
@@ -65,7 +67,7 @@ export default function PageHeader({
     }));
 
   useEffect(() => {
-    if (hideTopRow) return;
+    if (hideTopRow || !showNotifications) return;
     let active = true;
     const loadNotifications = async () => {
       try {
@@ -82,7 +84,7 @@ export default function PageHeader({
     return () => {
       active = false;
     };
-  }, [readIds, hideTopRow]);
+  }, [readIds, hideTopRow, showNotifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
   const profileLink = pathname.startsWith("/org") ? "/org/settings" : "/user/settings";
@@ -119,6 +121,7 @@ export default function PageHeader({
               )}
             </div>
 
+            {showNotifications && (
             <div className="ml-auto">
               <button
                 type="button"
@@ -134,6 +137,7 @@ export default function PageHeader({
                 )}
               </button>
             </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-between gap-4">
@@ -156,7 +160,7 @@ export default function PageHeader({
         )}
       </div>
 
-      {!hideTopRow && (
+      {!hideTopRow && showNotifications && (
         <NotificationsSlideOver
           open={notificationsOpen}
           onClose={() => setNotificationsOpen(false)}

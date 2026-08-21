@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import {
   ArrowLeftIcon,
@@ -34,7 +35,6 @@ import {
 } from "@/lib/models";
 import { useApp } from "@/components/AppProvider";
 import { inviteApi } from "@/lib/api/inviteApi";
-import { notificationApi } from "@/lib/api/notificationApi";
 import { sanitizeLogoUrl } from "@/lib/logo";
 import { getTournamentStatusMeta } from "@/lib/statusLabels";
 
@@ -77,15 +77,17 @@ function isEventRegistrationOpen(
 const TopAppBar = ({
   onShare,
   settingsHref,
+  backHref,
   canManage,
 }: {
   onShare: () => void;
   settingsHref: string;
+  backHref: string;
   canManage: boolean;
 }) => (
   <div className="flex items-center justify-between">
     <Link
-      href="/org/tournaments"
+      href={backHref}
       className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
     >
       <ArrowLeftIcon size={20} />
@@ -505,15 +507,19 @@ const getQuickAction = (state: string): string => {
   }
 };
 
-const getWorkflowSteps = (event: EventData, tournamentId: string) => {
+const getWorkflowSteps = (
+  event: EventData,
+  tournamentId: string,
+  routeBase = "/org/tournaments",
+) => {
   const eventId = event.id || "";
   const participantCount = Array.isArray(event.teams) ? event.teams.length : 0;
   const state = event.eventState || "created";
 
-  const participantsHref = `/org/tournaments/event/participants${toQuery({ tournamentId, eventId })}`;
-  const fixtureHref = `/org/tournaments/event/fixture${toQuery({ tournamentId, eventId })}`;
-  const matchesHref = `/org/tournaments/event/matches${toQuery({ tournamentId, eventId })}`;
-  const championHref = `/org/tournaments/event/champion${toQuery({ tournamentId, eventId })}`;
+  const participantsHref = `${routeBase}/event/participants${toQuery({ tournamentId, eventId })}`;
+  const fixtureHref = `${routeBase}/event/fixture${toQuery({ tournamentId, eventId })}`;
+  const matchesHref = `${routeBase}/event/matches${toQuery({ tournamentId, eventId })}`;
+  const championHref = `${routeBase}/event/champion${toQuery({ tournamentId, eventId })}`;
 
   const steps = [
     {
@@ -683,10 +689,12 @@ const EventsTab = ({
   tournamentId,
   events,
   onRefresh,
+  routeBase,
 }: {
   tournamentId: string;
   events: EventData[];
   onRefresh: () => void;
+  routeBase: string;
 }) => {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = ["All", "Upcoming", "Past", "Ongoing"];
@@ -754,7 +762,7 @@ const EventsTab = ({
           const eventId = event.id || String(index + 1);
           const state = event.eventState || "created";
           const isCancelled = state === "cancelled";
-          const steps = getWorkflowSteps(event, tournamentId);
+          const steps = getWorkflowSteps(event, tournamentId, routeBase);
           const quickAction = getQuickAction(state);
 
           const badgeClass = isCancelled
@@ -862,7 +870,13 @@ const EventsTab = ({
   );
 };
 
-const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
+const SummaryTab = ({
+  tournamentId,
+  routeBase,
+}: {
+  tournamentId: string;
+  routeBase: string;
+}) => {
   const [expandedById, setExpandedById] = useState<Record<string, boolean>>({});
   const [summaryEvents, setSummaryEvents] = useState<TournamentSummaryEventData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1004,7 +1018,7 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
         tone: "warning",
         title: "Participants Registered",
         subtitle: `${enrolled} teams enrolled`,
-        href: `/org/tournaments/event/participants${toQuery({
+        href: `${routeBase}/event/participants${toQuery({
           tournamentId,
           eventId,
         })}`,
@@ -1014,7 +1028,7 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
         tone: "warning",
         title: "Teams Confirmed",
         subtitle: `${confirmed} teams confirmed`,
-        href: `/org/tournaments/event/fixture${toQuery({
+        href: `${routeBase}/event/fixture${toQuery({
           tournamentId,
           eventId,
         })}`,
@@ -1024,7 +1038,7 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
         tone: "success",
         title: "Matches Completed",
         subtitle: `${completedMatches} of ${totalMatches} matches completed`,
-        href: `/org/tournaments/event/matches${toQuery({
+        href: `${routeBase}/event/matches${toQuery({
           tournamentId,
           eventId,
         })}`,
@@ -1034,7 +1048,7 @@ const SummaryTab = ({ tournamentId }: { tournamentId: string }) => {
         tone: "warning",
         title: "Live / Remaining",
         subtitle: `${liveMatches} live | ${remainingMatches} remaining`,
-        href: `/org/tournaments/event/matches${toQuery({
+        href: `${routeBase}/event/matches${toQuery({
           tournamentId,
           eventId,
         })}`,
@@ -1152,6 +1166,8 @@ type InviteStatus = "invite_sent" | "accepted" | "rejected" | "idle";
 
 type CrewMember = {
   id: string;
+  inviteId?: string;
+  userId?: string;
   role: CrewRole;
   name: string;
   phone?: string;
@@ -1185,12 +1201,13 @@ const EventCrewTab = ({
     let active = true;
     const loadCrew = async () => {
       try {
-        console.log("[EventCrewTab] loading crew", { tournamentId });
         const list = await inviteApi.getTournamentCrew(tournamentId);
         if (!active) return;
         setCrewMembers(
           list.map((member) => ({
             id: member.id,
+            inviteId: member.inviteId,
+            userId: member.userId,
             role: member.role,
             name: member.name,
             phone: member.phone,
@@ -1198,7 +1215,6 @@ const EventCrewTab = ({
             status: member.status || "idle",
           })),
         );
-        console.log("[EventCrewTab] crew loaded", { count: list.length, list });
       } catch {
         if (!active) return;
         console.error("[EventCrewTab] crew load failed");
@@ -1227,23 +1243,19 @@ const EventCrewTab = ({
       return;
     }
     const cleanPhone = normalizePhone(phoneInput);
-    console.log("[EventCrewTab] invite submit clicked", {
-      activeRole,
-      rawPhone: phoneInput,
-      cleanPhone,
-      tournamentId,
-      organizationId:
-        tournament?.organizationId || activeOrganization?.id || null,
-    });
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       setFeedback("Enter a valid 10-digit Indian phone number.");
-      console.warn("[EventCrewTab] invalid phone for invite", { cleanPhone });
       return;
     }
 
     try {
       setIsSubmitting(true);
       setFeedback("");
+      console.info("[EventCrewTab] sending crew invite", {
+        tournamentId,
+        activeRole,
+        phone: cleanPhone,
+      });
       const inviteResult = await inviteApi.sendTournamentCrewInvite({
         phone: cleanPhone,
         role: activeRole,
@@ -1251,17 +1263,6 @@ const EventCrewTab = ({
         organizationId:
           tournament?.organizationId || activeOrganization?.id || undefined,
       });
-
-      try {
-        await notificationApi.sendInviteNotification({
-          phone: cleanPhone,
-          tournamentId: tournamentId,
-          tournamentName: tournament?.name || "the tournament",
-          role: activeRole,
-        });
-      } catch (err) {
-        console.warn("Failed to send crew invite notification", err);
-      }
 
       setCrewMembers((prev) => [
         {
@@ -1274,9 +1275,13 @@ const EventCrewTab = ({
         },
         ...prev,
       ]);
+      console.info("[EventCrewTab] crew invite added locally", {
+        tournamentId,
+        inviteId: inviteResult.inviteId,
+        role: activeRole,
+      });
       setPhoneInput("");
       setFeedback("Invite sent successfully.");
-      console.log("[EventCrewTab] invite UI update success", { inviteResult });
     } catch (error) {
       console.error("[EventCrewTab] invite submit failed", error);
       setFeedback(
@@ -1291,7 +1296,11 @@ const EventCrewTab = ({
 
   const removeMember = async (id: string) => {
     try {
-      await inviteApi.removeTournamentCrewInvite(id, tournamentId);
+      const member = crewMembers.find((item) => item.id === id);
+      await inviteApi.removeTournamentCrewInvite(
+        member?.inviteId || member?.userId || id,
+        tournamentId,
+      );
       setCrewMembers((prev) => prev.filter((m) => m.id !== id));
       setFeedback("Crew member removed.");
     } catch (error) {
@@ -1417,6 +1426,7 @@ const EventCrewTab = ({
 // 3. MAIN PAGE EXPORT
 // ==========================================
 export default function TournamentEventDetailsPage() {
+  const pathname = usePathname();
   const { session, isLoading: isAuthLoading, activeOrganization } = useApp();
   const [searchParams, setSearchParams] = useState<URLSearchParams>(
     () => new URLSearchParams(),
@@ -1430,11 +1440,18 @@ export default function TournamentEventDetailsPage() {
 
   const primaryTabs = ["About", "Events", "Summary", "Event Crew"];
   const [activeTab, setActiveTab] = useState("About");
-  const canManage = Boolean(
-    tournament?.organizationId &&
-      activeOrganization?.id &&
-      activeOrganization.id === tournament.organizationId,
-  );
+  const isUserManageRoute = pathname.startsWith("/user/manage/");
+  const routeBase = isUserManageRoute
+    ? "/user/manage/tournament"
+    : "/org/tournaments";
+  const backHref = isUserManageRoute ? "/user/manage" : "/org/tournaments";
+  const canManage =
+    isUserManageRoute ||
+    Boolean(
+      tournament?.organizationId &&
+        activeOrganization?.id &&
+        activeOrganization.id === tournament.organizationId,
+    );
 
   const shareUrl = React.useMemo(() => {
     const id = tournament?.id || tournamentId;
@@ -1587,6 +1604,7 @@ export default function TournamentEventDetailsPage() {
     <div className="min-h-screen bg-[var(--color-background)] px-4 py-3 pb-[calc(10rem+env(safe-area-inset-bottom))] space-y-4">
       <TopAppBar
         onShare={handleOpenShareSheet}
+        backHref={backHref}
         settingsHref={`/org/tournaments/settings${toQuery({ t: tournamentId })}`}
         canManage={canManage}
       />
@@ -1641,10 +1659,11 @@ export default function TournamentEventDetailsPage() {
                 tournamentId={tournamentId}
                 events={tournament?.events ?? []}
                 onRefresh={() => void loadTournamentData()}
+                routeBase={routeBase}
               />
             )}
             {activeTab === "Summary" && (
-              <SummaryTab tournamentId={tournamentId} />
+              <SummaryTab tournamentId={tournamentId} routeBase={routeBase} />
             )}
             {activeTab === "Event Crew" && (
               <EventCrewTab

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   SearchIcon,
@@ -49,11 +49,15 @@ function isPastStartTime(value: string) {
 function FixtureSetupContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const { activeOrganization } = useApp();
   const tournamentId = searchParams.get("tournamentId") || "";
   const eventId = searchParams.get("eventId") || "";
   const requestedViewOnly =
     searchParams.get("viewOnly") === "1" || searchParams.get("mode") === "view";
+  const detailPath = pathname.startsWith("/user/manage/")
+    ? "/user/manage/tournament/detail"
+    : "/org/tournaments/detail";
 
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [event, setEvent] = useState<EventData | null>(null);
@@ -69,12 +73,14 @@ function FixtureSetupContent() {
   const [showByeModal, setShowByeModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const minStartTime = getMinStartTimeValue();
-  const canManage = Boolean(
-    (tournament?.organizationId || tournament?.organization?.id) &&
-      activeOrganization?.id &&
-      activeOrganization.id ===
-        (tournament?.organizationId || tournament?.organization?.id),
-  );
+  const canManage =
+    pathname.startsWith("/user/manage/") ||
+    Boolean(
+      (tournament?.organizationId || tournament?.organization?.id) &&
+        activeOrganization?.id &&
+        activeOrganization.id ===
+          (tournament?.organizationId || tournament?.organization?.id),
+    );
   const viewOnly = requestedViewOnly || !canManage;
 
   // Selection State for Assignment
@@ -301,7 +307,7 @@ function FixtureSetupContent() {
       // Sync tournament status
       await tournamentApi.syncTournamentStatus(tournamentId);
 
-      router.push(`/org/tournaments/detail${toQuery({ t: tournamentId })}`);
+      router.push(`${detailPath}${toQuery({ t: tournamentId })}`);
     } catch (error) {
       console.error("Failed to publish matches", error);
       alert("Failed to publish fixtures. Please try again.");

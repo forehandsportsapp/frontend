@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useApp } from "@/components/AppProvider";
 import { inviteApi } from "@/lib/api/inviteApi";
-import { notificationApi } from "@/lib/api/notificationApi";
 import { HierarchyIcon } from "@/components/Icons";
 import {
   IntroWithIcon,
@@ -80,17 +79,6 @@ export default function OrgMembersPage() {
         phone: cleanPhone,
         organizationId,
       });
-
-      try {
-        await notificationApi.sendOrgInviteNotification({
-          phone: cleanPhone,
-          organizationId,
-          organizationName: activeOrganization?.name || "the organization",
-          role: "Admin",
-        });
-      } catch (err) {
-        console.warn("Failed to send org invite notification", err);
-      }
 
       const newInvite: OrganizationMemberInvite = {
         id: created.inviteId || created.id || String(Date.now()),

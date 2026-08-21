@@ -745,12 +745,6 @@ function UserTournamentEventMatchesContent() {
         const mapped = eventMatches.map((m: any, index: number): MatchRow => {
           const rawSets = getMatchSetRows(m);
           const sets = normalizeMatchSets(rawSets);
-          console.log("[event-matches] set rows", {
-            eventId,
-            matchId: m.id,
-            rawSets,
-            normalizedSets: sets,
-          });
           const expectedSets = Math.max(
             1,
             Number(event?.setsPerMatch || m.setsPerMatch || sets.length || 1),
@@ -771,15 +765,6 @@ function UserTournamentEventMatchesContent() {
               const teamAScore = getSetTeamAScore(set);
               const teamBScore = getSetTeamBScore(set);
               const setWinnerId = getSetWinnerId(set);
-              console.log("[event-matches] set score", {
-                matchId: m.id,
-                setNumber,
-                set,
-                setStatus,
-                teamAScore,
-                teamBScore,
-                setWinnerId,
-              });
 
               if (setStatus === "completed") {
                 if (setWinnerId === teamAId || (!setWinnerId && teamAScore > teamBScore))

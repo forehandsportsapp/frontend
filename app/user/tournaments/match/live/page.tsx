@@ -204,11 +204,6 @@ export default function ScorerLiveMatchPage() {
 
         const dbState = stateFromMatchSets(matchId, config, getMatchSetRows(info));
         if (dbState) {
-          console.log("[ScorerLive] hydrated DB set rows", {
-            matchId,
-            sets: getMatchSetRows(info),
-            state: dbState,
-          });
           setState(dbState);
           setItem(`match:${matchId}:state`, dbState);
         }
@@ -318,24 +313,11 @@ export default function ScorerLiveMatchPage() {
           (previous.setScores[updatedSetIndex][0] === 0 && previous.setScores[updatedSetIndex][1] === 0))) {
           try {
             await matchApi.initializeSet(matchId, updatedSetIndex + 1);
-          } catch (err) {
-            console.warn("[ScorerLive] Set initialization failed (may already exist)", err);
+          } catch {
           }
         }
 
         if (matchId) {
-          console.log("[ScorerLive] syncing score", {
-            matchId,
-            setNumber: updatedSetIndex + 1,
-            teamAScore: setScore[0] ?? 0,
-            teamBScore: setScore[1] ?? 0,
-            setStatus: setFinished ? "completed" : "in_progress",
-            winnerId: setWinnerId,
-            matchFinished: winner != null,
-            matchWinnerId,
-            teamAId: teamIds.a,
-            teamBId: teamIds.b,
-          });
           await matchApi.updateScore({
             matchId,
             setNumber: updatedSetIndex + 1,
@@ -439,7 +421,7 @@ export default function ScorerLiveMatchPage() {
   ]);
   const winnerScore = `${String(currentSet[0] ?? 0).padStart(2, "0")}-${String(currentSet[1] ?? 0).padStart(2, "0")}`;
 
-  // Clean up local storage and redirect to user profile (scorer tab)
+  // Clean up local storage and return to the user manage scorer tab.
   const handleConfirmWinner = useCallback(async () => {
     if (matchId) {
       removeItem(`match:${matchId}:state`);
@@ -447,13 +429,11 @@ export default function ScorerLiveMatchPage() {
       removeItem(`match:${matchId}:players`);
       removeItem(`match:${matchId}:events`);
     }
-    // Return to user tournaments page on the scorer tab
-    router.replace("/user/tournaments?tab=scorer");
+    router.replace("/user/manage?tab=scorer");
   }, [matchId, router]);
 
   const handleConfirmExit = useCallback(() => {
-    // Go back to user tournaments scorer tab without submitting
-    router.replace("/user/tournaments?tab=scorer");
+    router.replace("/user/manage?tab=scorer");
   }, [router]);
 
   if (isLoading) {

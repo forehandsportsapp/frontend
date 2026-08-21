@@ -12,7 +12,6 @@ import { EventData, TeamData, ProfileData } from "@/lib/models";
 import { teamApi } from "@/lib/api/teamApi";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
-import { notificationApi } from "@/lib/api/notificationApi";
 import { getEventStatusMeta, isEventRegistrationOpen } from "@/lib/statusLabels";
 import { useApp } from "@/components/AppProvider";
 import {
@@ -320,18 +319,6 @@ export default function RegistrationEventCard({
         inviterName: userProfile?.name || "A player",
       });
       setInvite(result);
-
-      // Send a direct notification for better UI feedback (with accept/reject buttons)
-      try {
-        await notificationApi.sendTeamInviteNotification({
-          phone: partnerPhone,
-          eventId: event.id,
-          eventDisplayName: event.name,
-          inviterName: userProfile?.name || "A player",
-        });
-      } catch (err) {
-        console.warn("Failed to send teammate invite notification", err);
-      }
 
       // Fetch partner profile
       try {

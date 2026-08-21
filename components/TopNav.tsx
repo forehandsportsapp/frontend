@@ -15,6 +15,7 @@ type TopNavProps = {
   showBack?: boolean;
   onBack?: () => void;
   right?: React.ReactNode;
+  showNotifications?: boolean;
 };
 
 // Bell icon component
@@ -41,6 +42,7 @@ export default function TopNav({
   showBack = false,
   onBack,
   right,
+  showNotifications = false,
 }: TopNavProps) {
   const pathname = usePathname();
   const { userProfile, activeOrganization } = useApp();
@@ -74,6 +76,7 @@ export default function TopNav({
     }));
 
   useEffect(() => {
+    if (!showNotifications) return;
     let active = true;
     const loadNotifications = async () => {
       try {
@@ -90,7 +93,7 @@ export default function TopNav({
     return () => {
       active = false;
     };
-  }, [readIds]);
+  }, [readIds, showNotifications]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -132,20 +135,21 @@ export default function TopNav({
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {/* Notifications Button */}
-            <button
-              type="button"
-              onClick={() => setNotificationsOpen(true)}
-              className="relative p-2 rounded-lg hover:bg-[var(--color-surface-elevated)] min-h-[44px] min-w-[44px] flex items-center justify-center"
-              aria-label="Notifications"
-            >
-              <BellIcon size={20} />
-              {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+            {showNotifications && (
+              <button
+                type="button"
+                onClick={() => setNotificationsOpen(true)}
+                className="relative p-2 rounded-lg hover:bg-[var(--color-surface-elevated)] min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Notifications"
+              >
+                <BellIcon size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-5 h-5 bg-primary text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
             {/* Profile Avatar */}
             <Link
               href={profileHref}
@@ -170,16 +174,18 @@ export default function TopNav({
       </header>
 
       {/* Notifications SlideOver */}
-      <NotificationsSlideOver
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        items={notifications}
-        unreadCount={unreadCount}
-        onMarkAllRead={() =>
-          setReadIds(new Set(notifications.map((notification) => notification.id)))
-        }
-        onClearAll={() => setNotifications([])}
-      />
+      {showNotifications && (
+        <NotificationsSlideOver
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          items={notifications}
+          unreadCount={unreadCount}
+          onMarkAllRead={() =>
+            setReadIds(new Set(notifications.map((notification) => notification.id)))
+          }
+          onClearAll={() => setNotifications([])}
+        />
+      )}
     </>
   );
 }

@@ -51,29 +51,15 @@ export default function UserManagePage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-
         if (activeTab === "admin") {
           const data = await tournamentApi.getManagedTournaments();
-          if (active) setAdminTournaments(Array.isArray(data) ? data : []);
+          const tournaments = Array.isArray(data) ? data : [];
+          if (active) setAdminTournaments(tournaments);
         } else if (activeTab === "scorer") {
           const matches = await matchApi.getScorerMatches();
           const assignedMatches = Array.isArray(matches)
             ? matches.filter((match: any) => match?.scorer === userId)
             : [];
-          console.log("[user/manage] scorer matches loaded", {
-            userId,
-            matches: assignedMatches.map((match: any) => ({
-              matchId: match?.id,
-              matchState: match?.matchState,
-              scorer: match?.scorer,
-              setCount: Array.isArray(match?.setRows)
-                ? match.setRows.length
-                : Array.isArray(match?.sets)
-                  ? match.sets.length
-                  : 0,
-              sets: match?.setRows || match?.sets || [],
-            })),
-          });
           if (active) setScorerMatches(assignedMatches);
         }
       } catch (error) {
@@ -178,9 +164,9 @@ export default function UserManagePage() {
                   eventsCount={t.events?.length ?? 0}
                   date={t.startDate}
                   entryFee={"-"}
-                  href={`/org/tournaments/detail${toQuery({ t: t.id })}`}
+                  href={`/user/manage/tournament/detail${toQuery({ t: t.id })}`}
                   logoUrl={t.logoUrl ?? undefined}
-                  badgeLabel={t.tournamentState ?? undefined}
+                  badgeLabel="Admin"
                 />
               ))
             )}

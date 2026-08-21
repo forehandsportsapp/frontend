@@ -32,20 +32,29 @@ function EventChampionContent() {
 
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
-  const isUserViewerRoute = pathname.startsWith("/user/");
+  const isUserManageRoute = pathname.startsWith("/user/manage/");
+  const isUserViewerRoute =
+    pathname.startsWith("/user/") && !isUserManageRoute;
   const viewOnly =
     isUserViewerRoute ||
     searchParams.get("viewOnly") === "1" ||
     searchParams.get("mode") === "view";
   const backHref =
-    isUserViewerRoute && tournamentId && eventId
+    isUserManageRoute && tournamentId
+      ? `/user/manage/tournament/detail${toQuery({ t: tournamentId })}`
+      : isUserViewerRoute && tournamentId && eventId
       ? `/user/tournaments/event/matches${toQuery({ tournamentId, eventId })}`
       : viewOnly && tournamentId
       ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
       : viewOnly
         ? "/user/tournaments"
         : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
-  const fixtureHref = isUserViewerRoute
+  const fixtureHref = isUserManageRoute
+    ? `/user/manage/tournament/event/fixture${toQuery({
+        tournamentId: tournamentId || "",
+        eventId: eventId || "",
+      })}`
+    : isUserViewerRoute
     ? `/user/tournaments/event/matches${toQuery({
         tournamentId: tournamentId || "",
         eventId: eventId || "",
@@ -54,10 +63,15 @@ function EventChampionContent() {
         tournamentId: tournamentId || "",
         eventId: eventId || "",
       })}`;
-  const matchesHref = `${isUserViewerRoute ? "/user" : "/org"}/tournaments/event/matches${toQuery({
+  const routeBase = isUserManageRoute
+    ? "/user/manage/tournament"
+    : isUserViewerRoute
+      ? "/user/tournaments"
+      : "/org/tournaments";
+  const matchesHref = `${routeBase}/event/matches${toQuery({
     tournamentId: tournamentId || "",
     eventId: eventId || "",
-    viewOnly: isUserViewerRoute ? undefined : "1",
+    viewOnly: isUserViewerRoute || isUserManageRoute ? undefined : "1",
   })}`;
 
   useEffect(() => {
@@ -153,8 +167,9 @@ function EventChampionContent() {
             </div>
           </div>
 
-          <div className="-mt-16 px-6 pb-6">
-            <div className="flex flex-col items-center text-center">
+          <div className="relative -mt-16 px-6 pb-6">
+            <div className="absolute inset-x-0 bottom-0 top-16 bg-[var(--color-surface)]" />
+            <div className="relative z-10 flex flex-col items-center text-center">
               <div className="relative mb-3">
                 {champion?.avatarUrl ? (
                   <img
@@ -163,7 +178,7 @@ function EventChampionContent() {
                     className="h-32 w-32 rounded-full border-4 border-[var(--color-background)] object-cover shadow-lg"
                   />
                 ) : (
-                  <div className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-[var(--color-background)] bg-[var(--color-surface-elevated)] shadow-lg">
+                  <div className="flex h-32 w-32 items-center justify-center rounded-full border-4 border-[var(--color-background)] bg-[var(--color-surface)] shadow-lg">
                     <UserIcon size={56} className="text-[var(--color-text-secondary)]" />
                   </div>
                 )}

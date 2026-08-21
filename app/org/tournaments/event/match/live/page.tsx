@@ -170,18 +170,28 @@ export default function OrgLiveMatchPage() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const matchId = searchParams.get("matchId");
-  const isUserViewerRoute = pathname.startsWith("/user/");
+  const isUserManageRoute = pathname.startsWith("/user/manage/");
+  const isUserViewerRoute =
+    pathname.startsWith("/user/") && !isUserManageRoute;
   const viewOnly =
     isUserViewerRoute ||
     searchParams.get("viewOnly") === "1" ||
     searchParams.get("mode") === "view";
-  const viewerMatchesPath = isUserViewerRoute
+  const viewerMatchesPath = isUserManageRoute
+    ? "/user/manage/tournament/event/matches"
+    : isUserViewerRoute
     ? "/user/tournaments/event/matches"
     : "/org/tournaments/event/matches";
+  const setupMatchPath = isUserManageRoute
+    ? "/user/manage/tournament/event/match/setup"
+    : "/org/tournaments/event/match/setup";
+  const resultMatchPath = isUserManageRoute
+    ? "/user/manage/tournament/event/match/result"
+    : "/org/tournaments/event/match/result";
   const viewerMatchesQuery = {
     tournamentId,
     eventId,
-    viewOnly: isUserViewerRoute ? undefined : "1",
+    viewOnly: isUserViewerRoute || isUserManageRoute ? undefined : "1",
   };
 
   const config = useMemo<MatchConfigData>(() => {
@@ -271,11 +281,6 @@ export default function OrgLiveMatchPage() {
         }
         const dbState = stateFromMatchSets(matchId, config, getMatchSetRows(info));
         if (!cancelled && dbState) {
-          console.log("[OrgLive] hydrated DB set rows", {
-            matchId,
-            sets: getMatchSetRows(info),
-            state: dbState,
-          });
           setState(dbState);
           setItem(`match:${matchId}:state`, dbState);
         }
@@ -366,8 +371,7 @@ export default function OrgLiveMatchPage() {
         ) {
           try {
             await matchApi.initializeSet(matchId, updatedSetIndex + 1);
-          } catch (err) {
-            console.warn("Set initialization failed (may already exist)", err);
+          } catch {
           }
         }
 
@@ -397,7 +401,6 @@ export default function OrgLiveMatchPage() {
           if (teamIds.a) scorePayload.teamAId = teamIds.a;
           if (teamIds.b) scorePayload.teamBId = teamIds.b;
 
-          console.log("[OrgLive] syncing score", scorePayload);
           await matchApi.updateScore({
             ...scorePayload,
           });
@@ -419,8 +422,7 @@ export default function OrgLiveMatchPage() {
           if (tournamentId) {
             try {
               await tournamentApi.syncTournamentStatus(tournamentId);
-            } catch (err) {
-              console.warn("Post-match sync failed", err);
+            } catch {
             }
           }
         }
@@ -546,7 +548,7 @@ export default function OrgLiveMatchPage() {
       }
       onConfirmExit={() =>
         router.replace(
-          "/org/tournaments/event/match/setup" +
+          setupMatchPath +
             toQuery({ tournamentId, eventId, matchId }),
         )
       }
@@ -567,7 +569,7 @@ export default function OrgLiveMatchPage() {
       }}
       onConfirmWinner={() =>
         router.replace(
-          "/org/tournaments/event/match/result" +
+          resultMatchPath +
             toQuery({ tournamentId, eventId, matchId }),
         )
       }

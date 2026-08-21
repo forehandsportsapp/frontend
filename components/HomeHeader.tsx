@@ -30,7 +30,7 @@ type HomeHeaderProps = {
   showNotifications?: boolean;
 };
 
-export default function HomeHeader({ showNotifications = true }: HomeHeaderProps) {
+export default function HomeHeader({ showNotifications = false }: HomeHeaderProps) {
   const { userProfile: profile, activeOrganization: organization } = useApp();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

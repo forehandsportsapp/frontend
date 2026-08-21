@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, UIEvent, useMemo, useRef } from "react";
+import { useState, useEffect, UIEvent, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import BottomNav from "@/components/BottomNav";
@@ -419,24 +419,23 @@ export default function UserHomePage() {
   const [activeUpcomingIndex, setActiveUpcomingIndex] = useState(0);
   const [activeOngoingIndex, setActiveOngoingIndex] = useState(0);
 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const items = await notificationApi.getUserNotifications();
+      setNotifications(attachNotificationActions(items));
+    } catch (error) {
+      console.error("Failed to load user notifications", error);
+      setNotifications([]);
+    }
+  }, [readIds, userProfile?.name, userProfile?.phone]);
+
   useEffect(() => {
-    let active = true;
-    const loadNotifications = async () => {
-      try {
-        const items = await notificationApi.getUserNotifications();
-        if (!active) return;
-        setNotifications(attachNotificationActions(items));
-      } catch (error) {
-        if (!active) return;
-        console.error("Failed to load user notifications", error);
-        setNotifications([]);
-      }
-    };
-    void loadNotifications();
-    return () => {
-      active = false;
-    };
-  }, [readIds]);
+    void refreshNotifications();
+    const intervalId = window.setInterval(() => {
+      void refreshNotifications();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     let active = true;
@@ -482,10 +481,8 @@ export default function UserHomePage() {
 
         if (matchResult.status === "rejected") {
           // It's normal for live matches to fail if the user isn't in one or the endpoint isn't ready
-          console.log("[UserHome] Live match fetch skipped or unavailable");
         }
         if (feedResult.status === "rejected") {
-          console.log("[UserHome] Live feed fetch skipped or unavailable");
         }
 
         setLiveMatch(match);
@@ -519,11 +516,9 @@ export default function UserHomePage() {
             wsUrl = `${protocol}//${host}/ws`;
           }
 
-          console.log(`[WS] Attempting connection: ${wsUrl}`);
           socket = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
 
           socket.onopen = () => {
-            console.log("[WS] Connected successfully");
             if (match?.id) {
               socket?.send(
                 JSON.stringify({ type: "SUBSCRIBE_MATCH", matchId: match.id }),
@@ -641,10 +636,8 @@ export default function UserHomePage() {
             }
           };
 
-          socket.onerror = () =>
-            console.log(`[WS] Connection failed for ${wsUrl}. Real-time updates disabled.`);
-          socket.onclose = (event) =>
-            console.log(`[WS] Closed: ${event.code} ${event.reason}`);
+          socket.onerror = () => undefined;
+          socket.onclose = () => undefined;
         }
       } catch (error) {
         if (!active) return;
@@ -806,7 +799,10 @@ export default function UserHomePage() {
             </div>
 
             <button
-              onClick={() => setNotificationsOpen(true)}
+              onClick={() => {
+                setNotificationsOpen(true);
+                void refreshNotifications();
+              }}
               className="relative w-10 h-10 rounded-full bg-black/10 flex items-center justify-center text-white hover:bg-black/20 active:scale-95 transition-all shrink-0 cursor-pointer"
               aria-label="Open notifications"
             >

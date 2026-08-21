@@ -27,6 +27,40 @@ async function postBestEffort(pathCandidates: string[], body: unknown) {
   }
 }
 
+function parseBackendTimestamp(value: unknown) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+
+  const raw = String(value);
+  const hasTimezone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(raw);
+  const date = new Date(hasTimezone ? raw : `${raw}Z`);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatRelativeTime(value: unknown) {
+  const createdAt = parseBackendTimestamp(value);
+  if (!createdAt) return "Just now";
+
+  const diffSecs = Math.max(
+    0,
+    Math.floor((Date.now() - createdAt.getTime()) / 1000),
+  );
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hr${diffHours > 1 ? "s" : ""} ago`;
+  if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+  return createdAt.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
 /**
  * API client for managing user notifications and invitation responses.
  */
@@ -52,30 +86,6 @@ export const notificationApi = {
 
     const rows = Array.isArray(data) ? data : [];
     return rows.map((row: any) => {
-      const createdAt = row.createdAt ? new Date(row.createdAt) : null;
-      let timeAgo = "Just now";
-      if (createdAt) {
-        const diffMs = Date.now() - createdAt.getTime();
-        if (diffMs > 0) {
-          const diffSecs = Math.floor(diffMs / 1000);
-          const diffMins = Math.floor(diffSecs / 60);
-          const diffHours = Math.floor(diffMins / 60);
-          const diffDays = Math.floor(diffHours / 24);
-
-          if (diffSecs < 60) {
-            timeAgo = "Just now";
-          } else if (diffMins < 60) {
-            timeAgo = `${diffMins} min ago`;
-          } else if (diffHours < 24) {
-            timeAgo = `${diffHours} hr${diffHours > 1 ? "s" : ""} ago`;
-          } else if (diffDays < 30) {
-            timeAgo = `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-          } else {
-            timeAgo = createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          }
-        }
-      }
-
       // If it's an invite, the backend might provide an inviteId in metadata or as the row id
       // For now we use row.id as the fallback for invite actions
       return {
@@ -85,7 +95,7 @@ export const notificationApi = {
         title: row.title || "Notification",
         body: row.body || "",
         source: row.source || "",
-        timeAgo,
+        timeAgo: formatRelativeTime(row.createdAt),
         unread: Boolean(row.unread),
       } as NotificationItem;
     });

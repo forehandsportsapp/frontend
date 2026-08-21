@@ -181,10 +181,16 @@ export const tournamentApi = {
    * @returns A promise resolving to an array of managed `TournamentData` objects.
    */
   getManagedTournaments: async (): Promise<TournamentData[]> => {
-    const { data, error } = await fetchApi(
-      getApiUrl({ path: "/tournament/list/user/managed" }),
-    );
-    if (error) throw error;
+    const url = getApiUrl({ path: "/tournament/list/user/managed" });
+
+    const { data, error } = await fetchApi(url);
+    if (error) {
+      console.error("[tournamentApi.getManagedTournaments] failed", {
+        url,
+        error,
+      });
+      throw error;
+    }
 
     return data as TournamentData[];
   },

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   SearchIcon,
@@ -20,10 +20,14 @@ type FilterTab = "all" | "pending" | "confirmed" | "rejected";
 
 function EventParticipantsContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const tournamentId = searchParams.get("tournamentId") || "";
   const eventId = searchParams.get("eventId") || "";
+  const detailPath = pathname.startsWith("/user/manage/")
+    ? "/user/manage/tournament/detail"
+    : "/org/tournaments/detail";
 
   const [filter, setFilter] = useState<FilterTab>("all");
   const [search, setSearch] = useState("");
@@ -165,7 +169,7 @@ function EventParticipantsContent() {
       await tournamentApi.syncTournamentStatus(tournamentId);
 
       // 3. Redirect back to tournament detail
-      router.push(`/org/tournaments/detail${toQuery({ t: tournamentId })}`);
+      router.push(`${detailPath}${toQuery({ t: tournamentId })}`);
     } catch (error) {
       console.error("Failed to finalize participants", error);
       alert("Failed to finalize participants. Please try again.");

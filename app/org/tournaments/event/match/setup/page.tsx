@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { animate, motion, useMotionValue } from "framer-motion";
 import Layout from "@/components/Layout";
 import { setItem } from "@/lib/storage";
@@ -136,6 +136,7 @@ function PlayerPin({ player }: { player: SidePlayer }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function OrgMatchSetupPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchParams, setSearchParams] = useState<URLSearchParams>(
     new URLSearchParams(),
   );
@@ -147,6 +148,9 @@ export default function OrgMatchSetupPage() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const matchId = searchParams.get("matchId");
+  const liveMatchPath = pathname.startsWith("/user/manage/")
+    ? "/user/manage/tournament/event/match/live"
+    : "/org/tournaments/event/match/live";
 
   const [isReadyPopupOpen, setIsReadyPopupOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -333,7 +337,7 @@ export default function OrgMatchSetupPage() {
       });
     });
     router.replace(
-      "/org/tournaments/event/match/live" +
+      liveMatchPath +
         toQuery({ tournamentId, eventId, matchId }),
     );
   };

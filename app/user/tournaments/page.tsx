@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { FilterIcon, SearchIcon, SlidersIcon } from "@/components/Icons";
 import BottomNav from "@/components/BottomNav";
@@ -124,24 +124,23 @@ export default function UserTournamentsPage() {
           : undefined,
     }));
 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const items = await notificationApi.getUserNotifications();
+      setNotifications(attachActions(items));
+    } catch (error) {
+      console.error("Failed to load notifications", error);
+      setNotifications([]);
+    }
+  }, [readIds, userProfile?.name, userProfile?.phone]);
+
   useEffect(() => {
-    let active = true;
-    const loadNotifications = async () => {
-      try {
-        const items = await notificationApi.getUserNotifications();
-        if (!active) return;
-        setNotifications(attachActions(items));
-      } catch (error) {
-        if (!active) return;
-        console.error("Failed to load notifications", error);
-        setNotifications([]);
-      }
-    };
-    void loadNotifications();
-    return () => {
-      active = false;
-    };
-  }, [readIds]);
+    void refreshNotifications();
+    const intervalId = window.setInterval(() => {
+      void refreshNotifications();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
+  }, [refreshNotifications]);
 
   useEffect(() => {
     let active = true;
@@ -156,9 +155,7 @@ export default function UserTournamentsPage() {
         else if (activeTab === "history")
           data = await tournamentApi.getHistoryTournaments();
 
-        if (active) {
-          console.log('Received tournaments:', data.map(t => t.id)); setTournaments(data);
-        }
+        if (active) setTournaments(data);
       } catch (error) {
         console.error(`Failed to load ${activeTab} tournaments`, error);
         if (active) setTournaments([]);
@@ -308,7 +305,10 @@ export default function UserTournamentsPage() {
 
             <div className="ml-auto">
               <button
-                onClick={() => setNotificationsOpen(true)}
+                onClick={() => {
+                  setNotificationsOpen(true);
+                  void refreshNotifications();
+                }}
                 className="relative w-12 h-12 rounded-full bg-white/20 border border-white/30 flex items-center justify-center hover:bg-white/30 transition-all active:scale-95 shadow-sm text-white"
                 aria-label="Notifications"
               >
@@ -426,8 +426,8 @@ export default function UserTournamentsPage() {
       <TournamentFilterDrawer
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
-        onApply={(filters) => console.log("Applying filters:", filters)}
-        onReset={() => console.log("Filters reset")}
+        onApply={() => undefined}
+        onReset={() => undefined}
       />
     </>
   );

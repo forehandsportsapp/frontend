@@ -123,6 +123,7 @@ function MatchCard({
   onCourtClick,
   viewOnly = false,
   viewerBasePath = "/org/tournaments/event/match",
+  setupBasePath = "/org/tournaments/event/match/setup",
 }: {
   match: MatchRow;
   tournamentId: string;
@@ -131,6 +132,7 @@ function MatchCard({
   onCourtClick?: (match: MatchRow) => void;
   viewOnly?: boolean;
   viewerBasePath?: string;
+  setupBasePath?: string;
 }) {
   const headerBg =
     match.status === "live"
@@ -298,7 +300,7 @@ function MatchCard({
         {!viewOnly && match.status !== "ended" && (
           <Link
             href={
-              "/org/tournaments/event/match/setup" +
+              setupBasePath +
               toQuery({ tournamentId, eventId, matchId: match.id })
             }
             className="block w-full py-3 rounded-full text-center text-sm font-bold text-white transition-all active:scale-[0.98]"
@@ -375,18 +377,35 @@ function OrgManageMatchesContent() {
   const [isCourtSheetLoading, setIsCourtSheetLoading] = useState(false);
   const [isAssigningCourt, setIsAssigningCourt] = useState(false);
   const [courtSheetMessage, setCourtSheetMessage] = useState("");
-  const canManage = Boolean(
-    (tournament?.organizationId || tournament?.organization?.id) &&
-      activeOrganization?.id &&
-      activeOrganization.id ===
-        (tournament?.organizationId || tournament?.organization?.id),
-  );
-  const isUserViewerRoute = pathname.startsWith("/user/");
+  const isUserManageRoute = pathname.startsWith("/user/manage/");
+  const isUserViewerRoute =
+    pathname.startsWith("/user/") && !isUserManageRoute;
+  const canManage =
+    isUserManageRoute ||
+    Boolean(
+      (tournament?.organizationId || tournament?.organization?.id) &&
+        activeOrganization?.id &&
+        activeOrganization.id ===
+          (tournament?.organizationId || tournament?.organization?.id),
+    );
   const viewOnly = isUserViewerRoute || requestedViewOnly || !canManage;
   const canViewWinners = event?.eventState === "completed";
+  const routeBase = isUserManageRoute
+    ? "/user/manage/tournament"
+    : isUserViewerRoute
+      ? "/user/tournaments"
+      : "/org/tournaments";
   const viewerMatchBasePath = isUserViewerRoute
     ? "/user/tournaments/event/match"
+    : isUserManageRoute
+      ? "/user/manage/tournament/event/match"
     : "/org/tournaments/event/match";
+  const setupMatchPath = isUserManageRoute
+    ? "/user/manage/tournament/event/match/setup"
+    : "/org/tournaments/event/match/setup";
+  const fixturePath = isUserManageRoute
+    ? "/user/manage/tournament/event/fixture"
+    : "/org/tournaments/event/fixture";
 
   useEffect(() => {
     if (!requestedViewOnly || isUserViewerRoute || !tournamentId) return;
@@ -597,7 +616,7 @@ function OrgManageMatchesContent() {
   const handleNextRound = async () => {
     if (!tournamentId || !eventId) return;
     router.push(
-      `/org/tournaments/event/fixture${toQuery({
+      `${fixturePath}${toQuery({
         tournamentId,
         eventId,
       })}`,
@@ -845,10 +864,10 @@ function OrgManageMatchesContent() {
           ))}
           {canViewWinners && (
             <Link
-              href={`${isUserViewerRoute ? "/user" : "/org"}/tournaments/event/champion${toQuery({
+              href={`${routeBase}/event/champion${toQuery({
                 tournamentId,
                 eventId,
-                viewOnly: isUserViewerRoute ? undefined : "1",
+                viewOnly: isUserViewerRoute || isUserManageRoute ? undefined : "1",
               })}`}
               className="shrink-0 rounded-full border border-[var(--color-primary)] bg-[var(--color-primary)] px-4 py-1.5 text-sm font-semibold text-[var(--color-primary-contrast)] shadow-sm shadow-orange-200 transition-colors hover:bg-[var(--color-primary-hover)]"
             >
@@ -902,6 +921,7 @@ function OrgManageMatchesContent() {
                 onCourtClick={handleOpenCourtSheet}
                 viewOnly={viewOnly}
                 viewerBasePath={viewerMatchBasePath}
+                setupBasePath={setupMatchPath}
               />
             ))
           )}
