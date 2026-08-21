@@ -18,7 +18,7 @@ type LiveMatchCardProps = {
     teamB: number;
     currentSet: number;
   };
-  court: string;
+  court?: string | null;
   isLive?: boolean;
   onFollow?: () => void;
   size?: "compact" | "spacious";
@@ -236,15 +236,19 @@ export default function LiveMatchCard({
       <div
         className={`flex items-center justify-between border-t border-neutral-200/70 ${isSpacious ? "pt-3.5" : "pt-2.5"}`}
       >
-        <div
-          className={`flex min-w-0 items-center gap-1.5 font-medium text-[var(--color-text-secondary)] ${isSpacious ? "text-sm" : "text-xs"}`}
-        >
-          <MapPinIcon
-            size={isSpacious ? 15 : 13}
-            className="shrink-0 text-[var(--color-muted)]"
-          />
-          <span className="truncate">{court}</span>
-        </div>
+        {court?.trim() ? (
+          <div
+            className={`flex min-w-0 items-center gap-1.5 font-medium text-[var(--color-text-secondary)] ${isSpacious ? "text-sm" : "text-xs"}`}
+          >
+            <MapPinIcon
+              size={isSpacious ? 15 : 13}
+              className="shrink-0 text-[var(--color-muted)]"
+            />
+            <span className="truncate">{court}</span>
+          </div>
+        ) : (
+          <div />
+        )}
 
         <button
           onClick={onFollow}

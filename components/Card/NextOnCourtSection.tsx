@@ -15,6 +15,7 @@ type UpcomingMatch = {
   category: string;
   time: string;
   venue: string;
+  court?: string | null;
   accentColor: string;
 };
 
@@ -56,6 +57,14 @@ function UpcomingCourtCard({ match }: { match: UpcomingMatch }) {
                   <MapPinIcon size={11} className="text-muted" />
                   {match.venue}
                 </span>
+                {match.court && (
+                  <>
+                    <span className="text-border">{"\u2022"}</span>
+                    <span className="flex items-center gap-1">
+                      {match.court}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -95,6 +104,7 @@ export default function NextOnCourtSection() {
                 hour12: true,
               }),
               venue: m.venue || "TBD",
+              court: m.court || null,
               accentColor: ACCENT_COLORS[index % ACCENT_COLORS.length],
             };
           });

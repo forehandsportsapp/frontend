@@ -200,7 +200,7 @@ function OrgLiveMatchGroup({
                   : [],
               }}
               score={match.score}
-              court={match.court || "TBD"}
+              court={match.court}
               isLive={true}
             />
           </div>

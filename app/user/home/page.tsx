@@ -963,7 +963,7 @@ export default function UserHomePage() {
                       score={
                         liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
                       }
-                      court={liveMatch.court || "TBD"}
+                      court={liveMatch.court}
                       isLive={true}
                     />
                   </div>

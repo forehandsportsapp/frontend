@@ -120,12 +120,14 @@ function MatchCard({
   tournamentId,
   eventId,
   onScorerClick,
+  onCourtClick,
   viewOnly = false,
 }: {
   match: MatchRow;
   tournamentId: string;
   eventId: string;
   onScorerClick?: (match: MatchRow) => void;
+  onCourtClick?: (match: MatchRow) => void;
   viewOnly?: boolean;
 }) {
   const headerBg =
@@ -144,6 +146,7 @@ function MatchCard({
 
   const scoreA = String(match.setsWonA).padStart(2, "0");
   const scoreB = String(match.setsWonB).padStart(2, "0");
+  const courtLabel = match.court?.trim() || "Select Court";
   const scorerLabel = match.scorerName?.trim() || "Select Scorer";
   const selectedCourt = match.court?.trim();
   const selectedScorer = match.scorerName?.trim();
@@ -252,9 +255,13 @@ function MatchCard({
           )
         ) : (
           <div className="flex gap-2 justify-center">
-            <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
-              {match.court}
-            </span>
+            <button
+              type="button"
+              onClick={() => onCourtClick?.(match)}
+              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
+            >
+              {courtLabel}
+            </button>
             <button
               type="button"
               onClick={() => onScorerClick?.(match)}
@@ -355,6 +362,11 @@ function OrgManageMatchesContent() {
   const [isScorerSheetLoading, setIsScorerSheetLoading] = useState(false);
   const [isAssigningScorer, setIsAssigningScorer] = useState(false);
   const [scorerSheetMessage, setScorerSheetMessage] = useState("");
+  const [courtSheetMatch, setCourtSheetMatch] = useState<MatchRow | null>(null);
+  const [availableCourts, setAvailableCourts] = useState<string[]>([]);
+  const [isCourtSheetLoading, setIsCourtSheetLoading] = useState(false);
+  const [isAssigningCourt, setIsAssigningCourt] = useState(false);
+  const [courtSheetMessage, setCourtSheetMessage] = useState("");
   const canManage = Boolean(
     (tournament?.organizationId || tournament?.organization?.id) &&
       activeOrganization?.id &&
@@ -510,7 +522,7 @@ function OrgManageMatchesContent() {
                   : m.winnerId === teamB?.id
                   ? "b"
                     : undefined,
-              court: m.courtName || "Select Court",
+              court: m.courtName || "",
               scorerId: m.scorer || m.scorerUser?.id || undefined,
               scorerName,
               roundNumber: m.roundNumber || activeRound,
@@ -619,6 +631,75 @@ function OrgManageMatchesContent() {
       );
     } finally {
       setIsAssigningScorer(false);
+    }
+  };
+
+  const handleOpenCourtSheet = async (match: MatchRow) => {
+    try {
+      setCourtSheetMatch(match);
+      setAvailableCourts([]);
+      setCourtSheetMessage("");
+      setIsCourtSheetLoading(true);
+
+      const data = await matchApi.getAvailableCourts(match.id);
+      const currentCourt = (data.currentCourtName || match.court || "").trim();
+      const options = (Array.isArray(data.courts) ? data.courts : []).filter(
+        (courtName) => courtName.trim() !== currentCourt,
+      );
+
+      setAvailableCourts(options);
+      setCourtSheetMatch((previous) =>
+        previous?.id === match.id
+          ? { ...previous, court: currentCourt }
+          : previous,
+      );
+      setCourtSheetMessage(
+        options.length === 0 ? "No courts are available right now." : "",
+      );
+    } catch (error) {
+      console.error("Failed to load available courts", error);
+      setAvailableCourts([]);
+      setCourtSheetMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to load court options right now.",
+      );
+    } finally {
+      setIsCourtSheetLoading(false);
+    }
+  };
+
+  const handleAssignCourt = async (courtName: string | null) => {
+    if (!courtSheetMatch) return;
+
+    try {
+      setIsAssigningCourt(true);
+      const result = await matchApi.assignCourt(courtSheetMatch.id, courtName);
+      const nextCourt = result?.courtName || "";
+
+      setMatches((prev) =>
+        prev.map((match) =>
+          match.id === courtSheetMatch.id
+            ? {
+                ...match,
+                court: nextCourt,
+              }
+            : match,
+        ),
+      );
+
+      setCourtSheetMatch(null);
+      setAvailableCourts([]);
+      setCourtSheetMessage("");
+    } catch (error) {
+      console.error("Failed to assign court", error);
+      setCourtSheetMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to assign court right now.",
+      );
+    } finally {
+      setIsAssigningCourt(false);
     }
   };
 
@@ -789,6 +870,7 @@ function OrgManageMatchesContent() {
                 tournamentId={tournamentId}
                 eventId={eventId}
                 onScorerClick={handleOpenScorerSheet}
+                onCourtClick={handleOpenCourtSheet}
                 viewOnly={viewOnly}
               />
             ))
@@ -896,6 +978,83 @@ function OrgManageMatchesContent() {
 
               {!!scorerSheetMessage && availableScorers.length > 0 && (
                 <p className="text-sm text-red-500">{scorerSheetMessage}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {!viewOnly && courtSheetMatch && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)]">
+                  Select Court
+                </h2>
+                <p className="text-sm text-[var(--color-muted)]">
+                  {courtSheetMatch.label}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAssigningCourt) return;
+                  setCourtSheetMatch(null);
+                  setAvailableCourts([]);
+                  setCourtSheetMessage("");
+                }}
+                className="rounded-full px-3 py-1 text-sm text-[var(--color-muted)] hover:bg-[var(--color-surface-elevated)]"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {isCourtSheetLoading ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                  <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+                    Loading courts...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {courtSheetMatch.court && (
+                    <button
+                      type="button"
+                      disabled={isAssigningCourt}
+                      onClick={() => void handleAssignCourt(null)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Remove Current Court
+                    </button>
+                  )}
+
+                  {availableCourts.length > 0 ? (
+                    availableCourts.map((courtName) => (
+                      <button
+                        key={courtName}
+                        type="button"
+                        disabled={isAssigningCourt}
+                        onClick={() => void handleAssignCourt(courtName)}
+                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--color-border)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span className="text-sm font-semibold text-[var(--color-text)]">
+                          {courtName}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-6 text-center text-sm text-[var(--color-muted)]">
+                      {courtSheetMessage ||
+                        "No courts are available right now."}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!!courtSheetMessage && availableCourts.length > 0 && (
+                <p className="text-sm text-red-500">{courtSheetMessage}</p>
               )}
             </div>
           </div>

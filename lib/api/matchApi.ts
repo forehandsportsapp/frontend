@@ -220,6 +220,40 @@ export const matchApi = {
   },
 
   /**
+   * Retrieves courts not assigned to another unfinished match.
+   */
+  getAvailableCourts: async (matchId: string) => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/match/available-courts", param: matchId }),
+      { method: "POST" },
+    );
+    if (error) throw error;
+    return (data || {
+      currentCourtName: null,
+      courts: [],
+    }) as {
+      currentCourtName?: string | null;
+      courts: string[];
+    };
+  },
+
+  /**
+   * Assigns, reassigns, or clears a court for a match.
+   */
+  assignCourt: async (matchId: string, courtName: string | null) => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/match/assign-court", param: matchId }),
+      {
+        method: "POST",
+        contentType: "json",
+        body: { courtName },
+      },
+    );
+    if (error) throw error;
+    return (data || { courtName: null }) as { courtName: string | null };
+  },
+
+  /**
    * Retrieves matches assigned to the currently authenticated user as scorer.
    *
    * @returns A promise resolving to an array of matches.
