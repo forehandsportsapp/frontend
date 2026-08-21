@@ -160,7 +160,7 @@ export default function OrgMatchSetupPage() {
   const defaultDraft: MatchSetupDraft = useMemo(
     () => ({
       config: {
-        scoringSystem: "rally",
+        scoringSystem: "sideout",
         format: "doubles",
         bestOf: 3,
         pointsToWin: 11,
@@ -238,7 +238,7 @@ export default function OrgMatchSetupPage() {
         if (!cancelled) {
           setDraft({
             config: {
-              scoringSystem: "rally",
+              scoringSystem: "sideout",
               format,
               bestOf: normalizedBestOf,
               pointsToWin: Number(event?.pointsPerSet || 11),
@@ -325,17 +325,23 @@ export default function OrgMatchSetupPage() {
     });
   };
 
-  const startMatch = () => {
+  const startMatch = async () => {
     if (isStarting || !matchId) return;
     setIsStarting(true);
     save();
-    void matchApi.startMatch(matchId).catch((error) => {
+    try {
+      await matchApi.startMatch(matchId);
+    } catch (error) {
       console.error("Failed to start match via pipeline", error);
       // Fallback to simple state update if /start is not ready
-      void matchApi.updateMatchState(matchId, "in_progress").catch((err) => {
+      try {
+        await matchApi.updateMatchState(matchId, "in_progress");
+      } catch (err) {
         console.error("Fallback start match failed", err);
-      });
-    });
+        setIsStarting(false);
+        return;
+      }
+    }
     router.replace(
       liveMatchPath +
         toQuery({ tournamentId, eventId, matchId }),

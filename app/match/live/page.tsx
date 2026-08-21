@@ -17,6 +17,9 @@ import {
   createInitialLiveState,
   maybeAdvanceSet,
   getSetsWon,
+  getScoreCall,
+  getServerNumber,
+  getServingPositionLabel,
 } from "@/lib/matchEngine";
 
 function parseConfig(params: URLSearchParams): MatchConfigData {
@@ -168,7 +171,9 @@ export default function LiveMatchPage() {
   );
 
   const lastSetRef = React.useRef(state.currentSet);
-  const lastServerRef = React.useRef(state.serverSide);
+  const lastServerRef = React.useRef(
+    `${state.serverSide}:${state.serverPlayerIndex ?? ""}`,
+  );
 
   React.useEffect(() => {
     // Set changed -> Switch Sides
@@ -181,11 +186,12 @@ export default function LiveMatchPage() {
     const isFirstServe =
       currentScore[0] === 0 && currentScore[1] === 0 && state.currentSet === 0;
 
-    if (state.serverSide !== lastServerRef.current && !isFirstServe) {
+    const serverKey = `${state.serverSide}:${state.serverPlayerIndex ?? ""}`;
+    if (serverKey !== lastServerRef.current && !isFirstServe) {
       setShowSwitchServe(true);
     }
-    lastServerRef.current = state.serverSide;
-  }, [state.currentSet, state.serverSide, state.setScores]);
+    lastServerRef.current = serverKey;
+  }, [state.currentSet, state.serverPlayerIndex, state.serverSide, state.setScores]);
 
   const applyFaultAction = useCallback(
     (faultSide: 0 | 1) => {
@@ -238,6 +244,13 @@ export default function LiveMatchPage() {
         config.scoringSystem === "sideout"
           ? "Side-Out Scoring"
           : "Rally Scoring"
+      }
+      scoreCallLabel={getScoreCall(state, config)}
+      servingPositionLabel={getServingPositionLabel(state)}
+      serverNumberLabel={
+        config.format === "doubles" && config.scoringSystem === "sideout"
+          ? `Server ${getServerNumber(state, config)}`
+          : undefined
       }
       sideAServing={state.serverSide === 0}
       sideBServing={state.serverSide === 1}

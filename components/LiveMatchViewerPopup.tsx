@@ -70,6 +70,12 @@ export default function LiveMatchViewerPopup({
   if (!match) return null;
   const sets = normalizeSets(match.sets);
   const setsWon = getSetsWon(match);
+  const currentSet =
+    sets.find((set: any) => getSetStatus(set) === "in_progress") ||
+    [...sets].sort((a, b) => getSetNumber(b) - getSetNumber(a))[0];
+  const currentSetScore = currentSet
+    ? `${getSetTeamAScore(currentSet)} - ${getSetTeamBScore(currentSet)}`
+    : `${match?.score?.currentSetTeamA ?? 0} - ${match?.score?.currentSetTeamB ?? 0}`;
 
   return (
     <AnimatePresence>
@@ -138,6 +144,9 @@ export default function LiveMatchViewerPopup({
                   </div>
                   <span className="mt-2 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                     Set {match.score?.currentSet || 1}
+                  </span>
+                  <span className="mt-1 text-[10px] sm:text-xs font-semibold text-[var(--color-text-muted)]">
+                    Current set {currentSetScore}
                   </span>
                 </div>
 

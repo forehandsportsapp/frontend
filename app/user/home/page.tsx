@@ -205,30 +205,6 @@ function isUpcomingTournament(t: TournamentData) {
   return new Date(t.startDate) > new Date();
 }
 
-function isLiveFeedMatch(match: any) {
-  const state = String(
-    match?.matchState ?? match?.state ?? match?.status ?? "",
-  ).toLowerCase();
-  const sets = normalizeMatchSets(match?.sets);
-  const isTerminal = ["completed", "abandoned", "walkover"].includes(state);
-
-  if (isTerminal || (Array.isArray(match?.sets) && sets.length === 0)) {
-    return false;
-  }
-
-  if (sets.length > 0) {
-    return sets.some(
-      (set: any) =>
-        set?.setStatus === "in_progress" ||
-        set?.setStatus === "completed" ||
-        Number(set?.teamAScore || 0) > 0 ||
-        Number(set?.teamBScore || 0) > 0,
-    );
-  }
-
-  return state === "in_progress" || state === "live";
-}
-
 function normalizeMatchSets(sets: any[] = []) {
   const statusRank: Record<string, number> = {
     in_progress: 3,
@@ -299,26 +275,53 @@ function normalizeLiveFeedMatch(match: any) {
             ...getLiveMatchScoreFromSets(match, sets),
             currentSet: currentSet.setNumber ?? match?.score?.currentSet ?? 1,
           }
-        : match?.score,
+        : match?.score || { teamA: 0, teamB: 0, currentSet: 1 },
     };
   }
 
-  return match;
+  return {
+    ...match,
+    score: match?.score || { teamA: 0, teamB: 0, currentSet: 1 },
+  };
 }
 
 function normalizeLiveFeed(feed: any[]) {
   if (!Array.isArray(feed)) return [];
 
   return feed
-    .map((group) => ({
-      ...group,
-      matches: Array.isArray(group?.matches)
-        ? group.matches
-            .map(normalizeLiveFeedMatch)
-            .filter(isLiveFeedMatch)
-        : [],
-    }))
+    .map((group) => {
+      const rawMatches = Array.isArray(group?.matches) ? group.matches : [];
+      const matches = rawMatches
+        .map(normalizeLiveFeedMatch)
+        .filter((match: any) => {
+          const state = String(
+            match?.matchState ?? match?.state ?? match?.status ?? "",
+          ).toLowerCase();
+          return !["completed", "abandoned", "walkover"].includes(state);
+        });
+
+      return {
+        ...group,
+        matches,
+      };
+    })
     .filter((group) => group.matches.length > 0);
+}
+
+function findLiveFeedMatch(feed: any[], matchId: string) {
+  for (const group of feed) {
+    const match = Array.isArray(group?.matches)
+      ? group.matches.find((item: any) => item?.id === matchId)
+      : null;
+    if (match) {
+      return {
+        ...match,
+        tournamentId: group?.tournamentId ?? match?.tournamentId,
+        tournamentName: group?.tournamentName ?? match?.tournamentName,
+      };
+    }
+  }
+  return null;
 }
 
 function LiveFeedGroup({
@@ -393,6 +396,8 @@ export default function UserHomePage() {
   const [liveFeed, setLiveFeed] = useState<any[]>([]);
   const [isLiveFeedLoading, setIsLiveFeedLoading] = useState(true);
   const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
+  const [isLiveSocketConnected, setIsLiveSocketConnected] = useState(false);
+  const liveRefreshRequestRef = useRef(0);
 
   const attachNotificationActions = (items: NotificationItem[]) =>
     items.map((item) => ({
@@ -429,6 +434,56 @@ export default function UserHomePage() {
     }
   }, [readIds, userProfile?.name, userProfile?.phone]);
 
+  const refreshLiveMatches = useCallback(async (
+    reason: string,
+    { showLoading = true }: { showLoading?: boolean } = {},
+  ) => {
+    const requestId = ++liveRefreshRequestRef.current;
+
+    if (showLoading) {
+      setIsLiveMatchLoading(true);
+      setIsLiveFeedLoading(true);
+    }
+
+    const [matchResult, feedResult] = await Promise.allSettled([
+      userApi.getLiveMatch(),
+      userApi.getLiveFeed(),
+    ]);
+
+    const match =
+      matchResult.status === "fulfilled" ? matchResult.value : null;
+    const rawFeed =
+      feedResult.status === "fulfilled" && Array.isArray(feedResult.value)
+        ? feedResult.value
+        : [];
+    const feed =
+      feedResult.status === "fulfilled"
+        ? normalizeLiveFeed(rawFeed)
+        : [];
+
+    if (matchResult.status === "rejected") {
+      console.error("Failed to fetch current user live match", matchResult.reason);
+    }
+
+    if (feedResult.status === "rejected") {
+      console.error("Failed to fetch joined tournament live feed", feedResult.reason);
+    }
+
+    if (requestId === liveRefreshRequestRef.current) {
+      setLiveMatch(match);
+      setLiveFeed(feed);
+      setSelectedLiveMatch((prev: any) => {
+        if (!prev?.id) return prev;
+        if (match?.id === prev.id) return match;
+        return findLiveFeedMatch(feed, prev.id) ?? prev;
+      });
+      setIsLiveMatchLoading(false);
+      setIsLiveFeedLoading(false);
+    }
+
+    return { match, feed };
+  }, []);
+
   useEffect(() => {
     void refreshNotifications();
     const intervalId = window.setInterval(() => {
@@ -461,32 +516,8 @@ export default function UserHomePage() {
 
     const initializeLiveConnections = async () => {
       try {
-        setIsLiveMatchLoading(true);
-        setIsLiveFeedLoading(true);
-
-        // Fetch both with separate error handling to be resilient
-        const [matchResult, feedResult] = await Promise.allSettled([
-          userApi.getLiveMatch(),
-          userApi.getLiveFeed(),
-        ]);
-
+        const { match, feed } = await refreshLiveMatches("initial-load");
         if (!active) return;
-
-        const match =
-          matchResult.status === "fulfilled" ? matchResult.value : null;
-        const feed =
-          feedResult.status === "fulfilled"
-            ? normalizeLiveFeed(feedResult.value)
-            : [];
-
-        if (matchResult.status === "rejected") {
-          // It's normal for live matches to fail if the user isn't in one or the endpoint isn't ready
-        }
-        if (feedResult.status === "rejected") {
-        }
-
-        setLiveMatch(match);
-        setLiveFeed(feed);
 
         const supabase = getSupabaseBrowserClient();
         const { data } = await supabase.auth.getSession();
@@ -516,9 +547,11 @@ export default function UserHomePage() {
             wsUrl = `${protocol}//${host}/ws`;
           }
 
-          socket = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
+          const socketUrl = `${wsUrl}?token=${encodeURIComponent(token)}`;
+          socket = new WebSocket(socketUrl);
 
           socket.onopen = () => {
+            setIsLiveSocketConnected(true);
             if (match?.id) {
               socket?.send(
                 JSON.stringify({ type: "SUBSCRIBE_MATCH", matchId: match.id }),
@@ -536,7 +569,10 @@ export default function UserHomePage() {
 
           socket.onmessage = (event) => {
             try {
-              const message = JSON.parse(event.data);
+              const message =
+                typeof event.data === "string"
+                  ? JSON.parse(event.data)
+                  : event.data;
               if (message.type === "SCORE_UPDATE") {
                 const {
                   matchId,
@@ -568,6 +604,26 @@ export default function UserHomePage() {
                     });
                   });
                 }
+
+                setSelectedLiveMatch((prev: any) => {
+                  if (!prev || prev.id !== matchId) return prev;
+                  const updatedSets = [...(prev.sets || [])];
+                  const setIndex = updatedSets.findIndex((s) => s.setNumber === setNumber);
+                  if (setIndex >= 0) {
+                    updatedSets[setIndex] = {
+                      ...updatedSets[setIndex],
+                      teamAScore,
+                      teamBScore,
+                      setStatus: setStatus || "in_progress",
+                    };
+                  } else {
+                    updatedSets.push({ setNumber, teamAScore, teamBScore, setStatus: setStatus || "in_progress" });
+                  }
+                  return normalizeLiveFeedMatch({
+                    ...prev,
+                    sets: updatedSets,
+                  });
+                });
 
                 setLiveFeed((prevFeed) =>
                   normalizeLiveFeed(
@@ -627,26 +683,25 @@ export default function UserHomePage() {
                     .filter((group) => group.matches.length > 0),
                 );
               } else if (message.type === "MATCH_START") {
-                void userApi.getLiveFeed().then((newFeed) => {
-                  if (active) setLiveFeed(normalizeLiveFeed(newFeed));
-                });
+                if (active) void refreshLiveMatches("ws-match-start");
               }
             } catch (e) {
               console.error("[WS] Error parsing message", e);
             }
           };
 
-          socket.onerror = () => undefined;
-          socket.onclose = () => undefined;
+          socket.onerror = () => {
+            setIsLiveSocketConnected(false);
+          };
+          socket.onclose = () => {
+            setIsLiveSocketConnected(false);
+          };
+        } else {
+          setIsLiveSocketConnected(false);
         }
       } catch (error) {
         if (!active) return;
         console.error("Unexpected error in initializeLiveConnections:", error);
-      } finally {
-        if (active) {
-          setIsLiveMatchLoading(false);
-          setIsLiveFeedLoading(false);
-        }
       }
     };
 
@@ -654,9 +709,29 @@ export default function UserHomePage() {
 
     return () => {
       active = false;
+      setIsLiveSocketConnected(false);
       if (socket) socket.close();
     };
-  }, []);
+  }, [refreshLiveMatches]);
+
+  useEffect(() => {
+    if (activeTab !== "live") return;
+    void refreshLiveMatches("live-tab-selected");
+  }, [activeTab, refreshLiveMatches]);
+
+  useEffect(() => {
+    if ((activeTab !== "live" && !selectedLiveMatch) || isLiveSocketConnected) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshLiveMatches("polling-fallback", { showLoading: false });
+    }, 60000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeTab, isLiveSocketConnected, refreshLiveMatches, selectedLiveMatch]);
 
   useEffect(() => {
     let active = true;

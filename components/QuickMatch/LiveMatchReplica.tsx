@@ -22,6 +22,9 @@ interface LiveMatchReplicaProps {
   setScores: SetScore[];
   bestOf: number;
   scoringLabel: string;
+  scoreCallLabel?: string;
+  servingPositionLabel?: string;
+  serverNumberLabel?: string;
   sideAServing: boolean;
   sideBServing: boolean;
   sideALabel?: string;
@@ -137,6 +140,9 @@ export default function LiveMatchReplica({
   setScores,
   bestOf,
   scoringLabel,
+  scoreCallLabel,
+  servingPositionLabel,
+  serverNumberLabel,
   sideAServing,
   sideBServing,
   sideALabel = "Kunal Verma",
@@ -251,6 +257,22 @@ export default function LiveMatchReplica({
             Current Set: {String(currentSetNumber).padStart(2, "0")}
           </h3>
 
+          {scoreCallLabel && (
+            <div className="mb-3 rounded-[14px] border border-primary/25 bg-primary/10 px-3 py-2 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                Score Call
+              </p>
+              <p className="mt-0.5 text-2xl font-black tabular-nums text-text">
+                {scoreCallLabel}
+              </p>
+              <p className="mt-0.5 text-[10px] font-semibold text-muted">
+                {serverNumberLabel
+                  ? `${serverNumberLabel} · ${servingPositionLabel}`
+                  : servingPositionLabel}
+              </p>
+            </div>
+          )}
+
           <div className="rounded-[10px] border border-border p-2">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center">
               <div>
@@ -315,7 +337,7 @@ export default function LiveMatchReplica({
               onClick={onSideBRally}
               className="h-10 rounded-[10px] bg-primary text-[13px] font-semibold text-primary-contrast"
             >
-              {sideBActionLabel} Scored
+              {sideBActionLabel} Won Rally
             </button>
             <button
               type="button"
@@ -354,10 +376,11 @@ export default function LiveMatchReplica({
               />
             </div>
             <h3 className="text-2xl font-bold leading-tight tracking-tight">
-              Switch Serve Now
+              Serve Changed
             </h3>
             <p className="mx-auto mt-2 mb-8 text-sm text-muted leading-relaxed px-4">
-              It&apos;s time for the players to switch serve on the court.
+              The serving side has changed. Use the score call and court side
+              shown on the scoreboard before the next rally.
             </p>
             <button
               type="button"
@@ -365,7 +388,7 @@ export default function LiveMatchReplica({
               className="h-14 w-full rounded-[20px] font-bold text-white text-base transition-all active:scale-[0.98] shadow-lg shadow-orange-500/25"
               style={{ background: "linear-gradient(135deg,#ff8c00,#f97316)" }}
             >
-              Switch Sides
+              Got It
             </button>
           </div>
         </div>

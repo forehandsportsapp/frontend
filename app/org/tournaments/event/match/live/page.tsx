@@ -14,6 +14,9 @@ import {
   applyRally,
   createInitialLiveState,
   maybeAdvanceSet,
+  getScoreCall,
+  getServerNumber,
+  getServingPositionLabel,
 } from "@/lib/matchEngine";
 import { toQuery } from "@/lib/utils";
 import { matchApi } from "@/lib/api/matchApi";
@@ -197,7 +200,7 @@ export default function OrgLiveMatchPage() {
   const config = useMemo<MatchConfigData>(() => {
     if (!matchId) {
       return {
-        scoringSystem: "rally",
+        scoringSystem: "sideout",
         format: "doubles",
         bestOf: 3,
         pointsToWin: 11,
@@ -208,7 +211,7 @@ export default function OrgLiveMatchPage() {
     const stored = getItem<MatchConfigData>(`match:${matchId}:config`);
     return (
         stored ?? {
-        scoringSystem: "rally",
+        scoringSystem: "sideout",
         format: "doubles",
         bestOf: 3,
         pointsToWin: 11,
@@ -481,7 +484,9 @@ export default function OrgLiveMatchPage() {
   }, [emit, persist]);
 
   const lastSetRef = React.useRef(state.currentSet);
-  const lastServerRef = React.useRef(state.serverSide);
+  const lastServerRef = React.useRef(
+    `${state.serverSide}:${state.serverPlayerIndex ?? ""}`,
+  );
 
   useEffect(() => {
     if (state.currentSet > lastSetRef.current) {
@@ -491,11 +496,12 @@ export default function OrgLiveMatchPage() {
     const currentScore = state.setScores[state.currentSet] || [0, 0];
     const isFirstServe =
       currentScore[0] === 0 && currentScore[1] === 0 && state.currentSet === 0;
-    if (state.serverSide !== lastServerRef.current && !isFirstServe) {
+    const serverKey = `${state.serverSide}:${state.serverPlayerIndex ?? ""}`;
+    if (serverKey !== lastServerRef.current && !isFirstServe) {
       setShowSwitchServe(true);
     }
-    lastServerRef.current = state.serverSide;
-  }, [state.currentSet, state.serverSide, state.setScores]);
+    lastServerRef.current = serverKey;
+  }, [state.currentSet, state.serverPlayerIndex, state.serverSide, state.setScores]);
 
   const currentSet: [number, number] = [
     state.setScores[state.currentSet]?.[0] ?? 0,
@@ -520,6 +526,13 @@ export default function OrgLiveMatchPage() {
         config.scoringSystem === "sideout"
           ? "Side-Out Scoring"
           : "Rally Scoring"
+      }
+      scoreCallLabel={getScoreCall(state, config)}
+      servingPositionLabel={getServingPositionLabel(state)}
+      serverNumberLabel={
+        config.format === "doubles" && config.scoringSystem === "sideout"
+          ? `Server ${getServerNumber(state, config)}`
+          : undefined
       }
       sideAServing={state.serverSide === 0}
       sideBServing={state.serverSide === 1}

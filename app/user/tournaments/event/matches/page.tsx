@@ -10,6 +10,7 @@ import {
   TrophyIcon,
   UsersIcon,
 } from "@/components/Icons";
+import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
 import TeamLogo from "@/components/TeamLogo";
 import { useApp } from "@/components/AppProvider";
 import { eventApi, type EventResultStanding } from "@/lib/api/eventApi";
@@ -37,6 +38,7 @@ type MatchRow = {
   winnerSide?: "a" | "b";
   court?: string;
   scorerName?: string;
+  liveMatchData?: any;
 };
 
 function formatDate(value?: string | null, compact = false) {
@@ -212,6 +214,33 @@ function getProfilePicUrl(participant: any) {
   );
 }
 
+function getTeamPlayers(team: any, userId?: string | null, fallback = "Team") {
+  const participants = Array.isArray(team?.participants) ? team.participants : [];
+  const players = participants
+    .map((participant: any) => {
+      const participantId = getParticipantId(participant);
+      if (userId && participantId === userId) return "You";
+      return participant?.user?.name || participant?.name || participant?.profile?.name;
+    })
+    .filter(Boolean);
+
+  return players.length > 0 ? players : [getTeamName(team, fallback)];
+}
+
+function getTeamImages(team: any) {
+  const participants = Array.isArray(team?.participants) ? team.participants : [];
+  return participants.map(getProfilePicUrl).filter(Boolean);
+}
+
+function toLivePopupTeam(team: any, userId?: string | null, fallback = "Team") {
+  return {
+    ...team,
+    id: getTeamId(team),
+    players: getTeamPlayers(team, userId, fallback),
+    images: getTeamImages(team),
+  };
+}
+
 function getInitials(name: string) {
   return name
     .trim()
@@ -354,9 +383,11 @@ function RoundSelector({
 function FixtureCard({
   match,
   userId,
+  onViewLive,
 }: {
   match: MatchRow;
   userId?: string | null;
+  onViewLive?: (match: MatchRow) => void;
 }) {
   const involvesUser =
     teamHasUser(match.sideA, userId) || teamHasUser(match.sideB, userId);
@@ -414,6 +445,16 @@ function FixtureCard({
           </span>
         </div>
       </div>
+
+      {match.status === "live" && (
+        <button
+          type="button"
+          onClick={() => onViewLive?.(match)}
+          className="mt-3 flex w-full items-center justify-center rounded-full bg-green-500 px-4 py-2 text-xs font-black text-white transition-colors hover:bg-green-600"
+        >
+          View Live Match
+        </button>
+      )}
     </div>
   );
 }
@@ -461,9 +502,11 @@ function SetGrid({ sets }: { sets: SetScore[] }) {
 function DetailedMatchCard({
   match,
   userId,
+  onViewLive,
 }: {
   match: MatchRow;
   userId?: string | null;
+  onViewLive?: (match: MatchRow) => void;
 }) {
   const statusMeta = getStatusMeta(match.status);
   const leftName = teamHasUser(match.sideA, userId)
@@ -537,9 +580,19 @@ function DetailedMatchCard({
 
         <SetGrid sets={match.sets} />
 
-        <div className="rounded-full bg-[var(--color-surface-elevated)] py-3 text-center text-sm font-black text-[var(--color-muted)]">
-          {match.status === "upcoming" ? "Match Pending" : "Match Record"}
-        </div>
+        {match.status === "live" ? (
+          <button
+            type="button"
+            onClick={() => onViewLive?.(match)}
+            className="w-full rounded-full bg-green-500 py-3 text-center text-sm font-black text-white transition-colors hover:bg-green-600"
+          >
+            View Live Match
+          </button>
+        ) : (
+          <div className="rounded-full bg-[var(--color-surface-elevated)] py-3 text-center text-sm font-black text-[var(--color-muted)]">
+            {match.status === "upcoming" ? "Match Pending" : "Match Record"}
+          </div>
+        )}
 
         {match.status === "ended" && match.winnerSide && (
           <div className="border-t border-[var(--color-border)] pt-3 text-center text-xs font-black text-[var(--color-text)]">
@@ -636,6 +689,7 @@ function UserTournamentEventMatchesContent() {
   const [standings, setStandings] = useState<EventResultStanding[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
+  const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
 
   useEffect(() => {
     if (!eventId || !tournamentId) return;
@@ -814,6 +868,45 @@ function UserTournamentEventMatchesContent() {
             if (winnerSide === "a") setsWonA = 1;
             if (winnerSide === "b") setsWonB = 1;
           }
+          const currentSet =
+            sets.find((set: any) => getSetStatus(set) === "in_progress") ||
+            [...sets]
+              .filter(
+                (set: any) =>
+                  getSetStatus(set) !== "not_started" ||
+                  getSetTeamAScore(set) > 0 ||
+                  getSetTeamBScore(set) > 0,
+              )
+              .sort((a, b) => getSetNumber(b) - getSetNumber(a))[0] ||
+            sets[0];
+          const liveMatchData =
+            status === "live"
+              ? {
+                  id: m.id,
+                  tournamentId,
+                  tournamentName: tournament?.name || event?.name || "Tournament",
+                  matchTitle: `${event?.name || "Event"} · Match #${String(m.id).split("-")[0]}`,
+                  matchState: m.matchState,
+                  teamA: toLivePopupTeam(teamA, session?.user?.id, "Team A"),
+                  teamB: toLivePopupTeam(teamB, session?.user?.id, "Team B"),
+                  score: {
+                    teamA: setsWonA,
+                    teamB: setsWonB,
+                    currentSet: currentSet ? getSetNumber(currentSet) : 1,
+                  },
+                  sets: sets.map((set: any) => ({
+                    id: set?.id,
+                    setNumber: getSetNumber(set),
+                    teamAScore: getSetTeamAScore(set),
+                    teamBScore: getSetTeamBScore(set),
+                    setStatus: getSetStatus(set) || "not_started",
+                    winnerId: getSetWinnerId(set),
+                  })),
+                  court: m.courtName || null,
+                  isLive: true,
+                }
+              : null;
+
           return {
             id: m.id,
             label: `Match ${m.slotIndex || index + 1}`,
@@ -829,10 +922,18 @@ function UserTournamentEventMatchesContent() {
             winnerSide,
             court: m.courtName || "",
             scorerName: m.scorerUser?.name || m.scorerName || m.scorer?.name || "",
+            liveMatchData,
           };
         });
 
         setMatches(mapped);
+        setSelectedLiveMatch((prev: any) => {
+          if (!prev?.id) return prev;
+          const latest = mapped.find(
+            (match) => match.status === "live" && match.id === prev.id,
+          );
+          return latest?.liveMatchData ?? null;
+        });
       } catch (error) {
         console.error("Failed to load matches", error);
         if (!cancelled) setMatches([]);
@@ -845,13 +946,13 @@ function UserTournamentEventMatchesContent() {
     void loadMatches();
     const intervalId = window.setInterval(() => {
       void loadMatches();
-    }, 10000);
+    }, 60000);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [activeRound, event, eventId]);
+  }, [activeRound, event, eventId, session?.user?.id, tournament?.name, tournamentId]);
 
   useEffect(() => {
     if (!eventId || event?.eventState !== "completed") {
@@ -893,6 +994,18 @@ function UserTournamentEventMatchesContent() {
       return;
     }
     await navigator.clipboard?.writeText(url).catch(() => undefined);
+  }
+
+  function handleViewLiveMatch(match: MatchRow) {
+    if (match.status !== "live" || !match.liveMatchData) return;
+    router.push(
+      `/user/tournaments/event/match/live${toQuery({
+        tournamentId,
+        eventId,
+        matchId: match.id,
+        viewOnly: "1",
+      })}`,
+    );
   }
 
   if (isLoading) {
@@ -1026,6 +1139,7 @@ function UserTournamentEventMatchesContent() {
                   key={match.id}
                   match={match}
                   userId={session?.user?.id}
+                  onViewLive={handleViewLiveMatch}
                 />
               ))}
             </div>
@@ -1036,12 +1150,18 @@ function UserTournamentEventMatchesContent() {
                   key={match.id}
                   match={match}
                   userId={session?.user?.id}
+                  onViewLive={handleViewLiveMatch}
                 />
               ))}
             </div>
           )}
         </section>
       </main>
+      <LiveMatchViewerPopup
+        isOpen={!!selectedLiveMatch}
+        onClose={() => setSelectedLiveMatch(null)}
+        match={selectedLiveMatch}
+      />
     </div>
   );
 }

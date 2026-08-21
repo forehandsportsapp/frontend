@@ -197,11 +197,14 @@ export const userApi = {
    * @returns A promise resolving to the live match data, or null.
    */
   getLiveMatch: async (): Promise<any | null> => {
+    const path = getApiUrl({ path: "/user/matches/live" });
     const { data, error } = await fetchApi(
-      getApiUrl({ path: "/user/matches/live" }),
+      path,
       { silent: true },
     );
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return data;
   },
 
@@ -210,11 +213,14 @@ export const userApi = {
    * Grouped by tournament.
    */
   getLiveFeed: async (): Promise<any[]> => {
+    const path = getApiUrl({ path: "/user/matches/live-feed" });
     const { data, error } = await fetchApi(
-      getApiUrl({ path: "/user/matches/live-feed" }),
+      path,
       { silent: true },
     );
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return data as any[];
   },
 

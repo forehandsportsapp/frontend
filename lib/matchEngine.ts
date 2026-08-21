@@ -9,7 +9,9 @@ export function createInitialLiveState(
     currentSet: 0,
     setScores: [[0, 0]],
     serverSide: config.initialServer === 1 ? 0 : 1,
-    serverPlayerIndex: config.format === "doubles" ? 0 : undefined,
+    // Pickleball doubles starts at 0-0-2, so the first server is treated as
+    // server two. After that first loss the serve immediately moves across.
+    serverPlayerIndex: config.format === "doubles" ? 1 : undefined,
     startedAt: Date.now(),
     scoreLog: [],
   };
@@ -67,6 +69,68 @@ function rotateServeAfterLoss(
   };
 }
 
+function rotateServeAfterRallyPoint(
+  state: LiveMatchStateData,
+  config: MatchConfigData,
+  rallyWinner: 0 | 1,
+): LiveMatchStateData {
+  if (rallyWinner === state.serverSide) return state;
+  return {
+    ...state,
+    serverSide: rallyWinner,
+    serverPlayerIndex: config.format === "doubles" ? 0 : undefined,
+  };
+}
+
+export function getServingTeamScore(
+  state: LiveMatchStateData,
+): number {
+  const current = state.setScores[state.currentSet] ?? [0, 0];
+  return current[state.serverSide] ?? 0;
+}
+
+export function getReceivingTeamScore(
+  state: LiveMatchStateData,
+): number {
+  const current = state.setScores[state.currentSet] ?? [0, 0];
+  const receiverSide = state.serverSide === 0 ? 1 : 0;
+  return current[receiverSide] ?? 0;
+}
+
+export function getServingPositionLabel(
+  state: LiveMatchStateData,
+): "Right side" | "Left side" {
+  return getServingTeamScore(state) % 2 === 0 ? "Right side" : "Left side";
+}
+
+export function getServerNumber(
+  state: LiveMatchStateData,
+  config: MatchConfigData,
+): 1 | 2 | undefined {
+  if (config.format !== "doubles" || config.scoringSystem === "rally") {
+    return undefined;
+  }
+  return (state.serverPlayerIndex ?? 0) === 0 ? 1 : 2;
+}
+
+export function getScoreCall(
+  state: LiveMatchStateData,
+  config: MatchConfigData,
+): string {
+  const current = state.setScores[state.currentSet] ?? [0, 0];
+  if (config.scoringSystem === "rally") {
+    return `${current[0] ?? 0}-${current[1] ?? 0}`;
+  }
+
+  const servingScore = getServingTeamScore(state);
+  const receivingScore = getReceivingTeamScore(state);
+  const serverNumber = getServerNumber(state, config);
+
+  return serverNumber
+    ? `${servingScore}-${receivingScore}-${serverNumber}`
+    : `${servingScore}-${receivingScore}`;
+}
+
 function withPoint(
   state: LiveMatchStateData,
   scoringSide: 0 | 1,
@@ -86,7 +150,11 @@ export function applyRally(
   rallyWinner: 0 | 1,
 ) {
   if (config.scoringSystem === "rally") {
-    return withPoint(state, rallyWinner);
+    return rotateServeAfterRallyPoint(
+      withPoint(state, rallyWinner),
+      config,
+      rallyWinner,
+    );
   }
 
   // side-out scoring

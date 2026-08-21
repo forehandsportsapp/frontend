@@ -14,6 +14,9 @@ import {
   applyRally,
   createInitialLiveState,
   maybeAdvanceSet,
+  getScoreCall,
+  getServerNumber,
+  getServingPositionLabel,
 } from "@/lib/matchEngine";
 import { matchApi } from "@/lib/api/matchApi";
 
@@ -179,7 +182,7 @@ export default function ScorerLiveMatchPage() {
         const isDoubles = side0.length > 1 || side1.length > 1;
 
         const config: MatchConfigData = {
-          scoringSystem: "rally",
+          scoringSystem: "sideout",
           format: isDoubles ? "doubles" : "singles",
           bestOf: Number(
             info?.setsPerMatchId ||
@@ -218,9 +221,9 @@ export default function ScorerLiveMatchPage() {
   }, [matchId]);
 
   const config = useMemo<MatchConfigData>(() => {
-    if (!matchId) return { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 };
+    if (!matchId) return { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 };
     return getItem<MatchConfigData>(`match:${matchId}:config`) ?? {
-      scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1,
+      scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1,
     };
   }, [matchId, isLoading]); // re-derive after loading
 
@@ -230,10 +233,10 @@ export default function ScorerLiveMatchPage() {
   );
 
   const [state, setState] = useState<LiveMatchStateData>(() => {
-    if (!matchId) return createInitialLiveState("temp", { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
+    if (!matchId) return createInitialLiveState("temp", { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
     const stored = getItem<LiveMatchStateData>(`match:${matchId}:state`);
     if (stored) return stored;
-    return createInitialLiveState(matchId, { scoringSystem: "rally", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
+    return createInitialLiveState(matchId, { scoringSystem: "sideout", format: "singles", bestOf: 1, pointsToWin: 11, winByTwo: true, initialServer: 1 });
   });
 
   // Re-initialize state once config is loaded
@@ -396,7 +399,9 @@ export default function ScorerLiveMatchPage() {
   }, [emit, persist]);
 
   const lastSetRef = React.useRef(state.currentSet);
-  const lastServerRef = React.useRef(state.serverSide);
+  const lastServerRef = React.useRef(
+    `${state.serverSide}:${state.serverPlayerIndex ?? ""}`,
+  );
 
   useEffect(() => {
     if (state.currentSet > lastSetRef.current) {
@@ -405,11 +410,12 @@ export default function ScorerLiveMatchPage() {
     }
     const currentScore = state.setScores[state.currentSet] || [0, 0];
     const isFirstServe = currentScore[0] === 0 && currentScore[1] === 0 && state.currentSet === 0;
-    if (state.serverSide !== lastServerRef.current && !isFirstServe) {
+    const serverKey = `${state.serverSide}:${state.serverPlayerIndex ?? ""}`;
+    if (serverKey !== lastServerRef.current && !isFirstServe) {
       setShowSwitchServe(true);
     }
-    lastServerRef.current = state.serverSide;
-  }, [state.currentSet, state.serverSide, state.setScores]);
+    lastServerRef.current = serverKey;
+  }, [state.currentSet, state.serverPlayerIndex, state.serverSide, state.setScores]);
 
   const currentSet: [number, number] = [
     state.setScores[state.currentSet]?.[0] ?? 0,
@@ -452,6 +458,13 @@ export default function ScorerLiveMatchPage() {
       setScores={setScores}
       bestOf={config.bestOf}
       scoringLabel={config.scoringSystem === "sideout" ? "Side-Out Scoring" : "Rally Scoring"}
+      scoreCallLabel={getScoreCall(state, config)}
+      servingPositionLabel={getServingPositionLabel(state)}
+      serverNumberLabel={
+        config.format === "doubles" && config.scoringSystem === "sideout"
+          ? `Server ${getServerNumber(state, config)}`
+          : undefined
+      }
       sideAServing={state.serverSide === 0}
       sideBServing={state.serverSide === 1}
       sideALabel={sideALabel}
