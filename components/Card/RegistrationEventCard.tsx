@@ -21,6 +21,74 @@ import {
 } from "@/lib/authRedirect";
 import { toQuery } from "@/lib/utils";
 
+type EventStatus =
+  | "joined"
+  | "live"
+  | "joined-live"
+  | "waiting"
+  | "ended"
+  | "open"
+  | "closed"
+  | "scheduled";
+
+const statusStyles: Record<EventStatus, string> = {
+  joined: "bg-[#22C86A] text-white",
+  live: "bg-[#269FF5] text-white",
+  waiting: "bg-[#FF5058] text-white",
+  ended: "bg-[#999999] text-white",
+  "joined-live": "",
+  open: "bg-[#22C86A] text-white",
+  closed: "bg-[#FF5058] text-white",
+  scheduled: "bg-[#269FF5] text-white",
+};
+
+const statusColors: Record<EventStatus, string> = {
+  joined: "#22C86A",
+  live: "#269FF5",
+  waiting: "#FF5058",
+  ended: "#999999",
+  "joined-live": "#22C86A",
+  open: "#22C86A",
+  closed: "#FF5058",
+  scheduled: "#269FF5",
+};
+
+function EventStatusTag({ status }: { status: EventStatus }) {
+  if (status === "joined-live") {
+    return (
+      <div className="absolute right-0 top-0 flex overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
+        <span className="bg-[#22C86A] px-4 py-1.5">Joined</span>
+        <span className="bg-[#269FF5] px-4 py-1.5">Live</span>
+      </div>
+    );
+  }
+
+  const labels: Record<Exclude<EventStatus, "joined-live">, string> = {
+    joined: "Joined",
+    live: "Live",
+    waiting: "In Waiting List",
+    ended: "Event Ended",
+    open: "Open",
+    closed: "Closed",
+    scheduled: "Scheduled",
+  };
+
+  return (
+    <span
+      className={`
+        absolute right-0 top-0
+        rounded-bl-xl
+        px-4 py-1.5
+        text-[12px] font-bold uppercase tracking-wider
+        shadow-sm
+        ${statusStyles[status]}
+      `}
+    >
+      {labels[status]}
+    </span>
+  );
+}
+
 interface RegistrationEventCardProps {
   event: EventData;
   onAddedChange: (eventId: string, isAdded: boolean) => void;
@@ -411,51 +479,55 @@ export default function RegistrationEventCard({
     );
   }
 
+  const isEnded = event.eventState === "completed" || event.eventState === "round_over";
+  const isLive = event.eventState === "in_progress";
+  const isJoined = state === "REGISTERED"; 
+  const isWaitlisted = (team?.teamStatus || team?.status)?.toLowerCase() === "waitlist" || (team?.teamStatus || team?.status)?.toLowerCase() === "waiting";
+  
+  let currentStatus: EventStatus;
+  if (isWaitlisted) {
+    currentStatus = "waiting";
+  } else if (isJoined && isLive) {
+    currentStatus = "joined-live";
+  } else if (isJoined) {
+    currentStatus = "joined";
+  } else if (isEnded) {
+    currentStatus = "ended";
+  } else if (isLive) {
+    currentStatus = "live";
+  } else if (isRegistrationClosed) {
+    currentStatus = "closed";
+  } else if (event.eventState === "scheduled") {
+    currentStatus = "scheduled";
+  } else {
+    currentStatus = "open";
+  }
+
   return (
-    <section
-      className={`rounded-3xl border p-5 shadow-lg transition-all ${
-        state === "ADDED"
-          ? "border-[#ff7a1a] bg-[#ff7a1a]/5"
-          : state === "REGISTERED"
-            ? "border-green-500 bg-green-500/5"
-            : state === "CLOSED"
-              ? "border-amber-500/30 bg-amber-500/5 opacity-90"
-            : state === "INELIGIBLE"
-              ? "border-red-500/20 bg-red-500/5 opacity-80"
-              : "border-[var(--color-border)] bg-[var(--color-surface-elevated)]"
-      }`}
-    >
+    <section className="relative overflow-hidden rounded-xl border border-white/30 bg-[#563F70] p-4 shadow-lg transition-all">
+      <EventStatusTag status={currentStatus} />
+      
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-[20px] font-bold text-[var(--color-text)]">
+        <div className="pr-16">
+          <h3 
+            className="text-[20px] font-bold"
+            style={{ color: statusColors[currentStatus] || "#ffffff" }}
+          >
             {event.name}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest ${eventStatusMeta.className}`}
-            >
-              {eventStatusMeta.label}
-            </span>
-            {state === "REGISTERED" && (
-              <span className="inline-flex rounded-full border border-green-300 bg-green-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-green-700">
-                {(team?.teamStatus || team?.status)?.toLowerCase() ===
-                "participating"
-                  ? "Participating"
-                  : "Registered"}
-              </span>
-            )}
             {state === "INELIGIBLE" && (
-              <span className="inline-flex rounded-full border border-red-300 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-600">
+              <span className="inline-flex rounded-full border border-red-300 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-100">
                 {event.gender} only
               </span>
             )}
           </div>
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-[max-content_max-content] sm:gap-x-6 sm:gap-y-4">
-            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)] opacity-60">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[max-content_max-content] sm:gap-x-6">
+            <div className="flex items-start gap-2.5 text-[13px] text-white/70">
               <CalendarIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
               <span className="leading-snug">Starts: {formatDate(event.startDate)}</span>
             </div>
-            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)] opacity-60">
+            <div className="flex items-start gap-2.5 text-[13px] text-white/70">
               <TimerIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
               <span className="leading-snug">Closes: {formatDate(event.dueDate)}</span>
             </div>
@@ -463,9 +535,12 @@ export default function RegistrationEventCard({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-[var(--color-border)] pt-5">
-        <div className="mb-4">
-          <p className="text-[24px] font-bold text-[#ff7a1a]">
+      <div className="mt-4 border-t border-white/20 pt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <p 
+            className="text-[18px] font-bold"
+            style={{ color: statusColors[currentStatus] || "#ffffff" }}
+          >
             {event.amount === 0 ? (
               "Free Entry"
             ) : (
@@ -476,7 +551,7 @@ export default function RegistrationEventCard({
             )}
           </p>
           {event.amount > 0 && event.paymentMode && (
-            <p className="mt-1 text-[12px] font-medium text-[var(--color-text-secondary)] opacity-60 uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-white/60 uppercase tracking-wider">
               {event.paymentMode.label}
             </p>
           )}
@@ -485,7 +560,11 @@ export default function RegistrationEventCard({
         <div className="grid grid-cols-2 gap-3">
           <a
             href={viewHref}
-            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 border-[#ff7a1a] bg-white px-4 text-[16px] font-bold text-[#ff7a1a] transition-all active:scale-95"
+            style={{ 
+              borderColor: statusColors[currentStatus],
+              color: statusColors[currentStatus]
+            }}
+            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-white px-4 text-[16px] font-bold transition-all active:scale-95"
           >
             View
           </a>
@@ -506,7 +585,11 @@ export default function RegistrationEventCard({
             <button
               onClick={handleAdd}
               disabled={isBusy}
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-[#ff7a1a] px-4 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70"
+              style={{ 
+                backgroundColor: statusColors[currentStatus],
+                borderColor: statusColors[currentStatus]
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold text-white shadow-lg transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70"
             >
               {isBusy ? "Registering..." : "Register"}
             </button>
@@ -515,7 +598,11 @@ export default function RegistrationEventCard({
           {state === "IDLE" && isRegistrationClosed && (
             <button
               disabled
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
+              style={{
+                borderColor: statusColors[currentStatus],
+                color: statusColors[currentStatus]
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 bg-transparent px-4 text-[16px] font-bold opacity-70 cursor-not-allowed"
             >
               Register
             </button>
@@ -531,7 +618,11 @@ export default function RegistrationEventCard({
                   handleDiscard();
                 }
               }}
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[#ff7a1a] bg-[#ff7a1a] px-4 text-[16px] font-bold text-white shadow-lg shadow-orange-500/20 transition-all active:scale-95"
+              style={{ 
+                backgroundColor: statusColors[currentStatus],
+                borderColor: statusColors[currentStatus]
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold text-white shadow-lg transition-all active:scale-95"
             >
               Added
             </button>
@@ -540,7 +631,11 @@ export default function RegistrationEventCard({
           {state === "REGISTERED" && (
             <button
               disabled
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-green-500 bg-green-500 px-4 text-[16px] font-bold text-white cursor-default"
+              style={{ 
+                backgroundColor: statusColors[currentStatus],
+                borderColor: statusColors[currentStatus]
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold text-white cursor-default"
             >
               {(team?.teamStatus || team?.status)?.toLowerCase() ===
               "participating"
@@ -552,7 +647,12 @@ export default function RegistrationEventCard({
           {state === "CLOSED" && (
             <button
               disabled
-              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold text-[var(--color-muted)] opacity-70 cursor-not-allowed"
+              style={{
+                borderColor: statusColors[currentStatus],
+                color: statusColors[currentStatus],
+                backgroundColor: `${statusColors[currentStatus]}1A` // 10% opacity
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold opacity-70 cursor-not-allowed"
             >
               Register
             </button>
