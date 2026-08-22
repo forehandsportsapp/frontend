@@ -365,19 +365,6 @@ export default function OrgLiveMatchPage() {
               ? teamIds.a || null
               : teamIds.b || null;
 
-        // Ensure current set is initialized on the first point of a new set
-        if (
-          matchId &&
-          (previous.setScores[updatedSetIndex] === undefined ||
-            (previous.setScores[updatedSetIndex][0] === 0 &&
-              previous.setScores[updatedSetIndex][1] === 0))
-        ) {
-          try {
-            await matchApi.initializeSet(matchId, updatedSetIndex + 1);
-          } catch {
-          }
-        }
-
         if (matchId) {
           const scorePayload: {
             matchId: string;

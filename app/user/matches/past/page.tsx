@@ -258,10 +258,11 @@ export default function PastMatchesPage() {
             m.event?.name || m.tournament?.name || m.leagueTitle || "Match";
           let categoryStr = m.event?.category || "Unknown";
           let typeStr =
-            m.event?.format === "doubles" ? "Doubles" : "Singles";
+            m.type ||
+            m.event?.teamType?.label ||
+            (m.event?.format === "doubles" ? "Doubles" : "Singles");
 
-          const currentUserId = "TODO";
-          let statusLabel = "PLAYED";
+          let statusLabel = m.status || "PLAYED";
           if (m.winningTeamId) {
             const leftWon = m.winningTeamId === m.leftTeam?.id;
             const rightWon = m.winningTeamId === m.rightTeam?.id;
@@ -276,12 +277,36 @@ export default function PastMatchesPage() {
             } else if (m.score.teamA !== undefined) {
               scoreStr = `${m.score.teamA} - ${m.score.teamB}`;
             }
+          } else if (Array.isArray(m.sets)) {
+            let teamASets = 0;
+            let teamBSets = 0;
+            const setsByNumber = new Map<number, any>();
+            m.sets.forEach((set: any) => {
+              const setNumber = Number(set?.setNumber ?? set?.set_integer);
+              if (!Number.isFinite(setNumber)) return;
+              const existing = setsByNumber.get(setNumber);
+              const score = Number(set?.teamAScore || 0) + Number(set?.teamBScore || 0);
+              const existingScore = existing
+                ? Number(existing?.teamAScore || 0) + Number(existing?.teamBScore || 0)
+                : -1;
+              if (!existing || score >= existingScore) setsByNumber.set(setNumber, set);
+            });
+            [...setsByNumber.values()]
+              .filter((set: any) => set?.setStatus === "completed")
+              .forEach((set: any) => {
+                if (Number(set.teamAScore) > Number(set.teamBScore)) teamASets += 1;
+                if (Number(set.teamBScore) > Number(set.teamAScore)) teamBSets += 1;
+              });
+            scoreStr = `${teamASets} - ${teamBSets}`;
           }
 
           return {
             id: m.id || String(idx),
             type: `${typeStr} • ${categoryStr}`,
-            timeAgo: m.endTime ? getTimeAgo(m.endTime) : "Recently",
+            timeAgo:
+              m.endedAt || m.endTime
+                ? getTimeAgo(m.endedAt || m.endTime)
+                : "Recently",
             status: statusLabel,
             leagueTitle: eventName,
             leftTeamName:

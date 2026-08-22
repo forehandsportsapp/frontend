@@ -184,6 +184,31 @@ const accentColors = [
   "bg-orange-400",
 ];
 
+function formatMatchScore(match: any) {
+  const score = match?.score;
+  if (typeof score === "string") return score;
+  if (score?.teamA !== undefined && score?.teamB !== undefined) {
+    return `${score.teamA} - ${score.teamB}`;
+  }
+  if (Array.isArray(score?.sets)) {
+    return score.sets
+      .map((set: any) => `${set.teamA ?? set.teamAScore ?? 0}-${set.teamB ?? set.teamBScore ?? 0}`)
+      .join(" ");
+  }
+  if (Array.isArray(match?.sets)) {
+    let teamA = 0;
+    let teamB = 0;
+    match.sets
+      .filter((set: any) => set?.setStatus === "completed")
+      .forEach((set: any) => {
+        if (Number(set.teamAScore) > Number(set.teamBScore)) teamA += 1;
+        if (Number(set.teamBScore) > Number(set.teamAScore)) teamB += 1;
+      });
+    return `${teamA} - ${teamB}`;
+  }
+  return "0 - 0";
+}
+
 export default function PastMatchesSection() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [matches, setMatches] = useState<PastMatch[]>([]);
@@ -256,6 +281,7 @@ export default function PastMatchesSection() {
 
           return {
             ...m,
+            type: m.type || m.event?.teamType?.label || "Match",
             leftTeamPlayers:
               normalizedLeftPlayers.length > 0 ? normalizedLeftPlayers : ["Player"],
             rightTeamPlayers:
@@ -265,6 +291,8 @@ export default function PastMatchesSection() {
             leftTeamImages: leftImages,
             rightTeamImages: rightImages,
             timeAgo: m.endedAt ? getTimeAgo(m.endedAt) : "N/A",
+            score: formatMatchScore(m),
+            scoreLabel: m.scoreLabel || "Final Score",
             accentColor: accentColors[idx % accentColors.length],
           };
         });

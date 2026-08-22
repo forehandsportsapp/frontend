@@ -24,6 +24,8 @@ const ACCENT_COLORS = [
   "bg-orange-500",
 ];
 
+const ENDED_MATCH_STATES = new Set(["completed", "abandoned", "walkover"]);
+
 function UpcomingCourtCard({ match }: { match: UpcomingMatch }) {
   return (
     <Link href={`/tournaments/detail?id=${match.tournamentId}`} className="block">
@@ -88,7 +90,13 @@ export default function NextOnCourtSection() {
       try {
         const data = await userApi.getUpcomingMatches();
         if (active && data) {
-          const formatted = data.map((m: any, index: number) => {
+          const upcomingMatches = data.filter((match: any) => {
+            const state = String(
+              match?.matchState ?? match?.state ?? match?.status ?? "",
+            ).toLowerCase();
+            return !ENDED_MATCH_STATES.has(state);
+          });
+          const formatted = upcomingMatches.map((m: any, index: number) => {
             const date = new Date(m.scheduledAt || Date.now());
             return {
               id: m.id,
