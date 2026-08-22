@@ -9,7 +9,7 @@ import {
 export default function OrgHelpPage() {
   return (
     <SettingsShell title="Help & Support">
-      <HelpCard />
+      <HelpCard type="org" />
     </SettingsShell>
   );
 }

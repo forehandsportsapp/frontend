@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { playerFAQs, orgFAQs } from "./faqData";
 import Layout from "@/components/Layout";
 import {
   ArrowLeftIcon,
@@ -119,12 +120,8 @@ export function SettingsShell({ title, children }: SettingsShellProps) {
   );
 }
 
-export function HelpCard() {
-  const faqs = [
-    "How do I create a tournament?",
-    "How do I create a tournament?",
-    "How do I create a tournament?",
-  ];
+export function HelpCard({ type = "user" }: { type?: "user" | "org" }) {
+  const faqs = type === "user" ? playerFAQs : orgFAQs;
 
   return (
     <section className="rounded-[24px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm flex flex-col gap-4">
@@ -133,24 +130,39 @@ export function HelpCard() {
         <p className="mt-2 text-[13px] text-[var(--color-text-muted)]">
           Need help? Our support team is available 24/7.
         </p>
-        <a
-          href="mailto:forehandsportsapp@gmail.com"
-          className="mt-4 inline-flex items-center gap-1 text-[14px] font-bold text-[#ff7a00] transition-colors hover:text-[#e66a00]"
-        >
-          Email Support &rarr;
-        </a>
+        <div className="flex flex-col items-start gap-2 mt-4">
+          <a
+            href="mailto:forehandsportsapp@gmail.com"
+            className="inline-flex items-center gap-1 text-[14px] font-bold text-[#ff7a00] transition-colors hover:text-[#e66a00]"
+          >
+            Email Support &rarr;
+          </a>
+          <a
+            href="tel:+919522195954"
+            className="inline-flex items-center gap-1 text-[14px] font-bold text-[#ff7a00] transition-colors hover:text-[#e66a00]"
+          >
+            +91 9522195954 &rarr;
+          </a>
+        </div>
       </div>
 
       <div className="rounded-[16px] bg-[var(--color-surface-elevated)] p-5 border border-[var(--color-border)]">
         <p className="text-[14px] font-bold">FAQ</p>
-        <ul className="mt-3 space-y-3">
+        <div className="mt-4 flex flex-col gap-4 max-h-[400px] overflow-y-auto pr-2">
           {faqs.map((faq, i) => (
-            <li key={i} className="flex items-center gap-2 text-[13px] text-[var(--color-text-muted)]">
-              <span className="text-[10px] text-[var(--color-text-muted)] opacity-80">&#9654;</span>
-              {faq}
-            </li>
+            <details key={i} className="group border-b border-[var(--color-border)] pb-3 last:border-b-0">
+              <summary className="flex cursor-pointer list-none items-start justify-between font-semibold text-[13px] text-[var(--color-text)]">
+                <span className="pr-4">{faq.question}</span>
+                <span className="transition-transform group-open:rotate-180 flex-shrink-0 text-[var(--color-text-muted)] mt-0.5">
+                  <svg fill="none" height="16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M6 9l6 6 6-6"></path></svg>
+                </span>
+              </summary>
+              <p className="text-[12px] text-[var(--color-text-muted)] mt-2 leading-relaxed">
+                {faq.answer}
+              </p>
+            </details>
           ))}
-        </ul>
+        </div>
       </div>
     </section>
   );
