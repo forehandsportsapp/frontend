@@ -215,8 +215,8 @@ function EventChampionContent() {
       const peek = 86;
       
       // Calculate snap points directly based on viewport, avoiding any circular dependency with DOM elements
-      // Minimum 360px needed for the hero content to display nicely without squishing
-      let nextExpandedY = Math.max(360, vh * 0.5);
+      // Minimum 320px needed for the hero content to display nicely without squishing
+      let nextExpandedY = Math.max(320, vh * 0.35);
       let nextCollapsedY = vh - peek;
       
       // Guarantee drag range
