@@ -5,10 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   CalendarIcon,
+  CheckIcon,
+  ClipboardIcon,
   GroupUsersIcon,
   ShareIcon,
   TimerIcon,
   TrophyIcon,
+  XIcon,
 } from "@/components/Icons";
 import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
 import TeamLogo from "@/components/TeamLogo";
@@ -18,6 +21,7 @@ import { matchApi } from "@/lib/api/matchApi";
 import { EventData, TournamentData } from "@/lib/models";
 import { isEventRegistrationOpen } from "@/lib/statusLabels";
 import { toQuery } from "@/lib/utils";
+import { QRCodeSVG } from "qrcode.react";
 
 type ViewTab = "fixtures" | "matches";
 type MatchStatus = "upcoming" | "live" | "ended";
@@ -690,6 +694,11 @@ function UserTournamentEventMatchesContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMatchesLoading, setIsMatchesLoading] = useState(false);
   const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const shareUrl =
+    typeof window !== "undefined" ? window.location.href : "";
 
   useEffect(() => {
     if (!eventId || !tournamentId) return;
@@ -987,13 +996,32 @@ function UserTournamentEventMatchesContent() {
   );
   const tournamentName = event?.name || tournament?.name || "Tournament Event";
 
-  async function handleShare() {
-    const url = window.location.href;
-    if (navigator.share) {
-      await navigator.share({ title: tournamentName, url }).catch(() => undefined);
-      return;
+  function handleOpenShareSheet() {
+    setIsCopied(false);
+    setIsShareSheetOpen(true);
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareUrl) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = shareUrl;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1800);
+    } catch (err) {
+      console.error("Failed to copy match link", err);
     }
-    await navigator.clipboard?.writeText(url).catch(() => undefined);
   }
 
   function handleViewLiveMatch(match: MatchRow) {
@@ -1041,7 +1069,7 @@ function UserTournamentEventMatchesContent() {
             </h1>
             <button
               type="button"
-              onClick={() => void handleShare()}
+              onClick={handleOpenShareSheet}
               className="grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
               aria-label="Share"
             >
@@ -1162,6 +1190,67 @@ function UserTournamentEventMatchesContent() {
         onClose={() => setSelectedLiveMatch(null)}
         match={selectedLiveMatch}
       />
+
+      {isShareSheetOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
+            onClick={() => setIsShareSheetOpen(false)}
+          />
+          <div
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md rounded-t-[32px] border-t border-[var(--color-border)] bg-[var(--color-surface)] p-6 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-matches-title"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2
+                  id="share-matches-title"
+                  className="text-[20px] font-bold text-[var(--color-text)]"
+                >
+                  Share Event
+                </h2>
+                <p className="mt-1 truncate text-[13px] text-[var(--color-text-secondary)]">
+                  {tournamentName}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsShareSheetOpen(false)}
+                className="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)]"
+                aria-label="Close share sheet"
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm">
+                <QRCodeSVG
+                  value={shareUrl || window.location.href}
+                  size={196}
+                  bgColor="#ffffff"
+                  fgColor="#111111"
+                  level="M"
+                  includeMargin
+                />
+              </div>
+
+              <p className="mt-4 w-full truncate rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-center text-[13px] font-medium text-[var(--color-text-secondary)]">
+                {shareUrl}
+              </p>
+
+              <button
+                onClick={() => void handleCopyShareLink()}
+                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#ff811f] px-5 text-[17px] font-bold text-white shadow-lg transition-transform active:scale-[0.98]"
+              >
+                {isCopied ? <CheckIcon size={18} /> : <ClipboardIcon size={18} />}
+                {isCopied ? "Copied" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

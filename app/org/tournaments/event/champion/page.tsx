@@ -3,9 +3,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowLeftIcon, ShareIcon, TrophyIcon } from "@/components/Icons";
+import { ArrowLeftIcon, CheckIcon, ClipboardIcon, ShareIcon, TrophyIcon, XIcon } from "@/components/Icons";
 import { eventApi, EventResultStanding } from "@/lib/api/eventApi";
 import { toQuery } from "@/lib/utils";
+import { QRCodeSVG } from "qrcode.react";
 import {
   animate,
   motion,
@@ -105,6 +106,8 @@ function EventChampionContent() {
   const [standings, setStandings] = useState<EventResultStanding[]>([]);
   const [eventState, setEventState] = useState<string | null>(null);
   const [isSheetCollapsed, setIsSheetCollapsed] = useState(false);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const [expandedY, setExpandedY] = useState(0);
   const [collapsedY, setCollapsedY] = useState(0);
@@ -163,6 +166,37 @@ function EventChampionContent() {
     void load();
     return () => { cancelled = true; };
   }, [eventId]);
+
+  const shareUrl =
+    typeof window !== "undefined" ? window.location.href : "";
+
+  function handleOpenShareSheet() {
+    setIsCopied(false);
+    setIsShareSheetOpen(true);
+  }
+
+  async function handleCopyShareLink() {
+    if (!shareUrl) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = shareUrl;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setIsCopied(true);
+      window.setTimeout(() => setIsCopied(false), 1800);
+    } catch (err) {
+      console.error("Failed to copy champion link", err);
+    }
+  }
 
   const isCompleted = eventState === "completed";
   const podiumStandings = useMemo(() => standings.slice(0, 3), [standings]);
@@ -263,6 +297,7 @@ function EventChampionContent() {
               </Link>
               <button
                 type="button"
+                onClick={handleOpenShareSheet}
                 className="grid h-10 w-10 place-content-center rounded-full bg-white/30 text-white shadow-sm backdrop-blur transition-colors hover:bg-white/40 active:bg-white/50"
                 aria-label="Share"
               >
@@ -322,20 +357,22 @@ function EventChampionContent() {
           style={{
             position: "fixed",
             top: 0,
-            left: "50%",
-            width: "min(100vw, 430px)",
+            left: 0,
+            right: 0,
+            margin: "0 auto",
+            width: "100%",
+            maxWidth: "430px",
             height: sheetHeight,
-            x: "-50%",
             y: sheetY,
           }}
-          className="relative z-30 flex flex-col overflow-hidden rounded-t-[28px] bg-white pt-5 will-change-transform shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+          className="relative z-30 flex flex-col overflow-hidden rounded-t-[28px] bg-[var(--color-surface)] pt-5 will-change-transform shadow-[0_-10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
         >
           <div
             className="cursor-grab touch-none select-none px-5 pb-4 pt-0 active:cursor-grabbing"
             onPointerDown={(e) => dragControls.start(e)}
           >
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-zinc-200" />
-            <h2 className="text-[18px] font-bold text-zinc-800">Final Standings</h2>
+            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-[var(--color-border)]" />
+            <h2 className="text-[18px] font-bold text-[var(--color-text)]">Final Standings</h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom),28px)]">
@@ -344,24 +381,24 @@ function EventChampionContent() {
                 podiumStandings.map((team) => (
                   <div
                     key={team.teamId}
-                    className="flex items-center gap-4 rounded-2xl border border-zinc-200 bg-white px-3.5 py-3.5 shadow-sm"
+                    className="flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 py-3.5 shadow-sm"
                   >
                     <div className="relative flex-shrink-0">
                       <ResultAvatar
                         imageUrl={team.avatarUrl}
                         name={team.teamName}
-                        imageClassName="h-[66px] w-[66px] rounded-full object-cover ring-4 ring-orange-100"
-                        fallbackClassName="flex h-[66px] w-[66px] items-center justify-center rounded-full bg-zinc-100 text-sm font-black text-zinc-700 ring-4 ring-orange-100"
+                        imageClassName="h-[66px] w-[66px] rounded-full object-cover ring-4 ring-orange-100 dark:ring-orange-950/40"
+                        fallbackClassName="flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-sm font-black text-[var(--color-text)] ring-4 ring-orange-100 dark:ring-orange-950/40"
                       />
                       <span
-                        className={`absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full border-2 border-white text-[9px] font-black text-white ${rankBadgeClass(team.rank)}`}
+                        className={`absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full border-2 border-[var(--color-surface-elevated)] text-[9px] font-black text-white ${rankBadgeClass(team.rank)}`}
                       >
                         {rankBadgeText(team.rank)}
                       </span>
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[15px] font-semibold leading-tight text-zinc-800">
+                      <p className="truncate text-[15px] font-semibold leading-tight text-[var(--color-text)]">
                         {team.teamName}
                       </p>
                       <p
@@ -372,7 +409,7 @@ function EventChampionContent() {
                               ? "text-zinc-500"
                               : team.rank === 3
                                 ? "text-orange-400"
-                                : "text-[var(--color-muted)]"
+                                : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {rankLabel(team.rank)}
@@ -383,18 +420,28 @@ function EventChampionContent() {
                       <p className="text-lg font-black leading-none text-orange-500">
                         {team.wins}/{team.played}
                       </p>
-                      <p className="mt-1 text-center text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                      <p className="mt-1 text-center text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
                         Wins
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="mt-4 rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-6 text-center">
-                  <h3 className="text-lg font-semibold text-[var(--color-text)]">
+                <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-6 py-10 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] mb-2">
+                    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-muted)]">
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                      <path d="M4 22h16" />
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-[17px] font-bold text-[var(--color-text)]">
                     Winners are not available yet
                   </h3>
-                  <p className="mt-2 text-sm text-[var(--color-muted)]">
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                     Once this event is completed, the final standings will appear here.
                   </p>
                 </div>
@@ -403,6 +450,67 @@ function EventChampionContent() {
           </div>
         </motion.section>
       </div>
+
+      {isShareSheetOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
+            onClick={() => setIsShareSheetOpen(false)}
+          />
+          <div
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-md rounded-t-[32px] border-t border-[var(--color-border)] bg-[var(--color-surface)] p-6 pb-[max(env(safe-area-inset-bottom),24px)] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-champion-title"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div className="min-w-0">
+                <h2
+                  id="share-champion-title"
+                  className="text-[20px] font-bold text-[var(--color-text)]"
+                >
+                  Share Champion
+                </h2>
+                <p className="mt-1 truncate text-[13px] text-[var(--color-text-secondary)]">
+                  {displayEventName}
+                </p>
+              </div>
+              <button
+                onClick={() => setIsShareSheetOpen(false)}
+                className="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text)]"
+                aria-label="Close share sheet"
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="rounded-[24px] border border-[var(--color-border)] bg-white p-4 shadow-sm">
+                <QRCodeSVG
+                  value={shareUrl || window.location.href}
+                  size={196}
+                  bgColor="#ffffff"
+                  fgColor="#111111"
+                  level="M"
+                  includeMargin
+                />
+              </div>
+
+              <p className="mt-4 w-full truncate rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-3 text-center text-[13px] font-medium text-[var(--color-text-secondary)]">
+                {shareUrl}
+              </p>
+
+              <button
+                onClick={() => void handleCopyShareLink()}
+                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-[#ff811f] px-5 text-[17px] font-bold text-white shadow-lg transition-transform active:scale-[0.98]"
+              >
+                {isCopied ? <CheckIcon size={18} /> : <ClipboardIcon size={18} />}
+                {isCopied ? "Copied" : "Copy Link"}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

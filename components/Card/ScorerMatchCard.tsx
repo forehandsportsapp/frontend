@@ -28,6 +28,21 @@ export default function ScorerMatchCard({ match }: { match: any }) {
     dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
+  const tournamentId = match.event?.tournament?.id || match.event?.tournamentId || "";
+  const eventId = match.event?.id || match.eventId || "";
+  const matchId = match.id || "";
+
+  const setupHref =
+    `/user/manage/tournament/event/match/setup` +
+    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}`;
+
+  const liveHref =
+    `/user/manage/tournament/event/match/live` +
+    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}`;
+
+  const ctaHref = isLive ? liveHref : setupHref;
+  const ctaLabel = isLive ? "Score Match" : "Start Scoring";
+
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm overflow-hidden mb-4">
       <div className="bg-orange-500 px-4 py-2 flex items-center justify-between">
@@ -53,11 +68,11 @@ export default function ScorerMatchCard({ match }: { match: any }) {
         </div>
         {!isCompleted && (
           <Link
-            href={`/user/tournaments/match/live?matchId=${match.id}`}
+            href={ctaHref}
             className="block w-full py-3 rounded-xl text-center text-sm font-bold text-white transition-transform active:scale-95"
             style={{ background: "var(--gradient-orange)" }}
           >
-            {isLive ? "Score Match" : "Start Scoring"}
+            {ctaLabel}
           </Link>
         )}
         {isCompleted && (

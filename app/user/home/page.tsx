@@ -1096,11 +1096,17 @@ export default function UserHomePage() {
               </div>
             ) : liveFeed.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl text-neutral-400">📡</span>
+                <div className="w-16 h-16 bg-[var(--color-surface-elevated)] rounded-full flex items-center justify-center mb-4">
+                  <svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-muted)]">
+                    <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+                    <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+                    <circle cx="12" cy="12" r="2" />
+                    <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+                    <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+                  </svg>
                 </div>
-                <h4 className="font-bold text-neutral-700">No Live Matches</h4>
-                <p className="text-sm text-neutral-500 mt-1 max-w-[240px]">
+                <h4 className="font-bold text-[var(--color-text)]">No Live Matches</h4>
+                <p className="text-sm text-[var(--color-text-secondary)] mt-1 max-w-[240px]">
                   Matches from tournaments you've joined will appear here when
                   they go live.
                 </p>
@@ -1118,7 +1124,7 @@ export default function UserHomePage() {
         )}
 
         {activeTab === "myspace" && (
-          <div className="space-y-8 animate-fade-in">
+          <div className="space-y-6 animate-fade-in">
             <section>
               <QuickStatsSection
                 won={userStats?.matchesWon || 0}
@@ -1135,58 +1141,78 @@ export default function UserHomePage() {
               />
             </section>
 
-            <section>
-              <h3 className="mb-3 font-heading text-lg font-semibold tracking-tight flex items-center gap-2 px-1">
-                <span
-                  className={`h-2 w-2 rounded-full ${liveMatch ? "bg-[var(--color-error)] animate-pulse" : "bg-gray-400"}`}
-                />
-                Your Live Match
-              </h3>
+            {/* ── Your Live Match ── */}
+            <section className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="relative flex h-3 w-3 items-center justify-center shrink-0">
+                  {liveMatch ? (
+                    <>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+                    </>
+                  ) : (
+                    <span className="inline-flex h-2.5 w-2.5 rounded-full bg-[var(--color-border)]" />
+                  )}
+                </div>
+                <h3 className="font-heading text-[17px] font-bold tracking-tight text-[var(--color-text)]">
+                  Your Live Match
+                </h3>
+                {liveMatch && (
+                  <span className="ml-auto rounded-full bg-green-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                    Live
+                  </span>
+                )}
+              </div>
 
               {isLiveMatchLoading ? (
-                <div className="h-48 w-full rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
+                <div className="h-44 w-full rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
               ) : liveMatch && liveMatch.teamA && liveMatch.teamB ? (
-                <>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedLiveMatch(liveMatch)}
-                    className="w-full text-left block cursor-pointer transition-transform active:scale-[0.98] outline-none"
-                  >
-                    <LiveMatchCard
-                      tournamentName={liveMatch.tournamentName || "Tournament"}
-                      matchTitle={liveMatch.matchTitle || "Live Match"}
-                      teamA={normalizeTeam(liveMatch.teamA)}
-                      teamB={normalizeTeam(liveMatch.teamB)}
-                      score={
-                        liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
-                      }
-                      court={liveMatch.court}
-                      isLive={true}
-                    />
-                  </div>
-                  <SwipingDots itemCount={1} />
-                </>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedLiveMatch(liveMatch)}
+                  className="w-full text-left block cursor-pointer transition-transform active:scale-[0.98] outline-none"
+                >
+                  <LiveMatchCard
+                    tournamentName={liveMatch.tournamentName || "Tournament"}
+                    matchTitle={liveMatch.matchTitle || "Live Match"}
+                    teamA={normalizeTeam(liveMatch.teamA)}
+                    teamB={normalizeTeam(liveMatch.teamB)}
+                    score={
+                      liveMatch.score || { teamA: 0, teamB: 0, currentSet: 1 }
+                    }
+                    court={liveMatch.court}
+                    isLive={true}
+                  />
+                </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/50 p-8 text-center">
-                  <p className="text-sm font-medium text-neutral-500">
-                    You are not in any live match right now.
+                <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-4 py-8 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]">
+                    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="text-[var(--color-muted)]">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                      <path d="M2 17l10 5 10-5" />
+                      <path d="M2 12l10 5 10-5" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-[var(--color-text)]">
+                    No live match right now
                   </p>
-                  <p className="mt-1 text-xs text-neutral-400">
+                  <p className="text-xs text-[var(--color-text-secondary)]">
                     Your active matches will appear here automatically.
                   </p>
                 </div>
               )}
             </section>
 
+            {/* ── Your Tournaments ── */}
             <section>
               <div className="flex items-center justify-between mb-3 px-1">
-                <h3 className="font-heading text-lg font-semibold tracking-tight">
+                <h3 className="font-heading text-[17px] font-bold tracking-tight text-[var(--color-text)]">
                   Your Tournaments
                 </h3>
                 <Link
                   href="/user/tournaments?tab=history"
-                  className="text-sm font-semibold text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] transition-colors"
+                  className="text-xs font-bold uppercase tracking-wider text-orange-600 hover:underline"
                 >
                   View All
                 </Link>
@@ -1199,10 +1225,17 @@ export default function UserHomePage() {
                 {isTournamentsLoading ? (
                   <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0 h-24 rounded-2xl bg-[var(--color-surface-elevated)] animate-pulse" />
                 ) : joinedTournaments.length === 0 ? (
-                  <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0">
-                    <p className="text-sm text-[var(--color-text-muted)] italic px-2">
-                      You haven't joined any tournaments yet.
+                  <div className="min-w-[80vw] sm:min-w-[300px] snap-center shrink-0 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-center shadow-sm">
+                    <p className="text-sm font-semibold text-[var(--color-text)]">No tournaments yet</p>
+                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                      Tournaments you join will appear here.
                     </p>
+                    <Link
+                      href="/user/tournaments"
+                      className="mt-3 inline-block rounded-full bg-orange-500 px-4 py-1.5 text-xs font-bold text-white"
+                    >
+                      Browse Tournaments
+                    </Link>
                   </div>
                 ) : (
                   joinedTournaments.map((t) => (
