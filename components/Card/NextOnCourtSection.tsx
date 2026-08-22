@@ -136,11 +136,14 @@ export default function NextOnCourtSection() {
           ))}
         </div>
       ) : matches.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/50 p-6 text-center">
-          <p className="text-sm font-medium text-neutral-500">
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-6 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)]">
+            <TimerIcon size={18} className="text-[var(--color-muted)]" />
+          </div>
+          <p className="text-sm font-semibold text-[var(--color-text)]">
             No upcoming matches scheduled.
           </p>
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="text-xs text-[var(--color-text-secondary)]">
             Matches will appear here once they are generated.
           </p>
         </div>
