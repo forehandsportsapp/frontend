@@ -129,13 +129,16 @@ function EventChampionContent() {
   const backHref =
     isUserManageRoute && tournamentId
       ? `/user/manage/tournament/detail${toQuery({ t: tournamentId })}`
+      : tournamentId
+        ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
+        : "/tournaments";
+
+  const matchesHref =
+    isUserManageRoute && tournamentId && eventId
+      ? `/user/manage/tournament/event/matches${toQuery({ tournamentId, eventId })}`
       : isUserViewerRoute && tournamentId && eventId
         ? `/user/tournaments/event/matches${toQuery({ tournamentId, eventId })}`
-        : viewOnly && tournamentId
-          ? `/tournaments/detail${toQuery({ id: tournamentId, tab: "events" })}`
-          : viewOnly
-            ? "/user/tournaments"
-            : `/org/tournaments/detail${toQuery({ t: tournamentId })}`;
+        : `/org/tournaments/event/matches${toQuery({ tournamentId, eventId })}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -446,6 +449,15 @@ function EventChampionContent() {
                   </p>
                 </div>
               )}
+            </div>
+
+            <div className="mt-6 flex justify-center pb-6">
+              <Link
+                href={matchesHref}
+                className="flex h-14 w-full items-center justify-center rounded-[28px] bg-[#ff7a1a] px-6 text-[17px] font-bold text-white shadow-lg transition-transform active:scale-[0.98]"
+              >
+                View More Details
+              </Link>
             </div>
           </div>
         </motion.section>
