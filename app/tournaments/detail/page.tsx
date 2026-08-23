@@ -371,7 +371,7 @@ function TournamentDetailContent() {
               </h2>
               <p className="mt-3 text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
                 {tournament.description ||
-                  "Join the biggest badminton tournament in the city! Open to all skill levels with exciting prizes."}
+                  "No description for this tournament"}
               </p>
             </section>
 
