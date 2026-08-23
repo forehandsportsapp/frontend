@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, ClipboardIcon, ShareIcon, TrophyIcon, XIcon } from "@/components/Icons";
 import { eventApi, EventResultStanding } from "@/lib/api/eventApi";
+import { tournamentApi } from "@/lib/api/tournamentApi";
 import { toQuery } from "@/lib/utils";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -102,6 +103,7 @@ function EventChampionContent() {
 
   const [loading, setLoading] = useState(true);
   const [eventName, setEventName] = useState("Event");
+  const [tournamentName, setTournamentName] = useState("");
   const [champion, setChampion] = useState<EventResultStanding | null>(null);
   const [standings, setStandings] = useState<EventResultStanding[]>([]);
   const [eventState, setEventState] = useState<string | null>(null);
@@ -146,20 +148,24 @@ function EventChampionContent() {
     async function load() {
       if (!eventId) { setLoading(false); return; }
       try {
-        const result = await eventApi.getEventResults(eventId);
+        const [result, tournamentResult] = await Promise.all([
+          eventApi.getEventResults(eventId),
+          tournamentId ? tournamentApi.getInfo(tournamentId).catch(() => null) : null,
+        ]);
         if (cancelled) return;
         if (result.event?.id !== eventId) {
-          setEventName("Event"); setChampion(null); setStandings([]);
+          setEventName("Event"); setTournamentName(""); setChampion(null); setStandings([]);
           return;
         }
         setEventName(result.event?.name || "Event");
+        setTournamentName(tournamentResult?.name || "");
         setEventState(result.event?.eventState || null);
         setChampion(result.champion ?? null);
         setStandings(Array.isArray(result.standings) ? result.standings : []);
       } catch (err) {
         console.error("Failed to load event results", err);
         if (!cancelled) {
-          setEventName("Event"); setEventState(null); setChampion(null); setStandings([]);
+          setEventName("Event"); setTournamentName(""); setEventState(null); setChampion(null); setStandings([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -168,7 +174,7 @@ function EventChampionContent() {
 
     void load();
     return () => { cancelled = true; };
-  }, [eventId]);
+  }, [eventId, tournamentId]);
 
   const shareUrl =
     typeof window !== "undefined" ? window.location.href : "";
@@ -203,7 +209,8 @@ function EventChampionContent() {
 
   const isCompleted = eventState === "completed";
   const podiumStandings = useMemo(() => standings.slice(0, 3), [standings]);
-  const displayEventName = getDisplayTournamentName(eventName, champion?.teamName);
+  const displayEventName =
+    tournamentName || getDisplayTournamentName(eventName, champion?.teamName);
   const championInitials = champion?.teamName ? initials(champion.teamName) : "FS";
 
   useLayoutEffect(() => {
