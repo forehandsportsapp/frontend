@@ -685,6 +685,17 @@ const ExtendDueDateModal = ({
   );
 };
 
+function getErrorReason(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const maybeError = error as { message?: unknown; error?: unknown };
+    if (typeof maybeError.message === "string") return maybeError.message;
+    if (typeof maybeError.error === "string") return maybeError.error;
+  }
+  return "";
+}
+
 const EventsTab = ({
   tournamentId,
   events,
@@ -711,9 +722,10 @@ const EventsTab = ({
       onRefresh();
     } catch (error) {
       console.error("Failed to extend due date", error);
+      const reason = getErrorReason(error);
       alert(
-        error instanceof Error
-          ? error.message
+        reason
+          ? `Failed to update due date.\n\nReason: ${reason}`
           : "Failed to update due date. Please try again.",
       );
       throw error;

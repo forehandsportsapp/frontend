@@ -154,7 +154,6 @@ export default function OrgMatchSetupPage() {
 
   const [isReadyPopupOpen, setIsReadyPopupOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const isEventLocked = true;
   const [isStarting, setIsStarting] = useState(false);
 
   const defaultDraft: MatchSetupDraft = useMemo(
@@ -427,7 +426,6 @@ export default function OrgMatchSetupPage() {
                   name="server"
                   checked={draft.config.initialServer === v}
                   onChange={() => setConfig({ initialServer: v as 1 | 2 })}
-                  disabled={isEventLocked}
                   className="accent-primary"
                 />
                 <span className="text-sm text-[var(--color-text)]">
@@ -454,10 +452,7 @@ export default function OrgMatchSetupPage() {
               <button
                 key={s}
                 type="button"
-                onClick={() =>
-                  !isEventLocked && setConfig({ scoringSystem: s })
-                }
-                disabled={isEventLocked}
+                onClick={() => setConfig({ scoringSystem: s })}
                 className={`min-h-[44px] rounded-xl border text-sm font-medium transition-colors ${
                   draft.config.scoringSystem === s
                     ? "bg-primary text-white border-primary"
@@ -480,7 +475,6 @@ export default function OrgMatchSetupPage() {
               <select
                 value={draft.config.bestOf}
                 onChange={(e) => setConfig({ bestOf: Number(e.target.value) })}
-                disabled={isEventLocked}
                 className="w-full appearance-none py-3 px-4 pr-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
               >
                 {BEST_OF_OPTIONS.map((n) => (
@@ -500,7 +494,6 @@ export default function OrgMatchSetupPage() {
                 onChange={(e) =>
                   setConfig({ pointsToWin: Number(e.target.value) })
                 }
-                disabled={isEventLocked}
                 className="w-full appearance-none py-3 px-4 pr-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
               >
                 {POINTS_OPTIONS.map((n) => (
@@ -586,7 +579,6 @@ export default function OrgMatchSetupPage() {
                     type="checkbox"
                     className="sr-only"
                     checked={checked}
-                    disabled={isEventLocked}
                     onChange={(e) => {
                       if (opt.key === "winByTwo")
                         setConfig({ winByTwo: e.target.checked });
@@ -613,7 +605,6 @@ export default function OrgMatchSetupPage() {
               onChange={(e) =>
                 setConfig({ switchSidesEvery: Number(e.target.value) })
               }
-              disabled={isEventLocked}
               className="w-full appearance-none py-3 px-4 pr-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-text)]"
             >
               <option value={0}>No side switching</option>

@@ -72,7 +72,7 @@ const NativeSelect = ({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${error ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer font-medium`}
+        className={`w-full px-4 pr-10 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${error ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer font-medium`}
       >
         <option value="" disabled>
           {placeholder || `Select ${label}`}
@@ -654,7 +654,7 @@ export default function TournamentWizard({
                       onChange={(e) =>
                         setFormData({ ...formData, state: e.target.value })
                       }
-                      className={`w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${errors.state ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary outline-none appearance-none`}
+                      className={`native-select w-full px-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${errors.state ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary outline-none`}
                     >
                       <option value="">Select State</option>
                       <option value="Andhra Pradesh">Andhra Pradesh</option>

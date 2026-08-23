@@ -225,7 +225,7 @@ export default function OrgProfileEditPage() {
               onChange={(e) =>
                 setFormData({ ...formData, orgTypeCode: e.target.value })
               }
-              className={`mt-1 w-full p-3 rounded-[var(--radius-input)] border ${fieldErrors.orgTypeCode ? "border-red-500" : "border-[var(--color-border)]"} bg-[var(--color-surface)] text-[var(--color-text)] focus:border-primary outline-none`}
+              className={`native-select mt-1 w-full p-3 rounded-[var(--radius-input)] border ${fieldErrors.orgTypeCode ? "border-red-500" : "border-[var(--color-border)]"} bg-[var(--color-surface)] text-[var(--color-text)] focus:border-primary outline-none`}
             >
               <option value="educationalInstitute">
                 Educational Institute

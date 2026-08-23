@@ -137,6 +137,14 @@ select,
     @apply bg-surface border border-border text-text placeholder:text-placeholder rounded-input outline-none;
   }
 
+  .native-select {
+    @apply appearance-none cursor-pointer pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b2abc8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 1rem center;
+    background-repeat: no-repeat;
+    background-size: 1rem;
+  }
+
   /* Popup / dialog surface */
   .surface-popup {
     @apply bg-surface border border-border rounded-card shadow-card-hover;

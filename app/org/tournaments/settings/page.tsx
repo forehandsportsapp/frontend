@@ -555,7 +555,7 @@ function TournamentSettingsContent() {
               <select
                 value={form.venueState}
                 onChange={(event) => updateField("venueState", event.target.value)}
-                className={`h-12 w-full rounded-2xl border ${errors.venueState ? "border-red-500" : "border-[var(--color-border)]"} bg-[var(--color-surface)] px-4 text-[15px] font-semibold text-[var(--color-text)] outline-none focus:border-primary`}
+                className={`native-select h-12 w-full rounded-2xl border ${errors.venueState ? "border-red-500" : "border-[var(--color-border)]"} bg-[var(--color-surface)] px-4 text-[15px] font-semibold text-[var(--color-text)] outline-none focus:border-primary`}
               >
                 <option value="">Select State</option>
                 <option value="Andhra Pradesh">Andhra Pradesh</option>

@@ -69,7 +69,7 @@ function EventStatusTag({ status }: { status: EventStatus }) {
     waiting: "In Waiting List",
     ended: "Event Ended",
     open: "Open",
-    closed: "Closed",
+    closed: "Registration Closed",
     scheduled: "Scheduled",
   };
 
@@ -78,8 +78,9 @@ function EventStatusTag({ status }: { status: EventStatus }) {
       className={`
         absolute right-0 top-0
         rounded-bl-xl
-        px-4 py-1.5
-        text-[12px] font-bold uppercase tracking-wider
+        max-w-[70%]
+        px-3 py-1.5
+        text-center text-[11px] font-bold uppercase tracking-wide
         shadow-sm
         ${statusStyles[status]}
       `}
@@ -504,7 +505,7 @@ export default function RegistrationEventCard({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-xl border border-white/30 bg-[#563F70] p-4 shadow-lg transition-all">
+    <section className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg transition-all dark:border-white/30 dark:bg-[#563F70]">
       <EventStatusTag status={currentStatus} />
       
       <div className="flex items-start justify-between">
@@ -523,11 +524,11 @@ export default function RegistrationEventCard({
             )}
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[max-content_max-content] sm:gap-x-6">
-            <div className="flex items-start gap-2.5 text-[13px] text-white/70">
+            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)]">
               <CalendarIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
               <span className="leading-snug">Starts: {formatDate(event.startDate)}</span>
             </div>
-            <div className="flex items-start gap-2.5 text-[13px] text-white/70">
+            <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)]">
               <TimerIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
               <span className="leading-snug">Closes: {formatDate(event.dueDate)}</span>
             </div>
@@ -535,7 +536,7 @@ export default function RegistrationEventCard({
         </div>
       </div>
 
-      <div className="mt-4 border-t border-white/20 pt-4">
+      <div className="mt-4 border-t border-[var(--color-border)] pt-4 dark:border-white/20">
         <div className="mb-3 flex items-center justify-between">
           <p 
             className="text-[18px] font-bold"
@@ -551,7 +552,7 @@ export default function RegistrationEventCard({
             )}
           </p>
           {event.amount > 0 && event.paymentMode && (
-            <p className="text-[11px] font-medium text-white/60 uppercase tracking-wider">
+            <p className="text-[11px] font-medium text-[var(--color-muted)] uppercase tracking-wider dark:text-white/60">
               {event.paymentMode.label}
             </p>
           )}
@@ -564,7 +565,7 @@ export default function RegistrationEventCard({
               borderColor: statusColors[currentStatus],
               color: statusColors[currentStatus]
             }}
-            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-white px-4 text-[16px] font-bold transition-all active:scale-95"
+            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold transition-all active:scale-95 dark:bg-white"
           >
             View
           </a>

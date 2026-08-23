@@ -271,6 +271,19 @@ function EventChampionContent() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#ff7417] text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-white/80 border-t-transparent" />
+          <p className="text-sm font-semibold text-white/90">
+            Loading results...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   // The sheet's height dynamically fills the screen below its current snap point
   const sheetHeight = expandedY ? `calc(100dvh - ${expandedY}px + 1px)` : "65dvh";
 
@@ -368,7 +381,7 @@ function EventChampionContent() {
             height: sheetHeight,
             y: sheetY,
           }}
-          className="relative z-30 flex flex-col overflow-hidden rounded-t-[28px] bg-[var(--color-surface)] pt-5 will-change-transform shadow-[0_-10px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+          className="relative z-30 flex flex-col overflow-hidden rounded-t-[28px] bg-[var(--color-surface)] pt-5 will-change-transform shadow-[0_-6px_18px_rgba(0,0,0,0.12)] dark:shadow-[0_-6px_18px_rgba(0,0,0,0.22)]"
         >
           <div
             className="cursor-grab touch-none select-none px-5 pb-4 pt-0 active:cursor-grabbing"

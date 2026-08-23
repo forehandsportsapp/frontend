@@ -251,12 +251,12 @@ function MatchCard({
           showViewOnlyMeta && (
             <div className="flex gap-2 justify-center">
               {selectedCourt && (
-                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
+                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-semibold">
                   {selectedCourt}
                 </span>
               )}
               {selectedScorer && (
-                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium">
+                <span className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-semibold">
                   {selectedScorer}
                 </span>
               )}
@@ -267,14 +267,14 @@ function MatchCard({
             <button
               type="button"
               onClick={() => onCourtClick?.(match)}
-              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
+              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-semibold transition-colors hover:border-orange-400 hover:bg-orange-500/10 hover:text-orange-500"
             >
               {courtLabel}
             </button>
             <button
               type="button"
               onClick={() => onScorerClick?.(match)}
-              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] text-[var(--color-text-secondary)] font-medium transition-colors hover:border-orange-400 hover:text-orange-500"
+              className="text-[11px] px-3 py-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] text-[var(--color-text)] font-semibold transition-colors hover:border-orange-400 hover:bg-orange-500/10 hover:text-orange-500"
             >
               {scorerLabel}
             </button>
@@ -930,7 +930,7 @@ function OrgManageMatchesContent() {
       </div>
       {!viewOnly && scorerSheetMatch && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[#f7f7f7] p-5 shadow-xl dark:bg-[#4e3c6c]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">
@@ -986,7 +986,7 @@ function OrgManageMatchesContent() {
                           setIsAssigningScorer(false);
                         }
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 mb-2"
+                      className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-200"
                     >
                       Remove Current Scorer
                     </button>
@@ -998,7 +998,7 @@ function OrgManageMatchesContent() {
                     type="button"
                     disabled={isAssigningScorer}
                     onClick={() => void handleAssignScorer(scorer)}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)]">
                       {scorer.avatarUrl ? (
@@ -1035,7 +1035,7 @@ function OrgManageMatchesContent() {
       )}
       {!viewOnly && courtSheetMatch && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--color-border)] bg-[#f7f7f7] p-5 shadow-xl dark:bg-[#4e3c6c]">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-lg font-bold text-[var(--color-text)]">
@@ -1074,7 +1074,7 @@ function OrgManageMatchesContent() {
                       type="button"
                       disabled={isAssigningCourt}
                       onClick={() => void handleAssignCourt(null)}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-200"
                     >
                       Remove Current Court
                     </button>
@@ -1087,7 +1087,7 @@ function OrgManageMatchesContent() {
                         type="button"
                         disabled={isAssigningCourt}
                         onClick={() => void handleAssignCourt(courtName)}
-                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--color-border)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="flex w-full items-center justify-between rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-left transition-colors hover:border-orange-400 hover:bg-orange-500/10 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <span className="text-sm font-semibold text-[var(--color-text)]">
                           {courtName}

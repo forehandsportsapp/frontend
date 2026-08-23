@@ -8,9 +8,11 @@ import {
   CheckIcon,
   XIcon,
   EllipsisIcon,
+  RotateCcwIcon,
+  TrashIcon,
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
-import { teamApi, TeamState } from "@/lib/api/teamApi";
+import { teamApi } from "@/lib/api/teamApi";
 import { eventApi } from "@/lib/api/eventApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { EventData } from "@/lib/models";
@@ -34,6 +36,11 @@ function EventParticipantsContent() {
   const [teams, setTeams] = useState<any[]>([]);
   const [event, setEvent] = useState<EventData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [openMenuTeamId, setOpenMenuTeamId] = useState<string | null>(null);
+  const [rowAction, setRowAction] = useState<{
+    teamId: string;
+    action: "participating" | "rejected" | "created" | "remove";
+  } | null>(null);
 
   // Track which team is in "confirming" state and for what decision
   const [confirming, setConfirming] = useState<{
@@ -106,9 +113,11 @@ function EventParticipantsContent() {
 
   const handleUpdateStatus = async (
     teamId: string,
-    state: "participating" | "rejected",
+    state: "participating" | "rejected" | "created",
   ) => {
     try {
+      setRowAction({ teamId, action: state });
+      setOpenMenuTeamId(null);
       await teamApi.updateTeamState(teamId, state);
       // Refresh local state
       setTeams((prev) =>
@@ -120,6 +129,27 @@ function EventParticipantsContent() {
     } catch (error) {
       console.error("Failed to update team status", error);
       alert("Failed to update status. Please try again.");
+    } finally {
+      setRowAction(null);
+    }
+  };
+
+  const handleRemoveTeam = async (teamId: string) => {
+    if (!confirm("Remove this player from the event?")) return;
+
+    try {
+      setRowAction({ teamId, action: "remove" });
+      setOpenMenuTeamId(null);
+      await teamApi.deleteTeam(teamId);
+      setTeams((prev) => prev.filter((t) => t.id !== teamId));
+      if (confirming?.teamId === teamId) {
+        setConfirming(null);
+      }
+    } catch (error) {
+      console.error("Failed to remove player", error);
+      alert("Failed to remove player. Please try again.");
+    } finally {
+      setRowAction(null);
     }
   };
 
@@ -306,7 +336,7 @@ function EventParticipantsContent() {
           {filtered.map((t) => (
             <div
               key={t.id}
-              className="bg-[var(--color-surface)] rounded-xl p-3 border border-[var(--color-border)] shadow-sm"
+              className="relative bg-[var(--color-surface)] rounded-xl p-3 border border-[var(--color-border)] shadow-sm"
             >
               <div className="flex items-center gap-3">
                 {/* Team Logo */}
@@ -327,6 +357,7 @@ function EventParticipantsContent() {
                   const rawStatus =
                     t.teamStatus || t.teamState || t.status || "";
                   const status = String(rawStatus).toLowerCase();
+                  const isRowBusy = rowAction?.teamId === t.id;
 
                   if (
                     (status === "registered" ||
@@ -339,20 +370,32 @@ function EventParticipantsContent() {
                         {confirming?.teamId === t.id ? (
                           <button
                             onClick={() => {
-                              if (confirming) {
+                              if (confirming && !isRowBusy) {
                                 handleUpdateStatus(t.id, confirming.decision);
                               }
                             }}
-                            className={`px-4 py-1.5 rounded-full text-white text-xs font-bold shadow-sm transition-all active:scale-95 ${
+                            disabled={isRowBusy}
+                            className={`min-w-[112px] px-4 py-1.5 rounded-full text-white text-xs font-bold shadow-sm transition-all active:scale-95 disabled:opacity-80 flex items-center justify-center gap-1.5 ${
                               confirming?.decision === "participating"
                                 ? "bg-green-600"
                                 : "bg-red-600"
                             }`}
                           >
-                            Confirm{" "}
-                            {confirming?.decision === "participating"
-                              ? "Accept"
-                              : "Reject"}
+                            {isRowBusy ? (
+                              <>
+                                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                {rowAction?.action === "participating"
+                                  ? "Accepting"
+                                  : "Rejecting"}
+                              </>
+                            ) : (
+                              <>
+                                Confirm{" "}
+                                {confirming?.decision === "participating"
+                                  ? "Accept"
+                                  : "Reject"}
+                              </>
+                            )}
                           </button>
                         ) : (
                           <>
@@ -363,6 +406,7 @@ function EventParticipantsContent() {
                                   decision: "participating",
                                 })
                               }
+                              disabled={isRowBusy}
                               className="px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-semibold hover:bg-green-600 transition-colors"
                             >
                               Accept
@@ -374,6 +418,7 @@ function EventParticipantsContent() {
                                   decision: "rejected",
                                 })
                               }
+                              disabled={isRowBusy}
                               className="px-3 py-1.5 rounded-full bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors"
                             >
                               Reject
@@ -388,10 +433,28 @@ function EventParticipantsContent() {
                     return (
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 text-green-700 text-xs font-bold border border-green-200">
-                          <CheckIcon size={12} /> Accepted
+                          {isRowBusy ? (
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-green-700 border-t-transparent" />
+                          ) : (
+                            <CheckIcon size={12} />
+                          )}{" "}
+                          {rowAction?.action === "created"
+                            ? "Updating"
+                            : rowAction?.action === "remove"
+                              ? "Removing"
+                              : "Accepted"}
                         </div>
                         {!isAlreadyFinalized && (
-                          <button className="text-[var(--color-muted)] p-1">
+                          <button
+                            onClick={() =>
+                              setOpenMenuTeamId((current) =>
+                                current === t.id ? null : t.id,
+                              )
+                            }
+                            disabled={isRowBusy}
+                            className="text-[var(--color-muted)] p-1 rounded-full hover:bg-[var(--color-surface-elevated)] disabled:opacity-60"
+                            aria-label={`More actions for ${getTeamName(t)}`}
+                          >
                             <EllipsisIcon size={18} />
                           </button>
                         )}
@@ -403,10 +466,28 @@ function EventParticipantsContent() {
                     return (
                       <div className="flex items-center gap-2 shrink-0">
                         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200">
-                          <XIcon size={12} /> Rejected
+                          {isRowBusy ? (
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-red-700 border-t-transparent" />
+                          ) : (
+                            <XIcon size={12} />
+                          )}{" "}
+                          {rowAction?.action === "created"
+                            ? "Updating"
+                            : rowAction?.action === "remove"
+                              ? "Removing"
+                              : "Rejected"}
                         </div>
                         {!isAlreadyFinalized && (
-                          <button className="text-[var(--color-muted)] p-1">
+                          <button
+                            onClick={() =>
+                              setOpenMenuTeamId((current) =>
+                                current === t.id ? null : t.id,
+                              )
+                            }
+                            disabled={isRowBusy}
+                            className="text-[var(--color-muted)] p-1 rounded-full hover:bg-[var(--color-surface-elevated)] disabled:opacity-60"
+                            aria-label={`More actions for ${getTeamName(t)}`}
+                          >
                             <EllipsisIcon size={18} />
                           </button>
                         )}
@@ -417,6 +498,24 @@ function EventParticipantsContent() {
                   return null;
                 })()}
               </div>
+              {openMenuTeamId === t.id && !isAlreadyFinalized && (
+                <div className="absolute right-3 top-12 z-30 w-44 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-2xl">
+                  <button
+                    onClick={() => handleUpdateStatus(t.id, "created")}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-semibold text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)]"
+                  >
+                    <RotateCcwIcon size={14} />
+                    Unconfirm user
+                  </button>
+                  <button
+                    onClick={() => handleRemoveTeam(t.id)}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-semibold text-red-500 hover:bg-[var(--color-surface-elevated)]"
+                  >
+                    <TrashIcon size={14} />
+                    Remove player
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

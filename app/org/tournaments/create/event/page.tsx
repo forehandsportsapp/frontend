@@ -67,7 +67,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, eventName: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>
 
@@ -80,7 +80,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, sport: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select sport</option>
                                 <option value="pickleball">Pickleball</option>
@@ -100,7 +100,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, format: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select format</option>
                                 <option value="single-elimination">Single Knockout Elimination</option>
@@ -120,7 +120,7 @@ export default function CreateEventPage() {
                                     setFormData({ ...formData, registrationDueDate: e.target.value })
                                 }
                                 min={new Date().toISOString().split("T")[0]}
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>
 
@@ -135,7 +135,7 @@ export default function CreateEventPage() {
                                     setFormData({ ...formData, eventStartDate: e.target.value })
                                 }
                                 min={formData.registrationDueDate || new Date().toISOString().split("T")[0]}
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>
 
@@ -146,7 +146,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, gender: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select gender</option>
                                 <option value="men">Men&apos;s</option>
@@ -165,7 +165,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, participationType: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select type</option>
                                 <option value="singles">Singles</option>
@@ -182,7 +182,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, setsPerMatch: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select</option>
                                 <option value="best-of-1">Best of 1 - Sets 11</option>
@@ -200,7 +200,7 @@ export default function CreateEventPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, pointsPerSet: e.target.value })
                                 }
-                                className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             >
                                 <option value="">Select</option>
                                 <option value="11">11 points</option>
@@ -257,7 +257,7 @@ export default function CreateEventPage() {
                                         onChange={(e) =>
                                             setFormData({ ...formData, paymentOption: e.target.value })
                                         }
-                                        className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                                        className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                                     >
                                         <option value="">Select</option>
                                         <option value="pay-online">Pay Online</option>

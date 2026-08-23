@@ -44,6 +44,10 @@ export interface AvailableScorer {
   avatarUrl?: string | null;
 }
 
+function nullableId(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
 /**
  * API client for match-related operations.
  */
@@ -127,7 +131,11 @@ export const matchApi = {
       {
         method: "POST",
         contentType: "json",
-        body: payload,
+        body: {
+          ...payload,
+          winnerId: nullableId(payload.winnerId),
+          matchWinnerId: nullableId(payload.matchWinnerId),
+        },
       },
     );
     if (error) throw error;
