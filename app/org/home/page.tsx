@@ -27,6 +27,8 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 
+const ORG_TOURNAMENT_REFRESH_MS = 300_000;
+
 const listContainerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
@@ -516,9 +518,10 @@ export default function OrgHomePage() {
     };
 
     void load();
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void load();
-    }, 30000);
+    }, ORG_TOURNAMENT_REFRESH_MS);
 
     return () => {
       active = false;

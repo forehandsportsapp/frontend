@@ -118,6 +118,7 @@ export interface EventData {
   winnerId?: string | null;
   eventState?: EventState | null;
   activeRound?: number | null;
+  teamCount?: number | null;
 
   teams?: TeamData[] | null;
 }
@@ -227,6 +228,8 @@ export interface TournamentSummaryEventData {
   eventId: string;
   eventName: string;
   eventState?: EventState | null;
+  teamTypeCode?: string | null;
+  teamTypeLabel?: string | null;
   amount: number;
   totalCollected: number;
   totalTeams: number;

@@ -11,6 +11,75 @@ type ParsedRespone = {
   error?: any | undefined | unknown;
 };
 
+const TOKEN_REFRESH_BUFFER_MS = 30_000;
+const NO_SESSION_CACHE_MS = 5_000;
+
+let cachedAccessToken: string | null | undefined;
+let cachedAccessTokenExpiresAtMs = 0;
+let pendingAccessToken: Promise<string | null> | null = null;
+let authListenerInitialized = false;
+const pendingGetRequests = new Map<string, Promise<ParsedRespone>>();
+
+function cacheSessionToken(
+  session?: { access_token?: string; expires_at?: number | null } | null,
+) {
+  cachedAccessToken = session?.access_token ?? null;
+
+  if (cachedAccessToken) {
+    const expiresAtMs = session?.expires_at
+      ? session.expires_at * 1000 - TOKEN_REFRESH_BUFFER_MS
+      : Date.now() + TOKEN_REFRESH_BUFFER_MS;
+    cachedAccessTokenExpiresAtMs = Math.max(Date.now(), expiresAtMs);
+    return;
+  }
+
+  cachedAccessTokenExpiresAtMs = Date.now() + NO_SESSION_CACHE_MS;
+}
+
+export function clearApiAuthCache() {
+  cachedAccessToken = undefined;
+  cachedAccessTokenExpiresAtMs = 0;
+  pendingAccessToken = null;
+  pendingGetRequests.clear();
+}
+
+async function getCachedAccessToken() {
+  const supabaseClient = getSupabaseBrowserClient();
+
+  if (!authListenerInitialized) {
+    authListenerInitialized = true;
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      cacheSessionToken(session);
+      pendingAccessToken = null;
+    });
+  }
+
+  if (
+    cachedAccessToken !== undefined &&
+    cachedAccessTokenExpiresAtMs > Date.now()
+  ) {
+    return cachedAccessToken;
+  }
+
+  if (!pendingAccessToken) {
+    pendingAccessToken = supabaseClient.auth
+      .getSession()
+      .then(({ data }) => {
+        cacheSessionToken(data.session);
+        return cachedAccessToken ?? null;
+      })
+      .catch((error) => {
+        clearApiAuthCache();
+        throw error;
+      })
+      .finally(() => {
+        pendingAccessToken = null;
+      });
+  }
+
+  return pendingAccessToken;
+}
+
 /**
  * Formats the API URL by joining the base URL, path, and optional parameters.
  * Handles both relative paths and absolute URLs.
@@ -61,15 +130,49 @@ export const fetchApi = async (
     silent?: boolean;
   } = {},
 ): Promise<ParsedRespone> => {
-  const requestStartedAt = Date.now();
-  try {
-    const supabaseClient = getSupabaseBrowserClient();
-    const session = await supabaseClient.auth.getSession();
-    const accessToken = session.data.session?.access_token;
+  if (method === "GET") {
+    const pendingKey = `${method}:${path}`;
+    const pending = pendingGetRequests.get(pendingKey);
+    if (pending) {
+      return pending;
+    }
 
-    let headers: Record<string, string> = {
-      Authorization: `Bearer ${accessToken}`,
-    };
+    const request = fetchApiUncached(path, {
+      method,
+      contentType,
+      body,
+      silent,
+    }).finally(() => {
+      pendingGetRequests.delete(pendingKey);
+    });
+
+    pendingGetRequests.set(pendingKey, request);
+    return request;
+  }
+
+  return fetchApiUncached(path, { method, contentType, body, silent });
+};
+
+const fetchApiUncached = async (
+  path: string,
+  {
+    method = "GET",
+    contentType,
+    body,
+    silent = false,
+  }: {
+    method?: "POST" | "GET" | "PUT" | "PATCH" | "DELETE";
+    contentType?: "json";
+    body?: any;
+    silent?: boolean;
+  } = {},
+): Promise<ParsedRespone> => {
+  try {
+    const accessToken = await getCachedAccessToken();
+
+    let headers: Record<string, string> = accessToken
+      ? { Authorization: `Bearer ${accessToken}` }
+      : {};
 
     if (contentType) {
       headers["Content-Type"] =
@@ -100,15 +203,6 @@ export const fetchApi = async (
         (result?.errors ? JSON.stringify(result.errors) : null) ||
         `HTTP ${res.status} ${res.statusText} for ${path}`;
 
-      if (!silent) {
-        console.error("[fetchApi] non-2xx response", {
-          path,
-          method,
-          status: res.status,
-          statusText: res.statusText,
-          response: result,
-        });
-      }
       throw new Error(errorMessage);
     }
 
@@ -136,38 +230,6 @@ export const fetchApi = async (
     };
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    const browserContext =
-      typeof window !== "undefined"
-        ? {
-            href: window.location.href,
-            origin: window.location.origin,
-            online: window.navigator.onLine,
-          }
-        : null;
-
-    const detailedError =
-      e instanceof Error
-        ? {
-            name: e.name,
-            message: e.message,
-            stack: e.stack,
-            cause: (e as any).cause ?? null,
-          }
-        : { raw: String(e) };
-
-    if (!silent) {
-      console.error(`[fetchApi] ${method} ${path} failed`, {
-        method,
-        path,
-        durationMs: Date.now() - requestStartedAt,
-        contentType: contentType ?? null,
-        hasBody: body !== undefined,
-        apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? null,
-        browserContext,
-        error: detailedError,
-      });
-      console.error(`[fetchApi] ${method} ${path} failed:`, errorMessage);
-    }
     return {
       error: errorMessage,
     };

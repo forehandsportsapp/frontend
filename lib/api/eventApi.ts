@@ -26,7 +26,9 @@ export type EventResultsResponse = {
     name: string;
     eventState: string;
     tournamentId: string;
+    tournamentName?: string;
   };
+  tournamentName?: string;
   champion: EventResultStanding | null;
   standings: EventResultStanding[];
   totalTeams: number;

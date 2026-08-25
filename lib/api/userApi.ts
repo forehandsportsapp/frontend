@@ -1,4 +1,4 @@
-import { ProfileData } from "../models";
+import { OrganizationData, ProfileData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
 
 /**
@@ -14,10 +14,33 @@ export interface UserNotification {
   unread: boolean;
 }
 
+export interface UserBootstrapData {
+  profile: ProfileData | null;
+  organizations: OrganizationData[];
+}
+
+export interface UserLiveSummaryData {
+  match: any | null;
+  feed: any[];
+}
+
 /**
  * API client for user profile management and notifications.
  */
 export const userApi = {
+  /**
+   * Retrieves the current user's profile and organization list in one request.
+   * This keeps app boot fast without broadening access; the backend derives
+   * both records from the authenticated token.
+   */
+  getBootstrap: async (): Promise<UserBootstrapData> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/user/bootstrap" }),
+    );
+    if (error) throw error;
+    return data as UserBootstrapData;
+  },
+
   /**
    * Retrieves the current authenticated user's profile information.
    *
@@ -222,6 +245,32 @@ export const userApi = {
       throw error;
     }
     return data as any[];
+  },
+
+  /**
+   * Retrieves the current user's live match and joined tournament feed in one
+   * protected request. Falls back to the older split endpoints during rollout.
+   */
+  getLiveSummary: async (): Promise<UserLiveSummaryData> => {
+    const path = getApiUrl({ path: "/user/matches/live-summary" });
+    const { data, error } = await fetchApi(path, { silent: true });
+    if (!error) {
+      return {
+        match: data?.match ?? null,
+        feed: Array.isArray(data?.feed) ? data.feed : [],
+      };
+    }
+
+    const errorMessage = String(error);
+    const isRouteMissing =
+      errorMessage.includes("404") || errorMessage.includes("Not Found");
+    if (!isRouteMissing) throw error;
+
+    const [match, feed] = await Promise.all([
+      userApi.getLiveMatch(),
+      userApi.getLiveFeed(),
+    ]);
+    return { match, feed };
   },
 
   /**

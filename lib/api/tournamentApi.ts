@@ -1,5 +1,6 @@
 import { TournamentData, TournamentSummaryData } from "../models";
 import { fetchApi, getApiUrl } from "./interceptor";
+import { teamApi } from "./teamApi";
 
 export type TournamentUpdatePayload = Partial<
   Pick<
@@ -22,6 +23,14 @@ export type TournamentUpdatePayload = Partial<
     | "logoPath"
   >
 >;
+
+export type UserHomeTournamentsData = {
+  browse: TournamentData[];
+  joined: TournamentData[];
+};
+
+const REGISTRATION_INFO_ROUTE_MISSING_CACHE_MS = 30_000;
+let registrationInfoRouteMissingUntil = 0;
 
 /**
  * API client for tournament and event management.
@@ -71,6 +80,64 @@ export const tournamentApi = {
   },
 
   /**
+   * Fetches tournament details with event teams and team participants for the
+   * registration detail screen. Kept separate from getInfo so other screens do
+   * not pay for participant-heavy relations.
+   */
+  getRegistrationInfo: async (
+    tournamentId: string,
+  ): Promise<TournamentData> => {
+    const canTryFastEndpoint = Date.now() >= registrationInfoRouteMissingUntil;
+
+    if (canTryFastEndpoint) {
+      const { data, error } = await fetchApi(
+        getApiUrl({ path: "/tournament/registration-info", param: tournamentId }),
+        { silent: true },
+      );
+      if (!error) {
+        return data as TournamentData;
+      }
+
+      const errorMessage = String(error);
+      const isRouteMissing =
+        errorMessage.includes("404") || errorMessage.includes("Not Found");
+
+      if (!isRouteMissing) throw error;
+
+      registrationInfoRouteMissingUntil =
+        Date.now() + REGISTRATION_INFO_ROUTE_MISSING_CACHE_MS;
+    }
+
+    const { data: fallbackData, error: fallbackError } = await fetchApi(
+      getApiUrl({ path: "/tournament/info", param: tournamentId }),
+    );
+    if (fallbackError) throw fallbackError;
+
+    const tournament = fallbackData as TournamentData;
+    const eventTeams = await Promise.all(
+      (tournament?.events ?? []).map(async (event) => {
+        if (!event?.id) return [];
+        try {
+          const teams = await teamApi.getTeamsByEvent(event.id);
+          return Array.isArray(teams) ? teams : [];
+        } catch {
+          return Array.isArray(event.teams) ? event.teams : [];
+        }
+      }),
+    );
+
+    const tournamentWithTeams = {
+      ...tournament,
+      events: (tournament?.events ?? []).map((event, index) => ({
+        ...event,
+        teams: eventTeams[index] ?? [],
+      })),
+    };
+
+    return tournamentWithTeams;
+  },
+
+  /**
    * Updates editable tournament details.
    *
    * @param tournamentId - The unique ID of the tournament.
@@ -94,24 +161,11 @@ export const tournamentApi = {
 
   getSummary: async (tournamentId: string): Promise<TournamentSummaryData> => {
     const url = getApiUrl({ path: "/tournament/summary", param: tournamentId });
-    console.info("[tournamentApi.getSummary] requesting", {
-      tournamentId,
-      url,
-      expectedRouteFormat: "/tournament/summary/:tournamentId",
-      alternateTQueryUrl: `${getApiUrl({ path: "/tournament/summary" })}?t=${encodeURIComponent(tournamentId)}`,
-    });
 
     const { data, error } = await fetchApi(
       url,
     );
-    if (error) {
-      console.error("[tournamentApi.getSummary] failed", {
-        tournamentId,
-        url,
-        error,
-      });
-      throw error;
-    }
+    if (error) throw error;
     return data as TournamentSummaryData;
   },
 
@@ -145,6 +199,19 @@ export const tournamentApi = {
     if (error) throw error;
 
     return data as TournamentData[];
+  },
+
+  /**
+   * Retrieves the browse and joined tournament lists needed by the user home
+   * screen in one protected request.
+   */
+  getUserHomeTournaments: async (): Promise<UserHomeTournamentsData> => {
+    const { data, error } = await fetchApi(
+      getApiUrl({ path: "/tournament/list/user/home" }),
+    );
+    if (error) throw error;
+
+    return data as UserHomeTournamentsData;
   },
 
   /**
@@ -184,13 +251,7 @@ export const tournamentApi = {
     const url = getApiUrl({ path: "/tournament/list/user/managed" });
 
     const { data, error } = await fetchApi(url);
-    if (error) {
-      console.error("[tournamentApi.getManagedTournaments] failed", {
-        url,
-        error,
-      });
-      throw error;
-    }
+    if (error) throw error;
 
     return data as TournamentData[];
   },

@@ -123,10 +123,6 @@ function EventChampionContent() {
   const eventId = searchParams.get("eventId");
   const isUserManageRoute = pathname.startsWith("/user/manage/");
   const isUserViewerRoute = pathname.startsWith("/user/") && !isUserManageRoute;
-  const viewOnly =
-    isUserViewerRoute ||
-    searchParams.get("viewOnly") === "1" ||
-    searchParams.get("mode") === "view";
 
   const backHref =
     isUserManageRoute && tournamentId
@@ -146,24 +142,29 @@ function EventChampionContent() {
     let cancelled = false;
 
     async function load() {
-      if (!eventId) { setLoading(false); return; }
+      if (!eventId) {
+        setLoading(false);
+        return;
+      }
       try {
-        const [result, tournamentResult] = await Promise.all([
-          eventApi.getEventResults(eventId),
-          tournamentId ? tournamentApi.getInfo(tournamentId).catch(() => null) : null,
-        ]);
+        const result = await eventApi.getEventResults(eventId);
+        const resultTournamentName =
+          result.tournamentName || result.event?.tournamentName || "";
+        const tournamentResult =
+          !resultTournamentName && tournamentId
+            ? await tournamentApi.getInfo(tournamentId).catch(() => null)
+            : null;
         if (cancelled) return;
         if (result.event?.id !== eventId) {
           setEventName("Event"); setTournamentName(""); setChampion(null); setStandings([]);
           return;
         }
         setEventName(result.event?.name || "Event");
-        setTournamentName(tournamentResult?.name || "");
+        setTournamentName(resultTournamentName || tournamentResult?.name || "");
         setEventState(result.event?.eventState || null);
         setChampion(result.champion ?? null);
         setStandings(Array.isArray(result.standings) ? result.standings : []);
-      } catch (err) {
-        console.error("Failed to load event results", err);
+      } catch {
         if (!cancelled) {
           setEventName("Event"); setTournamentName(""); setEventState(null); setChampion(null); setStandings([]);
         }
@@ -202,8 +203,7 @@ function EventChampionContent() {
       }
       setIsCopied(true);
       window.setTimeout(() => setIsCopied(false), 1800);
-    } catch (err) {
-      console.error("Failed to copy champion link", err);
+    } catch {
     }
   }
 

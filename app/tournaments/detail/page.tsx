@@ -15,7 +15,6 @@ import {
   XIcon,
 } from "@/components/Icons";
 import { tournamentApi } from "@/lib/api/tournamentApi";
-import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
 import { useApp } from "@/components/AppProvider";
@@ -126,30 +125,11 @@ function TournamentDetailContent() {
       try {
         setIsLoading(true);
         setError("");
-        const data = await tournamentApi.getInfo(id);
-        const eventTeams = await Promise.all(
-          (data?.events ?? []).map(async (event) => {
-            if (!event?.id) return [];
-            try {
-              const teams = await teamApi.getTeamsByEvent(event.id);
-              return Array.isArray(teams) ? teams : [];
-            } catch (err) {
-              console.error("Failed to load teams for event", event.id, err);
-              return [];
-            }
-          }),
-        );
+        const data = await tournamentApi.getRegistrationInfo(id);
         if (active) {
-          setTournament({
-            ...data,
-            events: (data?.events ?? []).map((event, index) => ({
-              ...event,
-              teams: eventTeams[index] ?? [],
-            })),
-          });
+          setTournament(data);
         }
-      } catch (err) {
-        console.error("Failed to load tournament info", err);
+      } catch {
         if (active) setError("Failed to load tournament details.");
       } finally {
         if (active) setIsLoading(false);
@@ -201,7 +181,12 @@ function TournamentDetailContent() {
     if (!tournament?.events) return 0;
     return tournament.events.reduce(
       (total, event) =>
-        total + (Array.isArray(event.teams) ? event.teams.length : 0),
+        total +
+        (typeof event.teamCount === "number"
+          ? event.teamCount
+          : Array.isArray(event.teams)
+            ? event.teams.length
+            : 0),
       0,
     );
   }, [tournament]);
@@ -239,8 +224,7 @@ function TournamentDetailContent() {
       }
       setIsCopied(true);
       window.setTimeout(() => setIsCopied(false), 1800);
-    } catch (err) {
-      console.error("Failed to copy tournament link", err);
+    } catch {
     }
   };
 

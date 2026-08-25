@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   InfoIcon,
@@ -108,6 +108,32 @@ type LocalState =
   | "CLOSED"
   | "INELIGIBLE";
 
+function getHydratedTeamForUser(
+  teams: TeamData[] | null | undefined,
+  userId: string | null | undefined,
+) {
+  if (!userId || !Array.isArray(teams)) {
+    return { hasHydratedTeams: false, team: null as TeamData | null };
+  }
+
+  const hasHydratedTeams = teams.every((team) =>
+    Array.isArray(team?.participants),
+  );
+  if (!hasHydratedTeams) {
+    return { hasHydratedTeams: false, team: null as TeamData | null };
+  }
+
+  const team =
+    teams.find((candidate) =>
+      (candidate.participants ?? []).some((participant) => {
+        const nestedUserId = (participant.user as any)?.id;
+        return participant.userId === userId || nestedUserId === userId;
+      }),
+    ) ?? null;
+
+  return { hasHydratedTeams: true, team };
+}
+
 export default function RegistrationEventCard({
   event,
   onAddedChange,
@@ -116,7 +142,7 @@ export default function RegistrationEventCard({
   const router = useRouter();
   const { userProfile, session } = useApp();
   const [state, setState] = useState<LocalState>("LOADING");
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedRef = useRef(false);
   const [isBusy, setIsBusy] = useState(false);
   const [team, setTeam] = useState<TeamData | null>(null);
   const [invite, setInvite] = useState<any>(null);
@@ -152,28 +178,31 @@ export default function RegistrationEventCard({
 
   const loadRegistrationState = useCallback(async () => {
     if (!event.id) {
-      setHasLoaded(true);
       return;
     }
     if (!session?.user?.id) {
       setState("IDLE");
-      setHasLoaded(true);
       return;
     }
     if (!userProfile) {
       setState("IDLE");
-      setHasLoaded(true);
       return;
     }
 
     try {
-      if (!hasLoaded) {
+      const isInitialLoad = !hasLoadedRef.current;
+      if (isInitialLoad) {
         setState("LOADING");
       } else {
         setIsBusy(true);
       }
       setError("");
-      const myTeam = await teamApi.getMyTeam(event.id).catch(() => null);
+      const hydratedTeamLookup = isInitialLoad
+        ? getHydratedTeamForUser(event.teams, session.user.id)
+        : { hasHydratedTeams: false, team: null as TeamData | null };
+      const myTeam = hydratedTeamLookup.hasHydratedTeams
+        ? hydratedTeamLookup.team
+        : await teamApi.getMyTeam(event.id).catch(() => null);
 
       if (myTeam) {
         setTeam(myTeam);
@@ -221,7 +250,7 @@ export default function RegistrationEventCard({
                   userApi
                     .getUserProfileInfo(phone)
                     .then(setPartnerProfile)
-                    .catch(console.error);
+                    .catch(() => undefined);
                 }
               }
             } else if (rejectedInviteItem) {
@@ -259,15 +288,15 @@ export default function RegistrationEventCard({
           setState("IDLE");
         }
       }
-    } catch (err) {
-      console.error("Failed to load registration state", err);
+    } catch {
       setError("Failed to load state");
     } finally {
-      setHasLoaded(true);
+      hasLoadedRef.current = true;
       setIsBusy(false);
     }
   }, [
     event.id,
+    event.teams,
     session?.user?.id,
     userProfile,
     isDoubles,
@@ -275,7 +304,6 @@ export default function RegistrationEventCard({
     isInitiallyAdded,
     isRegistrationClosed,
     onAddedChange,
-    hasLoaded,
   ]);
 
   useEffect(() => {
@@ -328,7 +356,6 @@ export default function RegistrationEventCard({
         onAddedChange(event.id, true);
       }
     } catch (err) {
-      console.error("Failed to create team", err);
       const message =
         typeof err === "string"
           ? err
@@ -354,7 +381,7 @@ export default function RegistrationEventCard({
       // If there's an invite, delete it first
       const inviteId = invite?.id || invite?.inviteId;
       if (inviteId) {
-        await inviteApi.deleteInvite(inviteId).catch(console.error);
+        await inviteApi.deleteInvite(inviteId).catch(() => undefined);
       }
 
       // Use removeParticipant instead of deleteTeam because deleteTeam is Admin-only
@@ -367,8 +394,7 @@ export default function RegistrationEventCard({
       setPartnerProfile(null);
       setState("IDLE");
       onAddedChange(event.id, false);
-    } catch (err) {
-      console.error("Failed to discard team", err);
+    } catch {
       setError("Failed to discard");
       // Fallback: reload state
       loadRegistrationState();
@@ -393,13 +419,11 @@ export default function RegistrationEventCard({
       try {
         const profile = await userApi.getUserProfileInfo(partnerPhone);
         setPartnerProfile(profile);
-      } catch (err) {
-        console.error("Failed to fetch partner profile", err);
+      } catch {
       }
 
       setState("INVITED");
-    } catch (err) {
-      console.error("Failed to send invite", err);
+    } catch {
       setError("Player does not exist.");
       setState("ADDING_PARTNER");
     }
@@ -422,8 +446,7 @@ export default function RegistrationEventCard({
         setInvite(null);
         setPartnerProfile(null);
         setState("ADDING_PARTNER");
-      } catch (err) {
-        console.error("Failed to remove invite", err);
+      } catch {
       }
     } else {
       // If partner already joined, remove them from the team
@@ -440,8 +463,7 @@ export default function RegistrationEventCard({
           // Fallback: discard team
           handleDiscard();
         }
-      } catch (err) {
-        console.error("Failed to remove partner", err);
+      } catch {
       }
     }
   };
@@ -455,8 +477,7 @@ export default function RegistrationEventCard({
         setInvite(null);
         setPartnerProfile(null);
         setState("ADDING_PARTNER");
-      } catch (err) {
-        console.error("Failed to delete rejected invite", err);
+      } catch {
         setState("ADDING_PARTNER");
       }
     } else {

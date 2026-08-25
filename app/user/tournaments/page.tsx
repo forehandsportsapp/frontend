@@ -20,6 +20,8 @@ import { toQuery } from "@/lib/utils";
 import TournamentFilterDrawer from "@/components/TournamentFilterDrawer";
 import TeamLogo from "@/components/TeamLogo";
 
+const NOTIFICATIONS_REFRESH_MS = 60_000;
+
 function BellIcon({ size = 20 }: { size?: number }) {
   return (
     <svg
@@ -137,8 +139,9 @@ export default function UserTournamentsPage() {
   useEffect(() => {
     void refreshNotifications();
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void refreshNotifications();
-    }, 15000);
+    }, NOTIFICATIONS_REFRESH_MS);
     return () => window.clearInterval(intervalId);
   }, [refreshNotifications]);
 

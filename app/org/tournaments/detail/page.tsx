@@ -515,6 +515,11 @@ const getWorkflowSteps = (
   const eventId = event.id || "";
   const participantCount = Array.isArray(event.teams) ? event.teams.length : 0;
   const state = event.eventState || "created";
+  const setsPerMatch = Number(event.setsPerMatch || 1);
+  const activeRound = Number(event.activeRound || 1);
+  const teamText = `${participantCount} ${participantCount === 1 ? "team" : "teams"}`;
+  const formatText = `Best of ${setsPerMatch}`;
+  const fixtureText = `${formatText}, Round ${activeRound}`;
 
   const participantsHref = `${routeBase}/event/participants${toQuery({ tournamentId, eventId })}`;
   const fixtureHref = `${routeBase}/event/fixture${toQuery({ tournamentId, eventId })}`;
@@ -527,7 +532,7 @@ const getWorkflowSteps = (
       state: "inactive",
       subtext:
         participantCount > 0
-          ? `${participantCount} Participants Playing`
+          ? `${teamText} registered`
           : undefined,
       actionLabel: "View Participants",
       href: participantsHref,
@@ -575,13 +580,13 @@ const getWorkflowSteps = (
   if (state === "participants_finalized") {
     steps[1].state = "active";
     steps[1].actionLabel = "Assign Players";
-    steps[1].subtext = "Best of 3, Round of 64";
+    steps[1].subtext = fixtureText;
   } else if (
     ["scheduled", "in_progress", "round_over", "completed"].includes(state)
   ) {
     steps[1].state = "completed";
     steps[1].actionLabel = "View Fixtures";
-    steps[1].subtext = "Best of 3, Round of 64";
+    steps[1].subtext = fixtureText;
   }
 
   // Matches step
@@ -898,6 +903,20 @@ const SummaryTab = ({
     setExpandedById((prev) => ({ ...prev, [eventId]: !prev[eventId] }));
   };
 
+  const summarizeForLog = (events: TournamentSummaryEventData[]) =>
+    events.map((event) => ({
+      eventId: event.eventId,
+      eventState: event.eventState,
+      teamTypeCode: event.teamTypeCode,
+      totalTeams: event.totalTeams,
+      confirmedCount: event.confirmedParticipants,
+      totalMatches: event.totalMatches,
+      completedMatches: event.completedMatches,
+      liveMatches: event.liveMatches,
+      remainingMatches: event.remainingMatches,
+      stageText: event.stageText,
+    }));
+
   const getEventStatePill = (state?: string | null) => {
     switch (state) {
       case "created":
@@ -924,20 +943,43 @@ const SummaryTab = ({
   const buildSummaryFromInfo = (events: EventData[] = []): TournamentSummaryEventData[] =>
     events.map((event) => {
       const teams = Array.isArray(event.teams) ? event.teams : [];
+      const isSingles =
+        event.teamTypeCode === "singles" ||
+        event.teamType?.code === "singles" ||
+        event.teamType?.label?.toLowerCase() === "singles";
       const totalTeams = teams.length;
+      const participantCount = teams.reduce(
+        (sum, team) =>
+          sum + (Array.isArray(team?.participants) ? team.participants.length : 0),
+        0,
+      );
 
-      // Count teams that have paid/confirmed (participating or registered status).
+      const countedStatuses = ["registered", "participating", "eliminated"];
+
+      // Count teams that have paid/confirmed/finalized.
       // Falls back to totalTeams when status is absent (older API responses).
-      const confirmedTeams = teams.filter((t) => {
+      const confirmedTeamsList = teams.filter((t) => {
         const s = t?.status ?? t?.teamStatus;
-        return s === "participating" || s === "registered";
-      }).length;
+        return countedStatuses.includes(String(s || ""));
+      });
+      const confirmedTeams = confirmedTeamsList.length;
       // If no team carries a status field, treat all teams as confirmed.
       const hasStatusInfo = teams.some((t) => t?.status != null || t?.teamStatus != null);
-      const confirmedParticipants = hasStatusInfo ? confirmedTeams : totalTeams;
+      const confirmedParticipantCount = confirmedTeamsList.reduce(
+        (sum, team) =>
+          sum + (Array.isArray(team?.participants) ? team.participants.length : 0),
+        0,
+      );
+      const confirmedParticipants = isSingles
+        ? hasStatusInfo
+          ? confirmedParticipantCount
+          : participantCount || totalTeams
+        : hasStatusInfo
+          ? confirmedTeams
+          : totalTeams;
 
       // Enrolled = every team that registered (totalTeams), regardless of payment status.
-      const enrolledParticipants = totalTeams;
+      const enrolledParticipants = isSingles ? participantCount || totalTeams : totalTeams;
 
       const amount = Number(event.amount ?? 0);
       const totalCollected = amount * confirmedParticipants;
@@ -957,6 +999,8 @@ const SummaryTab = ({
         eventId: event.id || "",
         eventName: event.name || "Event",
         eventState: event.eventState,
+        teamTypeCode: event.teamTypeCode ?? event.teamType?.code ?? null,
+        teamTypeLabel: event.teamType?.label ?? null,
         amount,
         totalCollected,
         totalTeams,
@@ -982,9 +1026,60 @@ const SummaryTab = ({
 
     try {
       setError("");
-      const info = await tournamentApi.getInfo(tournamentId);
-      setSummaryEvents(buildSummaryFromInfo(info?.events ?? []));
+      try {
+        console.info("[TournamentSummary] frontend-load-start", {
+          tournamentId,
+          routeBase,
+        });
+        const summary = await tournamentApi.getSummary(tournamentId);
+        const events = Array.isArray(summary?.events) ? summary.events : [];
+        console.info(
+          "[TournamentSummary] frontend-summary-loaded",
+          JSON.stringify(
+            {
+              tournamentId: summary?.tournamentId || tournamentId,
+              eventCount: events.length,
+              events: summarizeForLog(events),
+            },
+            null,
+            2,
+          ),
+        );
+        setSummaryEvents(events);
+      } catch (summaryError) {
+        const message =
+          summaryError instanceof Error ? summaryError.message : String(summaryError);
+        const canFallback =
+          message.includes("404") ||
+          message.includes("Not Found");
+
+        if (!canFallback) throw summaryError;
+
+        console.warn("[TournamentSummary] frontend-summary-fallback", {
+          tournamentId,
+          reason: message,
+        });
+        const info = await tournamentApi.getInfo(tournamentId);
+        const events = buildSummaryFromInfo(info?.events ?? []);
+        console.info(
+          "[TournamentSummary] frontend-fallback-loaded",
+          JSON.stringify(
+            {
+              tournamentId,
+              eventCount: events.length,
+              events: summarizeForLog(events),
+            },
+            null,
+            2,
+          ),
+        );
+        setSummaryEvents(events);
+      }
     } catch (e) {
+      console.error("[TournamentSummary] frontend-load-failed", {
+        tournamentId,
+        message: e instanceof Error ? e.message : String(e),
+      });
       setError(e instanceof Error ? e.message : "Failed to load tournament summary");
       setSummaryEvents([]);
     } finally {
@@ -1016,6 +1111,23 @@ const SummaryTab = ({
     const totalMatches = event.totalMatches ?? 0;
     const completedMatches = event.completedMatches ?? 0;
     const liveMatches = event.liveMatches ?? 0;
+    const isRegistrationComplete = enrolled > 0;
+    const isConfirmationComplete = enrolled > 0 && confirmed >= enrolled;
+    const isMatchesComplete =
+      totalMatches > 0 && completedMatches >= totalMatches;
+    const isLiveRemainingComplete =
+      totalMatches > 0 && liveMatches === 0 && remainingMatches === 0;
+    const isSingles =
+      event.teamTypeCode === "singles" ||
+      event.teamTypeLabel?.toLowerCase() === "singles";
+    const entityLabel = isSingles ? "participant" : "team";
+    const entityLabelPlural = isSingles ? "participants" : "teams";
+    const registeredTitle = isSingles
+      ? "Participants Registered"
+      : "Teams Registered";
+    const confirmedTitle = isSingles
+      ? "Participants Confirmed"
+      : "Teams Confirmed";
 
     const contextText =
       event.eventState === "in_progress"
@@ -1027,9 +1139,9 @@ const SummaryTab = ({
     const detailItems = [
       {
         id: `${eventId}-a`,
-        tone: "warning",
-        title: "Participants Registered",
-        subtitle: `${enrolled} teams enrolled`,
+        tone: isRegistrationComplete ? "success" : "warning",
+        title: registeredTitle,
+        subtitle: `${enrolled} ${entityLabelPlural} enrolled`,
         href: `${routeBase}/event/participants${toQuery({
           tournamentId,
           eventId,
@@ -1037,9 +1149,9 @@ const SummaryTab = ({
       },
       {
         id: `${eventId}-b`,
-        tone: "warning",
-        title: "Teams Confirmed",
-        subtitle: `${confirmed} teams confirmed`,
+        tone: isConfirmationComplete ? "success" : "warning",
+        title: confirmedTitle,
+        subtitle: `${confirmed} ${confirmed === 1 ? entityLabel : entityLabelPlural} confirmed`,
         href: `${routeBase}/event/fixture${toQuery({
           tournamentId,
           eventId,
@@ -1047,7 +1159,7 @@ const SummaryTab = ({
       },
       {
         id: `${eventId}-c`,
-        tone: "success",
+        tone: isMatchesComplete ? "success" : "warning",
         title: "Matches Completed",
         subtitle: `${completedMatches} of ${totalMatches} matches completed`,
         href: `${routeBase}/event/matches${toQuery({
@@ -1057,7 +1169,7 @@ const SummaryTab = ({
       },
       {
         id: `${eventId}-d`,
-        tone: "warning",
+        tone: isLiveRemainingComplete ? "success" : "warning",
         title: "Live / Remaining",
         subtitle: `${liveMatches} live | ${remainingMatches} remaining`,
         href: `${routeBase}/event/matches${toQuery({
@@ -1075,6 +1187,7 @@ const SummaryTab = ({
       amount: Number(event.totalCollected || 0),
       enrolled,
       confirmed,
+      confirmedLabel: confirmedTitle.replace(" Confirmed", ""),
       detailItems,
       statePill: getEventStatePill(event.eventState),
     };
@@ -1125,7 +1238,7 @@ const SummaryTab = ({
                   <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">{card.enrolled}</p>
                 </div>
                 <div className="pl-3">
-                  <p className="text-[10px] text-[var(--color-muted)]">Confirmed (Paid)</p>
+                  <p className="text-[10px] text-[var(--color-muted)]">{card.confirmedLabel} Confirmed (Paid)</p>
                   <p className="text-3xl leading-none font-bold text-[var(--color-text)] mt-1">{card.confirmed}</p>
                 </div>
               </div>

@@ -93,6 +93,10 @@ const colorVariants: UpcomingCardData["colorVariant"][] = [
   "purple",
 ];
 
+const NOTIFICATIONS_REFRESH_MS = 180_000;
+const TOURNAMENT_REFRESH_MS = 600_000;
+const LIVE_FALLBACK_REFRESH_MS = 120_000;
+
 function getPrimarySport(t: TournamentData) {
   return t.events?.[0]?.sportsOption?.label || "Tournament";
 }
@@ -398,6 +402,8 @@ export default function UserHomePage() {
   const [selectedLiveMatch, setSelectedLiveMatch] = useState<any>(null);
   const [isLiveSocketConnected, setIsLiveSocketConnected] = useState(false);
   const liveRefreshRequestRef = useRef(0);
+  const shouldLoadLiveData =
+    activeTab === "live" || activeTab === "myspace" || Boolean(selectedLiveMatch);
 
   const attachNotificationActions = (items: NotificationItem[]) =>
     items.map((item) => ({
@@ -445,28 +451,15 @@ export default function UserHomePage() {
       setIsLiveFeedLoading(true);
     }
 
-    const [matchResult, feedResult] = await Promise.allSettled([
-      userApi.getLiveMatch(),
-      userApi.getLiveFeed(),
-    ]);
+    let match: any | null = null;
+    let feed: any[] = [];
 
-    const match =
-      matchResult.status === "fulfilled" ? matchResult.value : null;
-    const rawFeed =
-      feedResult.status === "fulfilled" && Array.isArray(feedResult.value)
-        ? feedResult.value
-        : [];
-    const feed =
-      feedResult.status === "fulfilled"
-        ? normalizeLiveFeed(rawFeed)
-        : [];
-
-    if (matchResult.status === "rejected") {
-      console.error("Failed to fetch current user live match", matchResult.reason);
-    }
-
-    if (feedResult.status === "rejected") {
-      console.error("Failed to fetch joined tournament live feed", feedResult.reason);
+    try {
+      const summary = await userApi.getLiveSummary();
+      match = summary.match ?? null;
+      feed = normalizeLiveFeed(summary.feed);
+    } catch (error) {
+      console.error("Failed to fetch live summary", error);
     }
 
     if (requestId === liveRefreshRequestRef.current) {
@@ -486,13 +479,25 @@ export default function UserHomePage() {
 
   useEffect(() => {
     void refreshNotifications();
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshNotifications();
+    };
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void refreshNotifications();
-    }, 15000);
-    return () => window.clearInterval(intervalId);
+    }, NOTIFICATIONS_REFRESH_MS);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+    };
   }, [refreshNotifications]);
 
   useEffect(() => {
+    if (activeTab !== "myspace" || userStats) return;
+
     let active = true;
     const loadStats = async () => {
       try {
@@ -508,9 +513,16 @@ export default function UserHomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeTab, userStats]);
 
   useEffect(() => {
+    if (!shouldLoadLiveData) {
+      setIsLiveMatchLoading(false);
+      setIsLiveFeedLoading(false);
+      setIsLiveSocketConnected(false);
+      return;
+    }
+
     let active = true;
     let socket: WebSocket | null = null;
 
@@ -712,12 +724,7 @@ export default function UserHomePage() {
       setIsLiveSocketConnected(false);
       if (socket) socket.close();
     };
-  }, [refreshLiveMatches]);
-
-  useEffect(() => {
-    if (activeTab !== "live") return;
-    void refreshLiveMatches("live-tab-selected");
-  }, [activeTab, refreshLiveMatches]);
+  }, [refreshLiveMatches, shouldLoadLiveData]);
 
   useEffect(() => {
     if ((activeTab !== "live" && !selectedLiveMatch) || isLiveSocketConnected) {
@@ -725,26 +732,39 @@ export default function UserHomePage() {
     }
 
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void refreshLiveMatches("polling-fallback", { showLoading: false });
-    }, 60000);
+    }, LIVE_FALLBACK_REFRESH_MS);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshLiveMatches("visibility-refresh", { showLoading: false });
+      }
+    };
 
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
     return () => {
       window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
     };
   }, [activeTab, isLiveSocketConnected, refreshLiveMatches, selectedLiveMatch]);
 
   useEffect(() => {
     let active = true;
-    const loadTournaments = async () => {
+    const loadTournaments = async ({
+      showLoading = true,
+    }: { showLoading?: boolean } = {}) => {
       try {
-        if (active) setIsTournamentsLoading(true);
-        const [browseRows, joinedRows] = await Promise.all([
-          tournamentApi.getBrowseTournaments(),
-          tournamentApi.getJoinedTournaments(),
-        ]);
+        if (active && showLoading) setIsTournamentsLoading(true);
+        const homeTournaments = await tournamentApi.getUserHomeTournaments();
         if (!active) return;
-        const browse = Array.isArray(browseRows) ? browseRows : [];
-        const joined = Array.isArray(joinedRows) ? joinedRows : [];
+        const browse = Array.isArray(homeTournaments?.browse)
+          ? homeTournaments.browse
+          : [];
+        const joined = Array.isArray(homeTournaments?.joined)
+          ? homeTournaments.joined
+          : [];
 
         const combinedById = new Map<string, TournamentData>();
         [...joined, ...browse].forEach((tournament, index) => {
@@ -758,22 +778,34 @@ export default function UserHomePage() {
       } catch (error) {
         if (!active) return;
         console.error("Failed to load user tournaments", error);
-        setTournaments([]);
-        setJoinedTournaments([]);
+        if (showLoading) {
+          setTournaments([]);
+          setJoinedTournaments([]);
+        }
       } finally {
         if (!active) return;
-        setIsTournamentsLoading(false);
+        if (showLoading) setIsTournamentsLoading(false);
       }
     };
 
-    void loadTournaments();
-    const timer = setInterval(() => {
-      void loadTournaments();
-    }, 30000);
+    void loadTournaments({ showLoading: true });
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadTournaments({ showLoading: false });
+      }
+    };
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void loadTournaments({ showLoading: false });
+    }, TOURNAMENT_REFRESH_MS);
 
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("focus", refreshWhenVisible);
     return () => {
       active = false;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
     };
   }, []);
 

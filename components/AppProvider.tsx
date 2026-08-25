@@ -16,7 +16,8 @@ import type { Session, User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { OrganizationData, ProfileData } from "@/lib/models";
 import { organizationApi } from "@/lib/api/organizationApi";
-import { userApi } from "@/lib/api/userApi";
+import { userApi, type UserBootstrapData } from "@/lib/api/userApi";
+import { clearApiAuthCache } from "@/lib/api/interceptor";
 import { saveAuthRedirect } from "@/lib/authRedirect";
 
 type AppContextValue = {
@@ -39,10 +40,90 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 const ACTIVE_ORG_STORAGE_KEY = "forehand:active-org-id";
 const NATIVE_CALLBACK_URL = "com.forehand.app://auth/callback";
+const BOOTSTRAP_CACHE_PREFIX = "forehand:bootstrap:";
+const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedBootstrapData = UserBootstrapData & {
+  userId: string;
+  storedAt: number;
+};
 
 function getBaseUrl(): string {
   if (typeof window === "undefined") return "http://localhost:3000";
   return window.location.origin;
+}
+
+function isValidProfile(profile: unknown): profile is ProfileData {
+  return Boolean(profile && typeof profile === "object" && (profile as any).name);
+}
+
+function getBootstrapCacheKey(userId: string) {
+  return `${BOOTSTRAP_CACHE_PREFIX}${userId}`;
+}
+
+function readCachedBootstrap(userId: string): UserBootstrapData | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = sessionStorage.getItem(getBootstrapCacheKey(userId));
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw) as CachedBootstrapData;
+    if (
+      cached.userId !== userId ||
+      Date.now() - cached.storedAt > BOOTSTRAP_CACHE_TTL_MS ||
+      !isValidProfile(cached.profile)
+    ) {
+      sessionStorage.removeItem(getBootstrapCacheKey(userId));
+      return null;
+    }
+
+    return {
+      profile: cached.profile,
+      organizations: Array.isArray(cached.organizations)
+        ? cached.organizations
+        : [],
+    };
+  } catch {
+    sessionStorage.removeItem(getBootstrapCacheKey(userId));
+    return null;
+  }
+}
+
+function writeCachedBootstrap(userId: string, bootstrap: UserBootstrapData) {
+  if (typeof window === "undefined" || !isValidProfile(bootstrap.profile)) {
+    return;
+  }
+
+  try {
+    sessionStorage.setItem(
+      getBootstrapCacheKey(userId),
+      JSON.stringify({
+        ...bootstrap,
+        userId,
+        storedAt: Date.now(),
+      } satisfies CachedBootstrapData),
+    );
+  } catch {
+  }
+}
+
+function clearCachedBootstrap(userId?: string | null) {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (userId) {
+      sessionStorage.removeItem(getBootstrapCacheKey(userId));
+      return;
+    }
+
+    Object.keys(sessionStorage).forEach((key) => {
+      if (key.startsWith(BOOTSTRAP_CACHE_PREFIX)) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  } catch {
+  }
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -148,8 +229,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   /** Signs out, clears all local state & storage. */
   const logout = useCallback(async () => {
+    const currentUserId = session?.user?.id;
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    clearApiAuthCache();
+    clearCachedBootstrap(currentUserId);
 
     setUserProfile(null);
     setActiveOrganization(null);
@@ -200,6 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Re-fetch profile so userProfile is populated
       const profile = await userApi.getInfo();
+      if (session?.user?.id) clearCachedBootstrap(session.user.id);
       setUserProfile(profile);
     },
     [session],
@@ -279,6 +364,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!nextSession) {
+        clearApiAuthCache();
+      }
       setHasRestoredSession(true);
       if (!isInitialMount) {
         setSession((prev) => {
@@ -319,54 +407,87 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!hasRestoredSession) return;
 
     const userId = session?.user?.id || null;
+    let cancelled = false;
+
+    const applyBootstrap = (bootstrap: UserBootstrapData) => {
+      const profile = bootstrap?.profile ?? null;
+
+      if (!isValidProfile(profile)) {
+        setUserProfile(null);
+        setActiveOrganization(null);
+        activeOrgIdRef.current = null;
+        return false;
+      }
+
+      setUserProfile(profile);
+
+      if (typeof window !== "undefined") {
+        const orgs = Array.isArray(bootstrap.organizations)
+          ? bootstrap.organizations
+          : [];
+        const storedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
+        const matched =
+          orgs.find((o) => o.id === storedOrgId) || orgs[0] || null;
+
+        setActiveOrganization(matched);
+        activeOrgIdRef.current = matched?.id || null;
+
+        if (matched?.id) {
+          localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, matched.id);
+        } else {
+          localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+        }
+      }
+
+      return true;
+    };
 
     // A. User logged out or no session
     if (!userId) {
+      clearApiAuthCache();
+      clearCachedBootstrap();
       setUserProfile(null);
       setActiveOrganization(null);
       activeOrgIdRef.current = null;
       lastFetchedUserIdRef.current = null;
       setIsLoading(false);
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     // B. New user detected (initial load or sign-in)
     if (userId !== lastFetchedUserIdRef.current) {
       void (async () => {
+        const cachedBootstrap = readCachedBootstrap(userId);
+
         try {
-          setIsLoading(true);
+          setIsLoading(!cachedBootstrap);
           lastFetchedUserIdRef.current = userId;
 
-          const profile = await userApi.getInfo();
+          if (cachedBootstrap) {
+            applyBootstrap(cachedBootstrap);
+            setIsLoading(false);
+          }
 
-          // VALIDATION: Ensure it's a real profile and not just a success message
-          if (profile && typeof profile === "object" && profile.name) {
-            setUserProfile(profile);
+          const bootstrap = await userApi.getBootstrap();
+          if (cancelled) return;
 
-            if (typeof window !== "undefined") {
-              const orgs = await organizationApi.getUserOrganizations();
-              const storedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
-              const matched =
-                orgs.find((o) => o.id === storedOrgId) || orgs[0] || null;
-
-              setActiveOrganization(matched);
-              activeOrgIdRef.current = matched?.id || null;
-
-              if (matched?.id) {
-                localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, matched.id);
-              } else {
-                localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
-              }
-            }
-          } else {
-            // No valid profile found
-            setUserProfile(null);
+          if (applyBootstrap(bootstrap)) {
+            writeCachedBootstrap(userId, bootstrap);
+          } else if (!cachedBootstrap) {
+            clearCachedBootstrap(userId);
           }
         } catch (err) {
           console.error("Profile fetch error:", err);
-          setUserProfile(null);
+          if (cancelled) return;
+          if (!cachedBootstrap) {
+            setUserProfile(null);
+            setActiveOrganization(null);
+            activeOrgIdRef.current = null;
+          }
         } finally {
-          setIsLoading(false);
+          if (!cancelled) setIsLoading(false);
         }
       })();
     } else {
@@ -374,6 +495,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Ensure we're not stuck in loading if onAuthStateChange set it to true.
       setIsLoading(false);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [hasRestoredSession, session]);
 
   /* ---- context value --------------------------------------------- */
