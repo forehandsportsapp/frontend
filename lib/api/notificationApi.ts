@@ -1,5 +1,6 @@
 import { fetchApi, getApiUrl } from "./interceptor";
-import { NotificationItem } from "@/components/NotificationsSlideOver";
+import type { NotificationItem } from "@/components/NotificationsSlideOver";
+import { toQuery } from "@/lib/utils";
 
 /**
  * Arguments for sending an invite notification.
@@ -61,6 +62,48 @@ function formatRelativeTime(value: unknown) {
   });
 }
 
+function getInviteAction(row: any) {
+  if (row.contextType === "organization" && row.organizationId) {
+    return {
+      actionHref: `/org/detail${toQuery({ orgId: row.organizationId })}`,
+      actionLabel: "Open Organization",
+    };
+  }
+
+  if (row.contextType === "event" && row.tournamentId) {
+    return {
+      actionHref: `/tournaments/detail${toQuery({
+        id: row.tournamentId,
+        tab: "events",
+      })}`,
+      actionLabel: "Open Event",
+    };
+  }
+
+  if (row.contextType === "tournament" && row.tournamentId) {
+    return {
+      actionHref: `/user/manage/tournament/detail${toQuery({
+        t: row.tournamentId,
+      })}`,
+      actionLabel: "Open Tournament",
+    };
+  }
+
+  return {
+    actionHref: "/user/manage",
+    actionLabel: "Open",
+  };
+}
+
+function getInviteTitle(row: any) {
+  if (row.contextType === "tournament") {
+    if (row.role === "scorer") return "Scorer Invitation";
+    if (row.role === "admin") return "Admin Invitation";
+  }
+
+  return row.title || "Notification";
+}
+
 /**
  * API client for managing user notifications and invitation responses.
  */
@@ -86,17 +129,32 @@ export const notificationApi = {
 
     const rows = Array.isArray(data) ? data : [];
     return rows.map((row: any) => {
+      const inviteState = row.inviteState || "pending";
+      const timeSource =
+        inviteState === "accepted" || inviteState === "rejected"
+          ? row.updatedAt || row.createdAt
+          : row.createdAt;
+      const action = getInviteAction(row);
+
       // If it's an invite, the backend might provide an inviteId in metadata or as the row id
       // For now we use row.id as the fallback for invite actions
       return {
         id: String(row.id),
         inviteId: row.inviteId || row.id,
         type: row.type || "invite",
-        title: row.title || "Notification",
+        inviteState,
+        contextType: row.contextType,
+        organizationId: row.organizationId,
+        tournamentId: row.tournamentId,
+        eventId: row.eventId,
+        role: row.role,
+        actionHref: action.actionHref,
+        actionLabel: action.actionLabel,
+        title: getInviteTitle(row),
         body: row.body || "",
         source: row.source || "",
-        timeAgo: formatRelativeTime(row.createdAt),
-        unread: Boolean(row.unread),
+        timeAgo: formatRelativeTime(timeSource),
+        unread: inviteState === "pending" && Boolean(row.unread),
       } as NotificationItem;
     });
   },

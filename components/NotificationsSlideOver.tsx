@@ -1,17 +1,31 @@
 "use client";
 
 import React from "react";
-import { CheckCircleIcon, XIcon } from "@/components/Icons";
+import Link from "next/link";
+import {
+  ArrowRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  XIcon,
+} from "@/components/Icons";
 
 export type NotificationItem = {
   id: string;
   inviteId?: string;
   type: "invite" | "registration" | "match_start" | "info";
+  inviteState?: "pending" | "accepted" | "rejected";
+  contextType?: string;
+  organizationId?: string | null;
+  tournamentId?: string | null;
+  eventId?: string | null;
+  role?: string | null;
   title: string;
   body?: string;
   source?: string;
   timeAgo: string;
   unread: boolean;
+  actionHref?: string;
+  actionLabel?: string;
   onAccept?: () => void;
   onReject?: () => void;
   onSeeMatch?: () => void;
@@ -34,7 +48,17 @@ export default function NotificationsSlideOver({
   onMarkAllRead,
   onClearAll,
 }: NotificationsSlideOverProps) {
+  const [activeTab, setActiveTab] = React.useState<"inbox" | "previous">(
+    "inbox",
+  );
+
   if (!open) return null;
+
+  const isPreviousInvite = (item: NotificationItem) =>
+    item.inviteState === "accepted" || item.inviteState === "rejected";
+  const inboxItems = items.filter((item) => !isPreviousInvite(item));
+  const previousItems = items.filter(isPreviousInvite);
+  const visibleItems = activeTab === "previous" ? previousItems : inboxItems;
 
   return (
     <>
@@ -44,7 +68,7 @@ export default function NotificationsSlideOver({
         aria-hidden="true"
       />
       <aside
-        className="fixed top-0 right-0 z-50 h-full w-full max-w-md bg-[var(--color-surface)] p-5 text-[var(--color-text)] shadow-xl"
+        className="fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col bg-[var(--color-surface)] p-5 text-[var(--color-text)] shadow-xl"
         role="dialog"
         aria-label="Notifications"
       >
@@ -64,6 +88,31 @@ export default function NotificationsSlideOver({
             aria-label="Close"
           >
             <XIcon size={20} />
+          </button>
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("inbox")}
+            className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === "inbox"
+                ? "bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm"
+                : "text-[var(--color-text-secondary)]"
+            }`}
+          >
+            Inbox
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("previous")}
+            className={`h-10 rounded-lg text-sm font-semibold transition-colors ${
+              activeTab === "previous"
+                ? "bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm"
+                : "text-[var(--color-text-secondary)]"
+            }`}
+          >
+            Previous
           </button>
         </div>
 
@@ -88,71 +137,131 @@ export default function NotificationsSlideOver({
           )}
         </div>
 
-        <ul className="space-y-3 overflow-y-auto pb-4">
-          {items.length === 0 ? (
+        <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-4">
+          {visibleItems.length === 0 ? (
             <li className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-4 text-sm text-[var(--color-muted)]">
-              No notifications
+              {activeTab === "previous"
+                ? "No accepted or rejected invites from the last 3 days"
+                : "No notifications"}
             </li>
           ) : (
-            items.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-chip)] text-primary">
-                      <CheckCircleIcon size={14} />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-xl font-semibold">
-                        {item.title}
-                      </p>
-                      {item.body && (
-                        <p className="mt-1 text-base text-[var(--color-text-secondary)]">
-                          {item.body}
+            visibleItems.map((item) => {
+              const isAccepted = item.inviteState === "accepted";
+              const isRejected = item.inviteState === "rejected";
+              const statusLabel = isAccepted
+                ? "Accepted"
+                : isRejected
+                  ? "Rejected"
+                  : "";
+
+              return (
+                <li
+                  key={item.id}
+                  className={`rounded-2xl border p-4 transition-colors ${
+                    isAccepted
+                      ? "border-[var(--color-success)]/30 bg-[var(--color-success)]/10"
+                      : isRejected
+                        ? "border-[var(--color-error)]/30 bg-[var(--color-error)]/10"
+                      : "border-[var(--color-border)] bg-[var(--color-surface-elevated)]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span
+                        className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full ${
+                          isAccepted
+                            ? "bg-[var(--color-success)] text-white"
+                            : isRejected
+                              ? "bg-[var(--color-error)] text-white"
+                            : "bg-[var(--color-chip)] text-primary"
+                        }`}
+                      >
+                        {isAccepted ? (
+                          <CheckIcon size={16} />
+                        ) : isRejected ? (
+                          <XIcon size={16} />
+                        ) : (
+                          <CheckCircleIcon size={14} />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-xl font-semibold">
+                            {item.title}
+                          </p>
+                          {statusLabel && (
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ${
+                                isRejected
+                                  ? "bg-[var(--color-error)]"
+                                  : "bg-[var(--color-success)]"
+                              }`}
+                            >
+                              {statusLabel}
+                            </span>
+                          )}
+                        </div>
+                        {item.source && (
+                          <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-text)]">
+                            {item.source}
+                          </p>
+                        )}
+                        {item.body && (
+                          <p className="mt-1 text-base text-[var(--color-text-secondary)]">
+                            {item.body}
+                          </p>
+                        )}
+                        <p className="text-sm text-[var(--color-muted)]">
+                          {item.timeAgo}
                         </p>
-                      )}
-                      <p className="text-sm text-[var(--color-muted)]">
-                        {item.timeAgo}
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        {item.onAccept && (
-                          <button
-                            type="button"
-                            onClick={item.onAccept}
-                            className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-sm font-medium text-white"
-                          >
-                            Accept
-                          </button>
-                        )}
-                        {item.onReject && (
-                          <button
-                            type="button"
-                            onClick={item.onReject}
-                            className="rounded-lg bg-[var(--color-error)] px-3 py-1.5 text-sm font-medium text-white"
-                          >
-                            Reject
-                          </button>
-                        )}
-                        {item.onSeeMatch && (
-                          <button
-                            type="button"
-                            onClick={item.onSeeMatch}
-                            className="rounded-lg px-2 py-1 text-sm text-primary"
-                          >
-                            See Match
-                          </button>
-                        )}
+                        <div className="mt-2 flex gap-2">
+                          {item.onAccept && !isPreviousInvite(item) && (
+                            <button
+                              type="button"
+                              onClick={item.onAccept}
+                              className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-sm font-medium text-white"
+                            >
+                              Accept
+                            </button>
+                          )}
+                          {item.onReject && !isPreviousInvite(item) && (
+                            <button
+                              type="button"
+                              onClick={item.onReject}
+                              className="rounded-lg bg-[var(--color-error)] px-3 py-1.5 text-sm font-medium text-white"
+                            >
+                              Reject
+                            </button>
+                          )}
+                          {isAccepted && item.actionHref && (
+                            <Link
+                              href={item.actionHref}
+                              onClick={onClose}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white"
+                            >
+                              {item.actionLabel || "Open"}
+                              <ArrowRightIcon size={14} />
+                            </Link>
+                          )}
+                          {item.onSeeMatch && (
+                            <button
+                              type="button"
+                              onClick={item.onSeeMatch}
+                              className="rounded-lg px-2 py-1 text-sm text-primary"
+                            >
+                              See Match
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    {item.unread && (
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                    )}
                   </div>
-                  {item.unread && (
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  )}
-                </div>
-              </li>
-            ))
+                </li>
+              );
+            })
           )}
         </ul>
       </aside>

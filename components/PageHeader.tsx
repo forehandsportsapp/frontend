@@ -51,17 +51,51 @@ export default function PageHeader({
       ...item,
       unread: item.unread && !readIds.has(item.id),
       onAccept:
-        item.type === "invite"
+        item.type === "invite" &&
+        item.inviteState !== "accepted" &&
+        item.inviteState !== "rejected"
           ? async () => {
-              await notificationApi.respondToInvite(item.id, "accept");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+              const targetId = item.inviteId || item.id;
+              await notificationApi.respondToInvite(targetId, "accept");
+              setNotifications((prev) =>
+                prev.map((n) =>
+                  n.id === item.id
+                    ? {
+                        ...n,
+                        inviteState: "accepted",
+                        unread: false,
+                        body: "Invite accepted. You can open it below.",
+                        timeAgo: "Just now",
+                        onAccept: undefined,
+                        onReject: undefined,
+                      }
+                    : n,
+                ),
+              );
             }
           : undefined,
       onReject:
-        item.type === "invite"
+        item.type === "invite" &&
+        item.inviteState !== "accepted" &&
+        item.inviteState !== "rejected"
           ? async () => {
-              await notificationApi.respondToInvite(item.id, "reject");
-              setNotifications((prev) => prev.filter((n) => n.id !== item.id));
+              const targetId = item.inviteId || item.id;
+              await notificationApi.respondToInvite(targetId, "reject");
+              setNotifications((prev) =>
+                prev.map((n) =>
+                  n.id === item.id
+                    ? {
+                        ...n,
+                        inviteState: "rejected",
+                        unread: false,
+                        body: "Invite rejected.",
+                        timeAgo: "Just now",
+                        onAccept: undefined,
+                        onReject: undefined,
+                      }
+                    : n,
+                ),
+              );
             }
           : undefined,
     }));
