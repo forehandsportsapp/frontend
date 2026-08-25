@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
 import { FloatingIcons } from "@/components/FloatingIcons";
 import {
@@ -126,7 +127,9 @@ export default function LoginPage() {
 
           <p className="text-[12px] font-medium text-[var(--color-text-secondary)] text-center px-6 opacity-60">
             By continuing, you agree to our{" "}
-            <span className="underline cursor-pointer hover:text-[#ff7a1a] transition-colors">Terms of Service</span>
+            <Link href="/terms" className="underline cursor-pointer hover:text-[#ff7a1a] transition-colors">
+              Terms of Service
+            </Link>
           </p>
         </div>
       </div>
