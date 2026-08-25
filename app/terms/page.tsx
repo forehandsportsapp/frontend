@@ -123,20 +123,11 @@ export default function TermsPage() {
             <h1 className="text-3xl sm:text-5xl font-black text-[var(--color-text)] tracking-tight mb-4 lg:mb-6 leading-tight">
               Terms of <span className="text-[#ff7a1a]">Service</span>
             </h1>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm font-medium text-[var(--color-text-secondary)]">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                Last Updated: August 2026
-              </div>
-              <div className="hidden sm:block w-1 h-1 rounded-full bg-[var(--color-border)]"></div>
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Please read these terms carefully.
-              </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-[var(--color-text-secondary)]">
+              <svg className="w-4 h-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Please read these terms carefully.
             </div>
           </div>
 
