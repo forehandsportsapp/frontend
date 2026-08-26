@@ -1142,7 +1142,7 @@ export default function UserHomePage() {
                   Live Feed
                 </h3>
               </div>
-              <p className="text-[11px] text-center text-[var(--color-text-secondary)] opacity-80 mt-2 max-w-[280px]">
+              <p className="mt-2 max-w-full whitespace-nowrap text-center text-[11px] text-[var(--color-text-secondary)] opacity-80">
                 Watch live matches of tournaments happening around you
               </p>
             </div>
@@ -1170,10 +1170,6 @@ export default function UserHomePage() {
                   </svg>
                 </div>
                 <h4 className="font-bold text-[var(--color-text)]">No Live Matches</h4>
-                <p className="text-sm text-[var(--color-text-secondary)] mt-1 max-w-[240px]">
-                  Matches from tournaments you've joined will appear here when
-                  they go live.
-                </p>
               </div>
             ) : (
               liveFeed.map((group) => (

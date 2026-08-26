@@ -51,14 +51,66 @@ export default function NotificationsSlideOver({
   const [activeTab, setActiveTab] = React.useState<"inbox" | "previous">(
     "inbox",
   );
+  const [acceptingIds, setAcceptingIds] = React.useState<Set<string>>(
+    new Set(),
+  );
+  const [acceptedConfirmationIds, setAcceptedConfirmationIds] = React.useState<
+    Set<string>
+  >(new Set());
+  const confirmationTimeoutsRef = React.useRef<Record<string, number>>({});
+
+  React.useEffect(
+    () => () => {
+      Object.values(confirmationTimeoutsRef.current).forEach((timeoutId) =>
+        window.clearTimeout(timeoutId),
+      );
+    },
+    [],
+  );
 
   if (!open) return null;
 
   const isPreviousInvite = (item: NotificationItem) =>
     item.inviteState === "accepted" || item.inviteState === "rejected";
-  const inboxItems = items.filter((item) => !isPreviousInvite(item));
+  const inboxItems = items.filter(
+    (item) =>
+      !isPreviousInvite(item) ||
+      acceptingIds.has(item.id) ||
+      acceptedConfirmationIds.has(item.id),
+  );
   const previousItems = items.filter(isPreviousInvite);
   const visibleItems = activeTab === "previous" ? previousItems : inboxItems;
+
+  const handleAccept = async (item: NotificationItem) => {
+    if (!item.onAccept || acceptingIds.has(item.id)) return;
+
+    setAcceptingIds((prev) => new Set(prev).add(item.id));
+
+    try {
+      await item.onAccept();
+      setAcceptedConfirmationIds((prev) => new Set(prev).add(item.id));
+
+      const existingTimeoutId = confirmationTimeoutsRef.current[item.id];
+      if (existingTimeoutId) window.clearTimeout(existingTimeoutId);
+
+      confirmationTimeoutsRef.current[item.id] = window.setTimeout(() => {
+        setAcceptedConfirmationIds((prev) => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+        delete confirmationTimeoutsRef.current[item.id];
+      }, 1800);
+    } catch (error) {
+      console.error("Failed to accept invitation", error);
+    } finally {
+      setAcceptingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
 
   return (
     <>
@@ -146,19 +198,25 @@ export default function NotificationsSlideOver({
             </li>
           ) : (
             visibleItems.map((item) => {
+              const isAccepting = acceptingIds.has(item.id);
+              const isAcceptedConfirmation = acceptedConfirmationIds.has(
+                item.id,
+              );
               const isAccepted = item.inviteState === "accepted";
               const isRejected = item.inviteState === "rejected";
-              const statusLabel = isAccepted
+              const showAcceptedState = isAccepted || isAcceptedConfirmation;
+              const statusLabel = showAcceptedState
                 ? "Accepted"
                 : isRejected
                   ? "Rejected"
                   : "";
+              const showStatusPill = statusLabel && activeTab !== "previous";
 
               return (
                 <li
                   key={item.id}
                   className={`rounded-2xl border p-4 transition-colors ${
-                    isAccepted
+                    showAcceptedState
                       ? "border-[var(--color-success)]/30 bg-[var(--color-success)]/10"
                       : isRejected
                         ? "border-[var(--color-error)]/30 bg-[var(--color-error)]/10"
@@ -169,14 +227,14 @@ export default function NotificationsSlideOver({
                     <div className="flex min-w-0 items-start gap-3">
                       <span
                         className={`mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-full ${
-                          isAccepted
+                          showAcceptedState
                             ? "bg-[var(--color-success)] text-white"
                             : isRejected
                               ? "bg-[var(--color-error)] text-white"
                             : "bg-[var(--color-chip)] text-primary"
                         }`}
                       >
-                        {isAccepted ? (
+                        {showAcceptedState ? (
                           <CheckIcon size={16} />
                         ) : isRejected ? (
                           <XIcon size={16} />
@@ -187,9 +245,11 @@ export default function NotificationsSlideOver({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate text-xl font-semibold">
-                            {item.title}
+                            {isAcceptedConfirmation
+                              ? "Invitation accepted"
+                              : item.title}
                           </p>
-                          {statusLabel && (
+                          {showStatusPill && (
                             <span
                               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ${
                                 isRejected
@@ -201,39 +261,45 @@ export default function NotificationsSlideOver({
                             </span>
                           )}
                         </div>
-                        {item.source && (
+                        {item.source && !isAcceptedConfirmation && (
                           <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-text)]">
                             {item.source}
                           </p>
                         )}
-                        {item.body && (
+                        {(item.body || isAcceptedConfirmation) && (
                           <p className="mt-1 text-base text-[var(--color-text-secondary)]">
-                            {item.body}
+                            {isAcceptedConfirmation
+                              ? "You're now part of this match/event."
+                              : item.body}
                           </p>
                         )}
-                        <p className="text-sm text-[var(--color-muted)]">
+                        {!isAcceptedConfirmation && (
+                          <p className="text-sm text-[var(--color-muted)]">
                           {item.timeAgo}
-                        </p>
+                          </p>
+                        )}
                         <div className="mt-2 flex gap-2">
                           {item.onAccept && !isPreviousInvite(item) && (
                             <button
                               type="button"
-                              onClick={item.onAccept}
-                              className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-sm font-medium text-white"
+                              onClick={() => void handleAccept(item)}
+                              disabled={isAccepting}
+                              className="rounded-lg bg-[var(--color-success)] px-3 py-1.5 text-sm font-medium text-white disabled:cursor-wait disabled:opacity-70"
                             >
-                              Accept
+                              {isAccepting ? "Accepting..." : "Accept"}
                             </button>
                           )}
                           {item.onReject && !isPreviousInvite(item) && (
                             <button
                               type="button"
                               onClick={item.onReject}
-                              className="rounded-lg bg-[var(--color-error)] px-3 py-1.5 text-sm font-medium text-white"
+                              disabled={isAccepting}
+                              className="rounded-lg bg-[var(--color-error)] px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               Reject
                             </button>
                           )}
-                          {isAccepted && item.actionHref && (
+                          {isAccepted && !isAcceptedConfirmation && item.actionHref && (
                             <Link
                               href={item.actionHref}
                               onClick={onClose}
