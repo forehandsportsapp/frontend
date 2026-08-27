@@ -14,6 +14,7 @@ import {
   applyRally,
   createInitialLiveState,
   maybeAdvanceSet,
+  getSetsWon,
   getScoreCall,
   getServerNumber,
   getServingPositionLabel,
@@ -83,6 +84,14 @@ function stateFromMatchSets(
     currentSet: nextSetIndex,
     setScores,
   };
+}
+
+function formatFinalSetScore(
+  state: LiveMatchStateData,
+  config: MatchConfigData,
+) {
+  const [setsWonA, setsWonB] = getSetsWon(state, config);
+  return `${setsWonA}-${setsWonB}`;
 }
 
 function ensurePlayers(players: unknown, format: MatchConfigData["format"]) {
@@ -500,7 +509,7 @@ export default function OrgLiveMatchPage() {
     state.setScores[index]?.[0] ?? (index === 0 ? 0 : null),
     state.setScores[index]?.[1] ?? (index === 0 ? 0 : null),
   ]);
-  const winnerScore = `${String(currentSet[0] ?? 0).padStart(2, "0")}-${String(currentSet[1] ?? 0).padStart(2, "0")}`;
+  const winnerScore = formatFinalSetScore(state, config);
 
   return (
     <LiveMatchReplica

@@ -27,11 +27,10 @@ export function getSetsWon(
   state: LiveMatchStateData,
   config: MatchConfigData,
 ): [number, number] {
-  // Completed sets are all sets before currentSet. currentSet may be complete but not advanced yet.
   let won0 = 0;
   let won1 = 0;
   state.setScores.forEach((s, idx) => {
-    if (idx === state.currentSet) return;
+    if (idx > state.currentSet) return;
     if (!s) return;
     if (isSetWon(s[0] ?? 0, s[1] ?? 0, config)) won0 += 1;
     if (isSetWon(s[1] ?? 0, s[0] ?? 0, config)) won1 += 1;
@@ -192,13 +191,16 @@ export function maybeAdvanceSet(
       matchWinner: getMatchWinner(state, config),
     };
 
-  // Mark set as complete by moving to a new set row (unless match is already won).
-  const completed = {
+  const advanced = {
     ...state,
     currentSet: state.currentSet + 1,
     setScores: [...state.setScores, [0, 0]],
   };
-  const matchWinner = getMatchWinner(completed, config);
+  const matchWinner = getMatchWinner(advanced, config);
 
-  return { state: completed, setWinner, matchWinner };
+  if (matchWinner != null) {
+    return { state, setWinner, matchWinner };
+  }
+
+  return { state: advanced, setWinner, matchWinner };
 }

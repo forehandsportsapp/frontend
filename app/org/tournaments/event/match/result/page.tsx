@@ -126,10 +126,7 @@ export default function OrgMatchResultPage() {
     const winnerPlayers = winnerSide === 0 ? teamAPlayers : teamBPlayers;
     const winnerAvatar =
       winnerPlayers.find((p) => p.avatarUrl)?.avatarUrl ?? null;
-    const scoreLine =
-      sets.length > 0
-        ? sets.map(([a, b]) => `${a}-${b}`).join(" • ")
-        : "No sets recorded";
+    const scoreLine = sets.length > 0 ? `${winsA}-${winsB}` : "No sets recorded";
 
     return { winnerName, winnerAvatar, scoreLine };
   }, [matchInfo]);

@@ -152,8 +152,8 @@ function getSetTeamBScore(set: any) {
 
 function normalizeMatchSets(sets: any[] = []) {
   const statusRank: Record<string, number> = {
-    in_progress: 3,
-    completed: 2,
+    completed: 3,
+    in_progress: 2,
     not_started: 1,
   };
   const byNumber = new Map<number, any>();
@@ -555,8 +555,7 @@ function DetailedMatchCard({
               <div className="text-2xl font-black text-[var(--color-text)]">VS</div>
             ) : (
               <div className="text-3xl font-black text-[var(--color-text)]">
-                {String(match.setsWonA).padStart(2, "0")} -{" "}
-                {String(match.setsWonB).padStart(2, "0")}
+                {match.setsWonA} - {match.setsWonB}
               </div>
             )}
           </div>

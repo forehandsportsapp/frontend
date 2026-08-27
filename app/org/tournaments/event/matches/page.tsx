@@ -87,6 +87,62 @@ const getTeamName = (t: any) => {
     .join(" & ");
 };
 
+function getSetNumber(set: any) {
+  return Number(
+    set?.setNumber ?? set?.set_number ?? set?.setInteger ?? set?.set_integer,
+  );
+}
+
+function getSetStatus(set: any) {
+  return String(set?.setStatus ?? set?.set_status ?? "").toLowerCase();
+}
+
+function getSetTeamAScore(set: any) {
+  return Number(set?.teamAScore ?? set?.team_a_score ?? 0);
+}
+
+function getSetTeamBScore(set: any) {
+  return Number(set?.teamBScore ?? set?.team_b_score ?? 0);
+}
+
+function normalizeMatchSets(sets: any[] = []) {
+  const statusRank: Record<string, number> = {
+    completed: 3,
+    in_progress: 2,
+    not_started: 1,
+  };
+  const byNumber = new Map<number, any>();
+
+  sets.forEach((set) => {
+    const setNumber = getSetNumber(set);
+    if (!Number.isFinite(setNumber)) return;
+
+    const existing = byNumber.get(setNumber);
+    const setRank = statusRank[getSetStatus(set)] ?? 0;
+    const existingRank = existing ? statusRank[getSetStatus(existing)] ?? 0 : -1;
+    const setScore = getSetTeamAScore(set) + getSetTeamBScore(set);
+    const existingScore = existing
+      ? getSetTeamAScore(existing) + getSetTeamBScore(existing)
+      : -1;
+    const setTime = new Date(set?.updatedAt || set?.createdAt || 0).getTime();
+    const existingTime = existing
+      ? new Date(existing?.updatedAt || existing?.createdAt || 0).getTime()
+      : -1;
+
+    if (
+      !existing ||
+      setRank > existingRank ||
+      (setRank === existingRank &&
+        (setScore > existingScore ||
+          (setScore === existingScore && setTime >= existingTime)))
+    ) {
+      byNumber.set(setNumber, set);
+    }
+  });
+
+  return [...byNumber.values()].sort((a, b) => getSetNumber(a) - getSetNumber(b));
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SetScoreGrid({ sets }: { sets: SetScore[] }) {
@@ -153,8 +209,8 @@ function MatchCard({
     ? `${viewerBasePath}/result` + toQuery(viewerQuery)
     : `${viewerBasePath}/live` + toQuery(viewerQuery);
 
-  const scoreA = String(match.setsWonA).padStart(2, "0");
-  const scoreB = String(match.setsWonB).padStart(2, "0");
+  const scoreA = String(match.setsWonA);
+  const scoreB = String(match.setsWonB);
   const courtLabel = match.court?.trim() || "Select Court";
   const scorerLabel = match.scorerName?.trim() || "Select Scorer";
   const selectedCourt = match.court?.trim();
@@ -483,32 +539,36 @@ function OrgManageMatchesContent() {
             let swA = 0;
             let swB = 0;
             const expectedSets = Number(event?.setsPerMatch || 1);
-            const setScores = (m.sets || []).map((s: any) => {
-              if (s.setStatus === "completed") {
-                if (s.teamAScore > s.teamBScore) swA++;
-                else if (s.teamBScore > s.teamAScore) swB++;
+            const sets = normalizeMatchSets(m.setRows || m.sets || []);
+            const setScores = Array.from({ length: expectedSets }).map((_, index) => {
+              const setNumber = index + 1;
+              const s = sets.find((row: any) => getSetNumber(row) === setNumber);
+              const setStatus = getSetStatus(s);
+              const teamAScore = getSetTeamAScore(s);
+              const teamBScore = getSetTeamBScore(s);
+
+              if (setStatus === "completed") {
+                if (teamAScore > teamBScore) swA++;
+                else if (teamBScore > teamAScore) swB++;
               }
+
+              const hasScore =
+                Boolean(s) &&
+                (setStatus !== "not_started" ||
+                  teamAScore > 0 ||
+                  teamBScore > 0);
+
               return {
-                a:
-                  s.setStatus === "not_started"
-                    ? "--"
-                    : String(s.teamAScore).padStart(2, "0"),
-                b:
-                  s.setStatus === "not_started"
-                    ? "--"
-                    : String(s.teamBScore).padStart(2, "0"),
+                a: hasScore ? String(teamAScore).padStart(2, "0") : "--",
+                b: hasScore ? String(teamBScore).padStart(2, "0") : "--",
               };
             });
 
-            while (setScores.length < expectedSets) {
-              setScores.push({ a: "--", b: "--" });
-            }
-
-            const hasLiveSet = (m.sets || []).some(
+            const hasLiveSet = sets.some(
               (s: any) =>
-                s.setStatus === "in_progress" ||
-                Number(s.teamAScore || 0) > 0 ||
-                Number(s.teamBScore || 0) > 0,
+                getSetStatus(s) === "in_progress" ||
+                getSetTeamAScore(s) > 0 ||
+                getSetTeamBScore(s) > 0,
             );
             let status: "upcoming" | "live" | "ended" = "upcoming";
             if (

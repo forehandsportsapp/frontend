@@ -60,8 +60,8 @@ type LiveTournamentCardData = {
 
 function normalizeMatchSets(sets: any[] = []) {
   const statusRank: Record<string, number> = {
-    in_progress: 3,
-    completed: 2,
+    completed: 3,
+    in_progress: 2,
     not_started: 1,
   };
   const byNumber = new Map<number, any>();
