@@ -12,41 +12,59 @@ import React, {
 import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
-import type { Session, User } from "@supabase/supabase-js";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { OrganizationData, ProfileData } from "@/lib/models";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { userApi, type UserBootstrapData } from "@/lib/api/userApi";
-import { clearApiAuthCache } from "@/lib/api/interceptor";
-import { saveAuthRedirect } from "@/lib/authRedirect";
+import {
+  clearApiAuthCache,
+  fetchApi,
+  getApiUrl,
+} from "@/lib/api/interceptor";
+import {
+  AUTH_REDIRECT_STORAGE_KEY,
+  type AuthStatus,
+  saveAuthRedirect,
+} from "@/lib/authRedirect";
 
 type AppContextValue = {
   session: Session | null;
-  isLoading: boolean; // Supabase session restoring
-
+  authStatus: AuthStatus;
+  authError: string | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
-
   userProfile: ProfileData | null;
   activeOrganization: OrganizationData | null;
-
   login: (next?: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (data: ProfileData) => Promise<void>;
   setOrganization: (orgId?: string | null) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  retryAuth: () => Promise<void>;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 const ACTIVE_ORG_STORAGE_KEY = "forehand:active-org-id";
+const LEGACY_ACTIVE_ORG_SESSION_KEY = "forehand:active-org";
 const NATIVE_CALLBACK_URL = "com.forehand.app://auth/callback";
 const BOOTSTRAP_CACHE_PREFIX = "forehand:bootstrap:";
-const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type CachedBootstrapData = UserBootstrapData & {
   userId: string;
   storedAt: number;
 };
+
+class BootstrapError extends Error {
+  status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = "BootstrapError";
+    this.status = status;
+  }
+}
 
 function getBaseUrl(): string {
   if (typeof window === "undefined") return "http://localhost:3000";
@@ -59,35 +77,6 @@ function isValidProfile(profile: unknown): profile is ProfileData {
 
 function getBootstrapCacheKey(userId: string) {
   return `${BOOTSTRAP_CACHE_PREFIX}${userId}`;
-}
-
-function readCachedBootstrap(userId: string): UserBootstrapData | null {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const raw = sessionStorage.getItem(getBootstrapCacheKey(userId));
-    if (!raw) return null;
-
-    const cached = JSON.parse(raw) as CachedBootstrapData;
-    if (
-      cached.userId !== userId ||
-      Date.now() - cached.storedAt > BOOTSTRAP_CACHE_TTL_MS ||
-      !isValidProfile(cached.profile)
-    ) {
-      sessionStorage.removeItem(getBootstrapCacheKey(userId));
-      return null;
-    }
-
-    return {
-      profile: cached.profile,
-      organizations: Array.isArray(cached.organizations)
-        ? cached.organizations
-        : [],
-    };
-  } catch {
-    sessionStorage.removeItem(getBootstrapCacheKey(userId));
-    return null;
-  }
 }
 
 function writeCachedBootstrap(userId: string, bootstrap: UserBootstrapData) {
@@ -126,48 +115,305 @@ function clearCachedBootstrap(userId?: string | null) {
   }
 }
 
+function clearForehandSessionStorage() {
+  if (typeof window === "undefined") return;
+
+  try {
+    sessionStorage.removeItem(AUTH_REDIRECT_STORAGE_KEY);
+    sessionStorage.removeItem(LEGACY_ACTIVE_ORG_SESSION_KEY);
+    clearCachedBootstrap();
+  } catch {
+  }
+}
+
+function clearForehandLocalStorage() {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+  } catch {
+  }
+}
+
+function getErrorStatus(error: unknown) {
+  return error instanceof BootstrapError ? error.status : undefined;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return String(error || "Unable to verify your session.");
+}
+
+function isValidBootstrapPayload(data: unknown): data is UserBootstrapData {
+  if (!data || typeof data !== "object") return false;
+  const candidate = data as Partial<UserBootstrapData>;
+  if (!("profile" in candidate)) return false;
+  if (
+    candidate.profile !== null &&
+    candidate.profile !== undefined &&
+    !isValidProfile(candidate.profile)
+  ) {
+    return false;
+  }
+  return Array.isArray(candidate.organizations);
+}
+
+async function deleteForehandIndexedDb() {
+  if (typeof window === "undefined" || !("indexedDB" in window)) return;
+
+  try {
+    window.indexedDB.deleteDatabase("forehand-pwa");
+  } catch (err) {
+    console.warn("Failed to delete Forehand IndexedDB:", err);
+  }
+}
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
 
-  const [session, setSession] = useState<Session | null>(null);
-
-  // --- Backend profile ---
+  const [session, setSessionState] = useState<Session | null>(null);
+  const [authStatus, setAuthStatusState] =
+    useState<AuthStatus>("initializing");
+  const [authError, setAuthError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasRestoredSession, setHasRestoredSession] = useState(false);
-
-  // --- Active organisation ---
   const [activeOrganization, setActiveOrganization] =
     useState<OrganizationData | null>(null);
+
+  const sessionRef = useRef<Session | null>(null);
+  const authStatusRef = useRef<AuthStatus>("initializing");
+  const authGenerationRef = useRef(0);
   const activeOrgIdRef = useRef<string | null>(null);
+  const lastBootstrappedUserIdRef = useRef<string | null>(null);
+  const pendingBootstrapRef = useRef<{
+    userId: string;
+    promise: Promise<UserBootstrapData>;
+  } | null>(null);
 
-  // Tracks which user ID we last ATTEMPTED to fetch a profile for.
-  // This prevents infinite loops if the user exists in Supabase but not in our DB.
-  const lastFetchedUserIdRef = useRef<string | null>(null);
+  const setSession = useCallback((nextSession: Session | null) => {
+    sessionRef.current = nextSession;
+    setSessionState(nextSession);
+  }, []);
 
-  /* ---- helpers --------------------------------------------------- */
+  const setAuthStatus = useCallback((nextStatus: AuthStatus) => {
+    authStatusRef.current = nextStatus;
+    setAuthStatusState(nextStatus);
+  }, []);
 
-  /* ---- refreshProfile (public) ----------------------------------- */
+  const resetUserState = useCallback(() => {
+    setUserProfile(null);
+    setActiveOrganization(null);
+    activeOrgIdRef.current = null;
+    lastBootstrappedUserIdRef.current = null;
+  }, []);
 
-  const refreshProfile = useCallback(async () => {
-    const userId = session?.user?.id;
-    if (!userId) {
-      setUserProfile(null);
+  const fetchBootstrap = useCallback(
+    async (userId: string, dedupe = true): Promise<UserBootstrapData> => {
+      const pending = pendingBootstrapRef.current;
+      if (dedupe && pending?.userId === userId) return pending.promise;
+
+      const promise = fetchApi(getApiUrl({ path: "/user/bootstrap" })).then(
+        ({ data, error, status }) => {
+          if (error) {
+            throw new BootstrapError(String(error), status);
+          }
+
+          if (!isValidBootstrapPayload(data)) {
+            throw new BootstrapError(
+              "The server returned an unexpected session profile response.",
+            );
+          }
+
+          return {
+            profile: data.profile ?? null,
+            organizations: data.organizations,
+          };
+        },
+      );
+
+      pendingBootstrapRef.current = { userId, promise };
+
+      return promise.finally(() => {
+        if (pendingBootstrapRef.current?.promise === promise) {
+          pendingBootstrapRef.current = null;
+        }
+      });
+    },
+    [],
+  );
+
+  const applyBootstrap = useCallback(
+    (userId: string, bootstrap: UserBootstrapData) => {
+      const profile = bootstrap.profile ?? null;
+
+      if (!isValidProfile(profile)) {
+        setUserProfile(null);
+        setActiveOrganization(null);
+        activeOrgIdRef.current = null;
+        lastBootstrappedUserIdRef.current = userId;
+        clearCachedBootstrap(userId);
+        setAuthStatus("profile-required");
+        return;
+      }
+
+      setUserProfile(profile);
+      lastBootstrappedUserIdRef.current = userId;
+      writeCachedBootstrap(userId, bootstrap);
+
+      const orgs = Array.isArray(bootstrap.organizations)
+        ? bootstrap.organizations
+        : [];
+      const storedOrgId =
+        typeof window !== "undefined"
+          ? localStorage.getItem(ACTIVE_ORG_STORAGE_KEY)
+          : null;
+      const matched = orgs.find((o) => o.id === storedOrgId) || orgs[0] || null;
+
+      setActiveOrganization(matched);
+      activeOrgIdRef.current = matched?.id || null;
+
+      if (typeof window !== "undefined") {
+        if (matched?.id) {
+          localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, matched.id);
+        } else {
+          localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+        }
+      }
+
+      setAuthStatus("ready");
+    },
+    [setAuthStatus],
+  );
+
+  const clearAuthState = useCallback(() => {
+    authGenerationRef.current += 1;
+    clearApiAuthCache();
+    pendingBootstrapRef.current = null;
+    setSession(null);
+    resetUserState();
+    setAuthError(null);
+    setAuthStatus("signed-out");
+  }, [resetUserState, setAuthStatus, setSession]);
+
+  const logout = useCallback(async () => {
+    clearAuthState();
+    clearForehandSessionStorage();
+    clearForehandLocalStorage();
+    await deleteForehandIndexedDb();
+
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  }, [clearAuthState, supabase]);
+
+  const resolveSession = useCallback(
+    async (
+      nextSession: Session | null,
+      {
+        force = false,
+        retryStaleToken = true,
+      }: { force?: boolean; retryStaleToken?: boolean } = {},
+    ) => {
+      const generation = ++authGenerationRef.current;
+      setSession(nextSession);
+      setAuthError(null);
+
+      const userId = nextSession?.user?.id || null;
+      if (!userId) {
+        clearApiAuthCache();
+        pendingBootstrapRef.current = null;
+        resetUserState();
+        setAuthStatus("signed-out");
+        return;
+      }
+
+      if (
+        lastBootstrappedUserIdRef.current &&
+        lastBootstrappedUserIdRef.current !== userId
+      ) {
+        resetUserState();
+        clearCachedBootstrap();
+        clearForehandLocalStorage();
+      }
+
+      const currentStatus = authStatusRef.current;
+      const alreadyResolved =
+        lastBootstrappedUserIdRef.current === userId &&
+        (currentStatus === "ready" || currentStatus === "profile-required");
+
+      if (!force && alreadyResolved) return;
+
+      setAuthStatus("loading-profile");
+
+      try {
+        const bootstrap = await fetchBootstrap(userId);
+        if (generation !== authGenerationRef.current) return;
+        applyBootstrap(userId, bootstrap);
+      } catch (error) {
+        if (generation !== authGenerationRef.current) return;
+
+        const status = getErrorStatus(error);
+
+        if (status === 401 && retryStaleToken) {
+          try {
+            clearApiAuthCache();
+            const { data, error: refreshError } =
+              await supabase.auth.refreshSession();
+
+            if (generation !== authGenerationRef.current) return;
+            if (refreshError || !data.session) {
+              await logout();
+              return;
+            }
+
+            setSession(data.session);
+            const refreshedUserId = data.session.user.id;
+            const retryBootstrap = await fetchBootstrap(refreshedUserId, false);
+            if (generation !== authGenerationRef.current) return;
+            applyBootstrap(refreshedUserId, retryBootstrap);
+            return;
+          } catch (retryError) {
+            if (generation !== authGenerationRef.current) return;
+            if (getErrorStatus(retryError) === 401) {
+              await logout();
+              return;
+            }
+
+            setAuthError(getErrorMessage(retryError));
+            setAuthStatus(
+              getErrorStatus(retryError) === 403 ? "access-denied" : "error",
+            );
+            return;
+          }
+        }
+
+        setAuthError(getErrorMessage(error));
+        setAuthStatus(status === 403 ? "access-denied" : "error");
+      }
+    },
+    [
+      applyBootstrap,
+      fetchBootstrap,
+      logout,
+      resetUserState,
+      setAuthStatus,
+      setSession,
+      supabase,
+    ],
+  );
+
+  const retryAuth = useCallback(async () => {
+    const {
+      data: { session: currentSession },
+      error,
+    } = await supabase.auth.getSession();
+
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus("error");
       return;
     }
 
-    try {
-      const profile = await userApi.getInfo();
-      setUserProfile(profile);
-      lastFetchedUserIdRef.current = userId;
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
-      setUserProfile(null);
-      lastFetchedUserIdRef.current = userId; // Still mark as attempted
-    }
-  }, [session]);
-
-  /* ---- Native deep-link handler ---------------------------------- */
+    await resolveSession(currentSession, { force: true });
+  }, [resolveSession, setAuthStatus, supabase]);
 
   const finishNativeAuth = useCallback(
     async (url: string) => {
@@ -200,162 +446,101 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [supabase],
   );
 
-  /* ================================================================ */
-  /*  Public actions                                                   */
-  /* ================================================================ */
+  const login = useCallback(
+    async (next?: string) => {
+      const redirectPath = saveAuthRedirect(next);
+      const isNative = Capacitor.isNativePlatform();
+      const redirectTo = isNative
+        ? NATIVE_CALLBACK_URL
+        : `${getBaseUrl()}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
 
-  /** Initiates Google OAuth login via Supabase. */
-  const login = useCallback(async (next?: string) => {
-    const redirectPath = saveAuthRedirect(next);
-    const isNative = Capacitor.isNativePlatform();
-    const redirectTo = isNative
-      ? NATIVE_CALLBACK_URL
-      : `${getBaseUrl()}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: isNative,
+        },
+      });
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo,
-        skipBrowserRedirect: isNative,
-      },
-    });
+      if (error) throw error;
 
-    if (error) throw error;
-
-    if (isNative && data?.url) {
-      await Browser.open({ url: data.url, presentationStyle: "popover" });
-    }
-  }, [supabase]);
-
-  /** Signs out, clears all local state & storage. */
-  const logout = useCallback(async () => {
-    const currentUserId = session?.user?.id;
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    clearApiAuthCache();
-    clearCachedBootstrap(currentUserId);
-
-    setUserProfile(null);
-    setActiveOrganization(null);
-    activeOrgIdRef.current = null;
-
-    if (typeof window !== "undefined") {
-      // 1. Clear LocalStorage preserving theme
-      const theme = localStorage.getItem("forehand:theme");
-      localStorage.clear();
-      if (theme) {
-        localStorage.setItem("forehand:theme", theme);
+      if (isNative && data?.url) {
+        await Browser.open({ url: data.url, presentationStyle: "popover" });
       }
+    },
+    [supabase],
+  );
 
-      // 2. Clear SessionStorage
-      try {
-        sessionStorage.clear();
-      } catch (err) {
-        console.warn("Failed to clear sessionStorage:", err);
-      }
-
-      // 3. Clear Cache Storage (PWA API Cache)
-      if ("caches" in window) {
-        try {
-          const cacheNames = await caches.keys();
-          await Promise.all(
-            cacheNames.map((cacheName) => caches.delete(cacheName))
-          );
-        } catch (err) {
-          console.warn("Failed to clear Cache Storage:", err);
-        }
-      }
-
-      // 4. Clear IndexedDB 'forehand-pwa'
-      if ("indexedDB" in window) {
-        try {
-          window.indexedDB.deleteDatabase("forehand-pwa");
-        } catch (err) {
-          console.warn("Failed to delete IndexedDB:", err);
-        }
-      }
-    }
-  }, [supabase]);
-
-  /** Registers the user via the backend and re-fetches the profile. */
   const register = useCallback(
     async (profileData: ProfileData) => {
       await userApi.registerUser(profileData);
-
-      // Re-fetch profile so userProfile is populated
-      const profile = await userApi.getInfo();
-      if (session?.user?.id) clearCachedBootstrap(session.user.id);
-      setUserProfile(profile);
+      await resolveSession(sessionRef.current, { force: true });
     },
-    [session],
+    [resolveSession],
   );
 
-  /** Sets or clears the active organisation. Persists in localStorage. */
-  const setOrganization = useCallback(
-    async (orgId?: string | null) => {
-      activeOrgIdRef.current = orgId || "";
+  const refreshProfile = useCallback(async () => {
+    await resolveSession(sessionRef.current, { force: true });
+  }, [resolveSession]);
 
-      if (typeof window !== "undefined") {
-        if (orgId) localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, orgId);
-        else localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
-      }
+  const setOrganization = useCallback(async (orgId?: string | null) => {
+    activeOrgIdRef.current = orgId || "";
 
-      if (!orgId) {
-        setActiveOrganization(null);
-        return;
-      }
+    if (typeof window !== "undefined") {
+      if (orgId) localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, orgId);
+      else localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
+    }
 
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        setActiveOrganization(null);
-        return;
-      }
+    if (!orgId) {
+      setActiveOrganization(null);
+      return;
+    }
 
-      try {
-        const orgs = await organizationApi.getUserOrganizations();
-        const matched = orgs.find((org) => org.id === orgId) || null;
-        if (!matched) {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
-          }
-          activeOrgIdRef.current = null;
-          setActiveOrganization(null);
-          return;
+    const accessToken = sessionRef.current?.access_token;
+    if (!accessToken) {
+      setActiveOrganization(null);
+      return;
+    }
+
+    try {
+      const orgs = await organizationApi.getUserOrganizations();
+      const matched = orgs.find((org) => org.id === orgId) || null;
+      if (!matched) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
         }
-        setActiveOrganization(matched);
-      } catch (error) {
-        console.error("Failed to set organization:", error);
+        activeOrgIdRef.current = null;
         setActiveOrganization(null);
+        return;
       }
-    },
-    [session],
-  );
+      setActiveOrganization(matched);
+    } catch (error) {
+      console.error("Failed to set organization:", error);
+      setActiveOrganization(null);
+    }
+  }, []);
 
-  /* ================================================================ */
-  /*  Effects                                                          */
-  /* ================================================================ */
-
-  // 1. Unified Auth & Profile initialization
   useEffect(() => {
     let appUrlOpenListener: { remove: () => Promise<void> } | null = null;
-    let isInitialMount = true;
+    let mounted = true;
 
     const initialize = async () => {
       try {
-        setIsLoading(true);
+        setAuthStatus("initializing");
         const {
           data: { session: initialSession },
           error,
         } = await supabase.auth.getSession();
         if (error) throw error;
-
-        setSession(initialSession);
+        if (!mounted) return;
+        await resolveSession(initialSession, { force: true });
       } catch (err) {
+        if (!mounted) return;
         console.error("Failed to initialize app session:", err);
         setSession(null);
-      } finally {
-        setHasRestoredSession(true);
-        isInitialMount = false;
+        resetUserState();
+        setAuthError(getErrorMessage(err));
+        setAuthStatus("error");
       }
     };
 
@@ -363,22 +548,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!nextSession) {
-        clearApiAuthCache();
-      }
-      setHasRestoredSession(true);
-      if (!isInitialMount) {
-        setSession((prev) => {
-          if (prev?.user?.id !== nextSession?.user?.id) {
-            setIsLoading(true);
-          }
-          return nextSession;
-        });
-      }
-    });
+    } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, nextSession) => {
+        const previousUserId = sessionRef.current?.user?.id || null;
+        const nextUserId = nextSession?.user?.id || null;
+        setSession(nextSession);
 
-    // Native deep-link handler
+        if (!nextSession) {
+          clearApiAuthCache();
+          authGenerationRef.current += 1;
+          pendingBootstrapRef.current = null;
+          resetUserState();
+          setAuthError(null);
+          setAuthStatus("signed-out");
+          return;
+        }
+
+        if (
+          event === "SIGNED_IN" ||
+          event === "USER_UPDATED" ||
+          previousUserId !== nextUserId
+        ) {
+          void resolveSession(nextSession, {
+            force: previousUserId !== nextUserId,
+          });
+        }
+      },
+    );
+
     if (Capacitor.isNativePlatform()) {
       void App.addListener(
         "appUrlOpen",
@@ -397,144 +594,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       if (appUrlOpenListener) void appUrlOpenListener.remove();
     };
-  }, [supabase, finishNativeAuth]);
+  }, [
+    finishNativeAuth,
+    resetUserState,
+    resolveSession,
+    setAuthStatus,
+    setSession,
+    supabase,
+  ]);
 
-  // 2. Respond to ANY session change
-  useEffect(() => {
-    if (!hasRestoredSession) return;
-
-    const userId = session?.user?.id || null;
-    let cancelled = false;
-
-    const applyBootstrap = (bootstrap: UserBootstrapData) => {
-      const profile = bootstrap?.profile ?? null;
-
-      if (!isValidProfile(profile)) {
-        setUserProfile(null);
-        setActiveOrganization(null);
-        activeOrgIdRef.current = null;
-        return false;
-      }
-
-      setUserProfile(profile);
-
-      if (typeof window !== "undefined") {
-        const orgs = Array.isArray(bootstrap.organizations)
-          ? bootstrap.organizations
-          : [];
-        const storedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
-        const matched =
-          orgs.find((o) => o.id === storedOrgId) || orgs[0] || null;
-
-        setActiveOrganization(matched);
-        activeOrgIdRef.current = matched?.id || null;
-
-        if (matched?.id) {
-          localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, matched.id);
-        } else {
-          localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
-        }
-      }
-
-      return true;
-    };
-
-    // A. User logged out or no session
-    if (!userId) {
-      clearApiAuthCache();
-      clearCachedBootstrap();
-      setUserProfile(null);
-      setActiveOrganization(null);
-      activeOrgIdRef.current = null;
-      lastFetchedUserIdRef.current = null;
-      setIsLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    // B. New user detected (initial load or sign-in)
-    if (userId !== lastFetchedUserIdRef.current) {
-      void (async () => {
-        const cachedBootstrap = readCachedBootstrap(userId);
-
-        try {
-          setIsLoading(!cachedBootstrap);
-          lastFetchedUserIdRef.current = userId;
-
-          if (cachedBootstrap) {
-            applyBootstrap(cachedBootstrap);
-            setIsLoading(false);
-          }
-
-          const bootstrap = await userApi.getBootstrap();
-          if (cancelled) return;
-
-          if (applyBootstrap(bootstrap)) {
-            writeCachedBootstrap(userId, bootstrap);
-          } else if (!cachedBootstrap) {
-            clearCachedBootstrap(userId);
-          }
-        } catch (err) {
-          console.error("Profile fetch error:", err);
-          if (cancelled) return;
-          if (!cachedBootstrap) {
-            setUserProfile(null);
-            setActiveOrganization(null);
-            activeOrgIdRef.current = null;
-          }
-        } finally {
-          if (!cancelled) setIsLoading(false);
-        }
-      })();
-    } else {
-      // Same user, no need to re-fetch profile.
-      // Ensure we're not stuck in loading if onAuthStateChange set it to true.
-      setIsLoading(false);
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasRestoredSession, session]);
-
-  /* ---- context value --------------------------------------------- */
+  const isLoading =
+    authStatus === "initializing" || authStatus === "loading-profile";
 
   const value = useMemo<AppContextValue>(
     () => ({
+      session,
+      authStatus,
+      authError,
       isLoading,
-      isAuthenticated: Boolean(session?.user),
+      isAuthenticated: authStatus === "ready" || authStatus === "profile-required",
       userProfile,
       activeOrganization,
       login,
       logout,
       register,
-      session,
       setOrganization,
       refreshProfile,
+      retryAuth,
     }),
     [
-      isLoading,
-      userProfile,
       activeOrganization,
+      authError,
+      authStatus,
+      isLoading,
       login,
       logout,
+      refreshProfile,
       register,
+      retryAuth,
       session,
       setOrganization,
-      refreshProfile,
+      userProfile,
     ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Hook                                                               */
-/* ------------------------------------------------------------------ */
 
 export function useApp() {
   const ctx = useContext(AppContext);

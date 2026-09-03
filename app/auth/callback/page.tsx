@@ -2,56 +2,45 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useApp } from "@/components/AppProvider";
+import FullScreenAuthLoader from "@/components/FullScreenAuthLoader";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
-import { userApi } from "@/lib/api/userApi";
 import {
-  consumeAuthRedirect,
+  getAuthRedirectFromUrl,
+  getAuthDestination,
   saveAuthRedirect,
-  withAuthRedirect,
 } from "@/lib/authRedirect";
 
-/**
- * Handles the Google OAuth PKCE callback.
- * Exchanges the `code` param for a session, then redirects
- * to /register (new user) or the original destination (returning user).
- */
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const didRun = useRef(false);
-  const [error, setError] = useState<string | null>(null);
+  const didExchange = useRef(false);
+  const { authStatus, authError, retryAuth, logout } = useApp();
+  const [exchangeError, setExchangeError] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState("/user/home");
+  const [hasCompletedExchange, setHasCompletedExchange] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
-    if (didRun.current) return;
-    didRun.current = true;
-
-    const supabase = getSupabaseBrowserClient();
+    if (didExchange.current) return;
+    didExchange.current = true;
 
     const completeAuth = async () => {
       try {
+        const supabase = getSupabaseBrowserClient();
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
-        const nextPath = saveAuthRedirect(url.searchParams.get("next"));
+        const redirectPath = saveAuthRedirect(getAuthRedirectFromUrl());
+        setNextPath(redirectPath);
 
         if (!code) throw new Error("No auth code found in URL.");
 
-        const { error: exchangeError } =
-          await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) throw exchangeError;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) throw error;
 
-        try {
-          const profile = await userApi.getInfo();
-          if (profile) {
-            router.replace(consumeAuthRedirect(nextPath));
-            return;
-          }
-        } catch (apiError) {
-          // If profile fetch fails, we assume user needs to register
-          console.error("Profile fetch failed:", apiError);
-        }
-
-        router.replace(withAuthRedirect("/register", nextPath));
+        await retryAuth();
+        setHasCompletedExchange(true);
       } catch (cause) {
-        setError(
+        setExchangeError(
           cause instanceof Error
             ? cause.message
             : "Unable to complete sign-in.",
@@ -60,30 +49,45 @@ export default function AuthCallbackPage() {
     };
 
     void completeAuth();
-  }, [router]);
+  }, [retryAuth]);
+
+  useEffect(() => {
+    if (!hasCompletedExchange) return;
+
+    const destination = getAuthDestination(authStatus, nextPath);
+    if (destination) router.replace(destination);
+  }, [authStatus, hasCompletedExchange, nextPath, router]);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await logout();
+      router.replace("/login");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  if (exchangeError || authStatus === "error" || authStatus === "access-denied") {
+    return (
+      <FullScreenAuthLoader
+        error={
+          exchangeError ||
+          (authStatus === "access-denied"
+            ? "You are signed in, but this account is not allowed to access the app."
+            : authError || "Unable to verify your session.")
+        }
+        onRetry={exchangeError ? undefined : retryAuth}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
+    );
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-6 text-center">
-      <div className="max-w-sm space-y-3">
-        <h1 className="text-xl font-bold text-[var(--color-text)]">
-          Signing you in...
-        </h1>
-        {error ? (
-          <>
-            <p className="text-sm text-red-500">{error}</p>
-            <button
-              onClick={() => router.replace("/login")}
-              className="text-sm text-primary underline"
-            >
-              Back to login
-            </button>
-          </>
-        ) : (
-          <p className="text-xs text-[var(--color-muted)]">
-            Please wait a moment...
-          </p>
-        )}
-      </div>
-    </div>
+    <FullScreenAuthLoader
+      title="Signing you in"
+      message="Please wait a moment..."
+    />
   );
 }

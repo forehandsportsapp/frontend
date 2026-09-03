@@ -1,52 +1,60 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import FullScreenAuthLoader from "@/components/FullScreenAuthLoader";
+import { getAuthDestination } from "@/lib/authRedirect";
 
-/**
- * Wraps protected route groups.
- * Redirects unauthenticated users to /login, and authenticated users without a profile to /register.
- */
 export default function ProtectedRoute({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isAuthenticated, isLoading, userProfile } = useApp();
+  const pathname = usePathname();
+  const { authStatus, authError, retryAuth, logout } = useApp();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (authStatus === "signed-out" || authStatus === "profile-required") {
+      const requestedPath =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : pathname || "/";
+      const destination = getAuthDestination(authStatus, requestedPath);
+      if (destination) router.replace(destination);
+    }
+  }, [authStatus, pathname, router]);
 
-    // Not authenticated -> login
-    if (!isAuthenticated) {
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await logout();
       router.replace("/login");
-      return;
+    } finally {
+      setIsSigningOut(false);
     }
+  };
 
-    // Authenticated but no backend profile -> register
-    if (!userProfile) {
-      router.replace("/register");
-    }
-  }, [isAuthenticated, isLoading, userProfile, router]);
+  if (authStatus === "ready") {
+    return <>{children}</>;
+  }
 
-  if (isLoading) {
+  if (authStatus === "error" || authStatus === "access-denied") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <div className="text-center space-y-2">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-[var(--color-muted)]">
-            Loading session...
-          </p>
-        </div>
-      </div>
+      <FullScreenAuthLoader
+        error={
+          authStatus === "access-denied"
+            ? "You are signed in, but this account is not allowed to access this area."
+            : authError || "Unable to verify your session."
+        }
+        onRetry={retryAuth}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
     );
   }
 
-  if (!isAuthenticated || !userProfile) {
-    return null;
-  }
-
-  return <>{children}</>;
+  return <FullScreenAuthLoader />;
 }

@@ -71,7 +71,7 @@ export default function TournamentCheckoutScreen() {
   useEffect(() => {
     if (isAuthLoading) return;
 
-    const nextPath = saveAuthRedirect("/home");
+    const nextPath = saveAuthRedirect("/user/home");
     if (!session?.user) {
       router.replace(withAuthRedirect("/login", nextPath));
       return;
@@ -124,13 +124,13 @@ export default function TournamentCheckoutScreen() {
   const handleConfirmRegistration = async () => {
     const userId = session?.user?.id;
     if (!userId) {
-      const nextPath = saveAuthRedirect("/home");
+      const nextPath = saveAuthRedirect("/user/home");
       router.replace(withAuthRedirect("/login", nextPath));
       return;
     }
 
     if (!userProfile) {
-      const nextPath = saveAuthRedirect("/home");
+      const nextPath = saveAuthRedirect("/user/home");
       router.replace(withAuthRedirect("/register", nextPath));
       return;
     }

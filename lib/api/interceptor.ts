@@ -9,6 +9,7 @@ type ApiResponse = {
 type ParsedRespone = {
   data?: any | null | undefined;
   error?: any | undefined | unknown;
+  status?: number;
 };
 
 const TOKEN_REFRESH_BUFFER_MS = 30_000;
@@ -203,7 +204,10 @@ const fetchApiUncached = async (
         (result?.errors ? JSON.stringify(result.errors) : null) ||
         `HTTP ${res.status} ${res.statusText} for ${path}`;
 
-      throw new Error(errorMessage);
+      return {
+        error: errorMessage,
+        status: res.status,
+      };
     }
 
     if (result && typeof result === "object" && "success" in result) {

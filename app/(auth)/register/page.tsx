@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
+import FullScreenAuthLoader from "@/components/FullScreenAuthLoader";
 import {
   registrationSchema,
   type RegistrationFormData,
@@ -154,7 +155,7 @@ const InputField = ({
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, userProfile, session, logout, register } =
+  const { authStatus, authError, retryAuth, session, logout, register } =
     useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -162,7 +163,7 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [nextPath, setNextPath] = useState("/home");
+  const [nextPath, setNextPath] = useState("/user/home");
 
   const [formData, setFormData] = useState<RegistrationFormData>({
     name: "",
@@ -254,16 +255,20 @@ export default function RegisterPage() {
   }, [formData]);
 
   useEffect(() => {
-    if (isLoading) return;
     const redirectPath = getStoredAuthRedirect(nextPath);
-    if (!isAuthenticated) {
+
+    if (authStatus === "signed-out") {
       router.replace(withAuthRedirect("/login", redirectPath));
       return;
     }
-    if (userProfile) {
+
+    if (authStatus === "ready") {
       router.replace(redirectPath);
       return;
     }
+
+    if (authStatus !== "profile-required") return;
+
     setFormData((prev) => ({
       ...prev,
       name:
@@ -272,7 +277,7 @@ export default function RegisterPage() {
         session?.user?.user_metadata?.name ||
         "",
     }));
-  }, [isAuthenticated, isLoading, nextPath, userProfile, router, session]);
+  }, [authStatus, nextPath, router, session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,11 +345,36 @@ export default function RegisterPage() {
     }
   };
 
-  if (isLoading || !isAuthenticated) {
+  if (authStatus === "initializing" || authStatus === "loading-profile") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#ff7a1a] border-t-transparent" />
-      </div>
+      <FullScreenAuthLoader
+        title="Preparing your profile"
+        message="Please wait a moment..."
+      />
+    );
+  }
+
+  if (authStatus === "error" || authStatus === "access-denied") {
+    return (
+      <FullScreenAuthLoader
+        error={
+          authStatus === "access-denied"
+            ? "You are signed in, but this account is not allowed to complete registration."
+            : authError || "Unable to verify your session."
+        }
+        onRetry={retryAuth}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
+    );
+  }
+
+  if (authStatus !== "profile-required") {
+    return (
+      <FullScreenAuthLoader
+        title="Redirecting"
+        message="Please wait a moment..."
+      />
     );
   }
 

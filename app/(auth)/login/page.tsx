@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/components/AppProvider";
+import FullScreenAuthLoader from "@/components/FullScreenAuthLoader";
 import { FloatingIcons } from "@/components/FloatingIcons";
 import {
   getAuthRedirectFromUrl,
@@ -14,26 +15,26 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, login, userProfile } = useApp();
+  const { authStatus, authError, retryAuth, login, logout } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [nextPath, setNextPath] = useState("/home");
+  const [nextPath, setNextPath] = useState("/user/home");
 
   useEffect(() => {
     setNextPath(saveAuthRedirect(getAuthRedirectFromUrl()));
   }, []);
 
-  // Redirect already-authenticated users
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      const redirectPath = getStoredAuthRedirect(nextPath);
-      router.replace(
-        userProfile
-          ? redirectPath
-          : withAuthRedirect("/register", redirectPath),
-      );
+    if (authStatus === "ready") {
+      router.replace(getStoredAuthRedirect(nextPath));
+      return;
     }
-  }, [isAuthenticated, isLoading, nextPath, router, userProfile]);
+
+    if (authStatus === "profile-required") {
+      router.replace(withAuthRedirect("/register", getStoredAuthRedirect(nextPath)));
+    }
+  }, [authStatus, nextPath, router]);
 
   const handleGoogleLogin = async () => {
     if (isSubmitting) return;
@@ -46,6 +47,35 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await logout();
+      router.replace("/login");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  if (authStatus === "initializing" || authStatus === "loading-profile") {
+    return <FullScreenAuthLoader />;
+  }
+
+  if (authStatus === "error" || authStatus === "access-denied") {
+    return (
+      <FullScreenAuthLoader
+        error={
+          authStatus === "access-denied"
+            ? "You are signed in, but this account is not allowed to access this area."
+            : authError || "Unable to verify your session."
+        }
+        onRetry={retryAuth}
+        onSignOut={handleSignOut}
+        isSigningOut={isSigningOut}
+      />
+    );
+  }
 
   return (
     <div className="relative min-h-[100dvh] flex flex-col bg-[var(--color-background)] overflow-x-hidden">
@@ -104,7 +134,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={isSubmitting || isLoading}
+            disabled={isSubmitting}
             className="w-full h-14 flex items-center justify-center gap-3 rounded-full bg-[#ff7a1a] text-[16px] sm:text-[17px] font-bold text-white transition-all hover:bg-[#ff8a33] active:scale-[0.98] disabled:opacity-70 group px-6 shadow-md"
           >
             {/* Transparent Google Icon SVG */}

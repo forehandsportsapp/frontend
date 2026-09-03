@@ -2,37 +2,61 @@ import { toQuery } from "@/lib/utils";
 
 export const AUTH_REDIRECT_STORAGE_KEY = "forehand:auth-redirect";
 
-const DEFAULT_AUTH_REDIRECT = "/home";
+export const DEFAULT_AUTH_REDIRECT = "/user/home";
+
+export type AuthStatus =
+  | "initializing"
+  | "loading-profile"
+  | "signed-out"
+  | "profile-required"
+  | "ready"
+  | "error"
+  | "access-denied";
 
 export function normalizeAuthRedirect(value?: string | null): string {
   if (!value) return DEFAULT_AUTH_REDIRECT;
 
+  let decoded = value;
   try {
-    const decoded = decodeURIComponent(value);
-    if (
-      decoded.startsWith("/") &&
-      !decoded.startsWith("//") &&
-      !decoded.startsWith("/auth/callback") &&
-      !decoded.startsWith("/login") &&
-      !decoded.startsWith("/register")
-    ) {
-      return decoded;
-    }
+    decoded = decodeURIComponent(value);
   } catch {
-    // Fall through to raw value validation below.
+    return DEFAULT_AUTH_REDIRECT;
   }
 
   if (
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.startsWith("/auth/callback") &&
-    !value.startsWith("/login") &&
-    !value.startsWith("/register")
+    decoded.startsWith("/") &&
+    !decoded.startsWith("//") &&
+    !decoded.startsWith("/auth/callback") &&
+    !decoded.startsWith("/login") &&
+    !decoded.startsWith("/register")
   ) {
-    return value;
+    return decoded;
   }
 
   return DEFAULT_AUTH_REDIRECT;
+}
+
+function getRawQueryParam(url: string, name: string): string | null {
+  const queryStart = url.indexOf("?");
+  if (queryStart === -1) return null;
+
+  const hashStart = url.indexOf("#", queryStart);
+  const query =
+    hashStart === -1
+      ? url.slice(queryStart + 1)
+      : url.slice(queryStart + 1, hashStart);
+
+  for (const part of query.split("&")) {
+    const [rawKey, ...rawValueParts] = part.split("=");
+    try {
+      if (decodeURIComponent(rawKey.replace(/\+/g, " ")) === name) {
+        return rawValueParts.join("=");
+      }
+    } catch {
+    }
+  }
+
+  return null;
 }
 
 export function getCurrentAuthRedirect(): string {
@@ -44,7 +68,7 @@ export function getCurrentAuthRedirect(): string {
 
 export function getAuthRedirectFromUrl(): string {
   if (typeof window === "undefined") return DEFAULT_AUTH_REDIRECT;
-  const next = new URL(window.location.href).searchParams.get("next");
+  const next = getRawQueryParam(window.location.href, "next");
   if (!next) {
     return normalizeAuthRedirect(
       sessionStorage.getItem(AUTH_REDIRECT_STORAGE_KEY),
@@ -82,4 +106,22 @@ export function getStoredAuthRedirect(fallback?: string | null): string {
 
 export function withAuthRedirect(path: "/login" | "/register", next: string) {
   return `${path}${toQuery({ next: normalizeAuthRedirect(next) })}`;
+}
+
+export function getAuthDestination(
+  status: AuthStatus,
+  requestedPath?: string | null,
+): string | null {
+  const next = normalizeAuthRedirect(requestedPath);
+
+  switch (status) {
+    case "ready":
+      return next;
+    case "profile-required":
+      return withAuthRedirect("/register", next);
+    case "signed-out":
+      return withAuthRedirect("/login", next);
+    default:
+      return null;
+  }
 }
