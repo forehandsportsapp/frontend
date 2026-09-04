@@ -7,6 +7,7 @@ import { QRCodeSVG } from "qrcode.react";
 import {
   ArrowLeftIcon,
   ShareIcon,
+  EditIcon,
   EllipsisIcon,
   UsersIcon,
   MapPinIcon,
@@ -49,6 +50,44 @@ function formatDate(value?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDateOnly(value?: string | null) {
+  if (!value) return "TBA";
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) {
+    const date = new Date(
+      Number(isoDate[1]),
+      Number(isoDate[2]) - 1,
+      Number(isoDate[3]),
+    );
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const isoDate = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function genderLabel(gender?: string | null) {
@@ -106,11 +145,11 @@ const TopAppBar = ({
           className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text)] border border-[var(--color-border)]"
           aria-label="Tournament settings"
         >
-          <EllipsisIcon size={20} />
+          <EditIcon size={18} />
         </Link>
       ) : (
         <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] shadow-sm flex items-center justify-center text-[var(--color-text-secondary)] border border-[var(--color-border)]">
-          <EllipsisIcon size={20} />
+          <EditIcon size={18} />
         </div>
       )}
     </div>
@@ -616,13 +655,57 @@ const ExtendDueDateModal = ({
   open,
   onClose,
   onSave,
+  tournamentId,
+  eventId,
+  eventName,
+  currentDueDate,
+  eventStartDate,
 }: {
   open: boolean;
   onClose: () => void;
   onSave: (date: string) => Promise<void>;
+  tournamentId: string;
+  eventId?: string | null;
+  eventName?: string;
+  currentDueDate?: string | null;
+  eventStartDate?: string | null;
 }) => {
   const [selected, setSelected] = React.useState("");
   const [isSaving, setIsSaving] = React.useState(false);
+  const eventStartDateValue = React.useMemo(
+    () => toDateInputValue(eventStartDate),
+    [eventStartDate],
+  );
+  const selectedAfterStart =
+    Boolean(selected && eventStartDateValue) && selected > eventStartDateValue;
+
+  React.useEffect(() => {
+    if (!open) {
+      setSelected("");
+      return;
+    }
+
+    if (currentDueDate) {
+      setSelected(toDateInputValue(currentDueDate));
+    }
+  }, [currentDueDate, open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    console.info("[DueDateDebug] modal-open", {
+      tournamentId,
+      eventId: eventId ?? null,
+      eventName: eventName ?? null,
+      currentDueDateRaw: currentDueDate ?? null,
+      currentDueDateInput: toDateInputValue(currentDueDate),
+      currentDueDateDisplay: formatDateOnly(currentDueDate),
+      eventStartDateRaw: eventStartDate ?? null,
+      eventStartDateInput: toDateInputValue(eventStartDate),
+      eventStartDateDisplay: formatDateOnly(eventStartDate),
+    });
+  }, [currentDueDate, eventId, eventName, eventStartDate, open, tournamentId]);
+
   if (!open) return null;
   return (
     <>
@@ -645,6 +728,30 @@ const ExtendDueDateModal = ({
         <p className="text-sm text-[var(--color-muted)] mb-4">
           Select a new registration due date for this event.
         </p>
+        <div className="mb-4 rounded-xl border border-orange-500/25 bg-orange-500/10 p-3 text-sm">
+          {eventName ? (
+            <p className="mb-2 font-semibold text-[var(--color-text)]">
+              {eventName}
+            </p>
+          ) : null}
+          <div className="space-y-1 text-[var(--color-text-secondary)]">
+            <p>
+              <span className="font-semibold text-[var(--color-text)]">
+                Current registration last date:
+              </span>{" "}
+              {formatDateOnly(currentDueDate)}
+            </p>
+            <p>
+              <span className="font-semibold text-[var(--color-text)]">
+                Event start date:
+              </span>{" "}
+              {formatDateOnly(eventStartDate)}
+            </p>
+            <p className="pt-1 text-xs font-semibold text-orange-500">
+              Event due date cannot be after event start date.
+            </p>
+          </div>
+        </div>
         <label className="block mb-5">
           <span className="text-xs font-semibold text-[var(--color-muted)] uppercase tracking-wider block mb-2">
             New Due Date
@@ -659,28 +766,43 @@ const ExtendDueDateModal = ({
               value={selected}
               onChange={(e) => setSelected(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
+              max={eventStartDateValue || undefined}
               className="w-full pl-9 pr-4 py-3 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] text-sm outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
             />
           </div>
+          {selectedAfterStart ? (
+            <p className="mt-2 text-xs font-semibold text-red-500">
+              Choose a date on or before {formatDateOnly(eventStartDate)}.
+            </p>
+          ) : null}
         </label>
         <button
           onClick={async () => {
-            if (selected) {
+            if (selected && !selectedAfterStart) {
               try {
                 setIsSaving(true);
                 await onSave(selected);
                 setSelected("");
                 onClose();
+              } catch (error) {
+                console.error("[DueDateDebug] modal-save-failed", {
+                  tournamentId,
+                  eventId: eventId ?? null,
+                  selectedDueDateRaw: selected,
+                  eventStartDateRaw: eventStartDate ?? null,
+                  error,
+                });
               } finally {
                 setIsSaving(false);
               }
             }
           }}
-          disabled={!selected || isSaving}
+          disabled={!selected || selectedAfterStart || isSaving}
           className="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
           style={{
-            background: selected ? "var(--gradient-orange)" : undefined,
-            backgroundColor: !selected ? "#ccc" : undefined,
+            background:
+              selected && !selectedAfterStart ? "var(--gradient-orange)" : undefined,
+            backgroundColor: !selected || selectedAfterStart ? "#ccc" : undefined,
           }}
         >
           {isSaving ? "Saving..." : "Confirm New Date"}
@@ -701,36 +823,137 @@ function getErrorReason(error: unknown) {
   return "";
 }
 
+function getDueDateDebugSnapshot(event?: EventData | null) {
+  if (!event) return null;
+
+  return {
+    id: event.id ?? null,
+    name: event.name ?? null,
+    tournamentId: event.tournamentId ?? null,
+    state: event.eventState ?? null,
+    dueDateRaw: event.dueDate ?? null,
+    dueDateInput: toDateInputValue(event.dueDate),
+    dueDateDisplay: formatDateOnly(event.dueDate),
+    startDateRaw: event.startDate ?? null,
+    startDateInput: toDateInputValue(event.startDate),
+    startDateDisplay: formatDateOnly(event.startDate),
+  };
+}
+
 const EventsTab = ({
   tournamentId,
   events,
   onRefresh,
   routeBase,
+  canManage,
 }: {
   tournamentId: string;
   events: EventData[];
   onRefresh: () => void;
   routeBase: string;
+  canManage: boolean;
 }) => {
   const [activeFilter, setActiveFilter] = useState("All");
   const filters = ["All", "Upcoming", "Past", "Ongoing"];
   const [extendModalEventId, setExtendModalEventId] = useState<string | null>(
     null,
   );
+  const [freshExtendModalEvent, setFreshExtendModalEvent] =
+    useState<EventData | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [openMenuEventId, setOpenMenuEventId] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+
+  const handleCloseExtendModal = () => {
+    setExtendModalEventId(null);
+    setFreshExtendModalEvent(null);
+  };
+
+  const handleOpenExtendModal = async (event: EventData, eventId: string) => {
+    console.info("[DueDateDebug] extend-click", {
+      tournamentId,
+      clickedEventId: eventId,
+      clickedEvent: getDueDateDebugSnapshot(event),
+      eventIndex: events.findIndex((item) => item === event),
+      eventCount: events.length,
+    });
+
+    setFreshExtendModalEvent(null);
+    setExtendModalEventId(eventId);
+
+    try {
+      const freshEvent = await eventApi.getEventById(eventId);
+      console.info("[DueDateDebug] modal-fresh-event-loaded", {
+        tournamentId,
+        eventId,
+        cardEvent: getDueDateDebugSnapshot(event),
+        freshEvent: getDueDateDebugSnapshot(freshEvent),
+        startDateMismatch:
+          toDateInputValue(event.startDate) !==
+          toDateInputValue(freshEvent.startDate),
+        dueDateMismatch:
+          toDateInputValue(event.dueDate) !==
+          toDateInputValue(freshEvent.dueDate),
+      });
+      setFreshExtendModalEvent(freshEvent);
+    } catch (error) {
+      console.warn("[DueDateDebug] modal-fresh-event-load-failed", {
+        tournamentId,
+        eventId,
+        cardEvent: getDueDateDebugSnapshot(event),
+        message: getErrorReason(error) || String(error),
+      });
+    }
+  };
 
   const handleExtendDueDate = async (date: string) => {
     if (!extendModalEventId) return;
+    const event =
+      freshExtendModalEvent?.id === extendModalEventId
+        ? freshExtendModalEvent
+        : events.find((item) => item.id === extendModalEventId);
     try {
       setIsUpdating(extendModalEventId);
+      console.info("[DueDateDebug] submit-start", {
+        tournamentId,
+        selectedEventId: extendModalEventId,
+        selectedDueDateRaw: date,
+        selectedDueDateInput: toDateInputValue(date),
+        selectedDueDateDisplay: formatDateOnly(date),
+        uiEvent: getDueDateDebugSnapshot(event),
+        uiEvents: events.map(getDueDateDebugSnapshot),
+      });
+
+      try {
+        const freshEvent = await eventApi.getEventById(extendModalEventId);
+        console.info("[DueDateDebug] fresh-event-before-update", {
+          tournamentId,
+          selectedEventId: extendModalEventId,
+          freshEvent: getDueDateDebugSnapshot(freshEvent),
+          uiEvent: getDueDateDebugSnapshot(event),
+        });
+      } catch (freshError) {
+        console.warn("[DueDateDebug] fresh-event-before-update-failed", {
+          tournamentId,
+          selectedEventId: extendModalEventId,
+          message: getErrorReason(freshError) || String(freshError),
+        });
+      }
+
       await eventApi.updateEventDueDate(extendModalEventId, date);
       onRefresh();
     } catch (error) {
-      console.error("Failed to extend due date", error);
+      console.error("[DueDateDebug] submit-failed", {
+        tournamentId,
+        selectedEventId: extendModalEventId,
+        selectedDueDateRaw: date,
+        uiEvent: getDueDateDebugSnapshot(event),
+        error,
+      });
       const reason = getErrorReason(error);
       alert(
         reason
-          ? `Failed to update due date.\n\nReason: ${reason}`
+          ? `Failed to update due date.\n\nReason: ${reason}\n\nCurrent registration last date: ${formatDateOnly(event?.dueDate)}\nSelected new registration last date: ${formatDateOnly(date)}\nEvent start date: ${formatDateOnly(event?.startDate)}\n\nNote: Event due date cannot be after event start date.`
           : "Failed to update due date. Please try again.",
       );
       throw error;
@@ -752,12 +975,53 @@ const EventsTab = ({
     }
   };
 
+  const handleDeleteEvent = async (event: EventData, fallbackName: string) => {
+    const eventId = event.id;
+    if (!eventId) return;
+
+    const eventName = event.name || fallbackName;
+    const confirmed = window.confirm(
+      `Delete "${eventName}"?\n\nThis permanently removes the event, participants, invites, matches, scores, and logs linked to it.`,
+    );
+
+    if (!confirmed) {
+      setOpenMenuEventId(null);
+      return;
+    }
+
+    try {
+      setDeletingEventId(eventId);
+      setOpenMenuEventId(null);
+      await eventApi.deleteEvent(eventId);
+      onRefresh();
+    } catch (error) {
+      console.error("Failed to delete event", error);
+      const reason = getErrorReason(error);
+      alert(
+        reason
+          ? `Failed to delete event.\n\nReason: ${reason}`
+          : "Failed to delete event. Please try again.",
+      );
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+  const extendModalEvent =
+    freshExtendModalEvent?.id === extendModalEventId
+      ? freshExtendModalEvent
+      : events.find((event) => event.id === extendModalEventId);
+
   return (
     <div className="space-y-4">
       <ExtendDueDateModal
         open={extendModalEventId !== null}
-        onClose={() => setExtendModalEventId(null)}
+        onClose={handleCloseExtendModal}
         onSave={handleExtendDueDate}
+        tournamentId={tournamentId}
+        eventId={extendModalEventId}
+        eventName={extendModalEvent?.name}
+        currentDueDate={extendModalEvent?.dueDate}
+        eventStartDate={extendModalEvent?.startDate}
       />
       <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-1 no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
         {filters.map((filter) => (
@@ -777,10 +1041,15 @@ const EventsTab = ({
       ) : (
         events.map((event, index) => {
           const eventId = event.id || String(index + 1);
+          const eventName = event.name || `Event ${index + 1}`;
           const state = event.eventState || "created";
           const isCancelled = state === "cancelled";
           const steps = getWorkflowSteps(event, tournamentId, routeBase);
           const quickAction = getQuickAction(state);
+          const isMenuOpen = openMenuEventId === eventId;
+          const isDeleting = deletingEventId === eventId;
+          const canDeleteEvent =
+            canManage && Boolean(event.id) && tournamentId !== "dummy-system-1";
 
           const badgeClass = isCancelled
             ? "bg-red-100 text-red-700"
@@ -799,7 +1068,7 @@ const EventsTab = ({
               <div className="flex justify-between items-start mb-1">
                 <div className="flex-1 min-w-0 pr-2">
                   <h3 className="font-semibold text-[var(--color-text)] leading-tight">
-                    {event.name || `Event ${index + 1}`}
+                    {eventName}
                   </h3>
                   <p className="text-sm text-[var(--color-muted)] mt-0.5">
                     {[
@@ -811,16 +1080,46 @@ const EventsTab = ({
                       .join(" | ")}
                   </p>
                 </div>
-                <button className="text-[var(--color-muted)] shrink-0">
-                  <EllipsisIcon size={20} />
-                </button>
+                {canDeleteEvent ? (
+                  <div className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenMenuEventId(isMenuOpen ? null : eventId)
+                      }
+                      className="grid h-8 w-8 place-content-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text)]"
+                      aria-label={`Open options for ${eventName}`}
+                      aria-expanded={isMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      <EllipsisIcon size={20} />
+                    </button>
+                    {isMenuOpen && (
+                      <div
+                        className="absolute right-0 top-9 z-20 w-40 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-1 shadow-xl"
+                        role="menu"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteEvent(event, eventName)}
+                          disabled={isDeleting}
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-red-500 transition-colors hover:bg-red-500/10 disabled:opacity-60"
+                          role="menuitem"
+                        >
+                          <TrashIcon size={14} />
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               {/* Actions row */}
               <div className="flex justify-between items-center mt-3 mb-4">
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setExtendModalEventId(eventId)}
+                    onClick={() => void handleOpenExtendModal(event, eventId)}
                     className="border border-[var(--color-border)] px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] transition-colors flex items-center gap-1.5"
                   >
                     <CalendarIcon size={14} />
@@ -1785,6 +2084,7 @@ export default function TournamentEventDetailsPage() {
                 events={tournament?.events ?? []}
                 onRefresh={() => void loadTournamentData()}
                 routeBase={routeBase}
+                canManage={canManage}
               />
             )}
             {activeTab === "Summary" && (

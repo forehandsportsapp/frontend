@@ -87,10 +87,20 @@ export default function DatePicker({
   useEffect(() => {
     if (!isOpen || isMobile) return;
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      const container = containerRef.current;
+      if (!container) return;
+
+      try {
+        const path = event.composedPath();
+        if (path.length > 0) {
+          if (!path.includes(container)) setIsOpen(false);
+          return;
+        }
+
+        if (!(event.target instanceof Node) || !container.contains(event.target)) {
+          setIsOpen(false);
+        }
+      } catch {
         setIsOpen(false);
       }
     };
@@ -226,6 +236,7 @@ export default function DatePicker({
   };
 
   return (
+    <>
     <div className="relative w-full" ref={containerRef}>
       {customTrigger ? (
         <div onClick={triggerOpen}>{customTrigger}</div>
@@ -482,5 +493,7 @@ export default function DatePicker({
         </>
       )}
     </div>
+    {error ? <p className="mt-1 ml-1 text-xs text-red-500">{error}</p> : null}
+    </>
   );
 }

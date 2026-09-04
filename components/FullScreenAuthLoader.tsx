@@ -12,7 +12,7 @@ type FullScreenAuthLoaderProps = {
 };
 
 export default function FullScreenAuthLoader({
-  title = "Checking your session",
+  title = "Warming up the engines...",
   message = "Please wait a moment...",
   error,
   onRetry,

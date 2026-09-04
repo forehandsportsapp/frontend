@@ -289,19 +289,39 @@ export default function TournamentWizard({
   };
 
   const validateStep = (currentStep: number) => {
-    setErrors({});
-    let stepSchema;
+    const newErrors: Record<string, string> = {};
 
     if (currentStep === 1) {
-      stepSchema = tournamentBaseSchema.pick({
+      const stepSchema = tournamentBaseSchema.pick({
         name: true,
         description: true,
         startDate: true,
         endDate: true,
         logo: true,
       });
+      const result = stepSchema.safeParse(formData);
+      if (!result.success) Object.assign(newErrors, collectErrors(result.error.issues));
+
+      if (formData.startDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const start = new Date(formData.startDate);
+        start.setHours(0, 0, 0, 0);
+        if (start < today && !newErrors.startDate) {
+          newErrors.startDate = "Tournament start date cannot be in the past";
+        }
+      }
+
+      if (
+        formData.startDate &&
+        formData.endDate &&
+        new Date(formData.startDate) > new Date(formData.endDate) &&
+        !newErrors.endDate
+      ) {
+        newErrors.endDate = "Tournament end date must be after start date";
+      }
     } else if (currentStep === 2) {
-      stepSchema = tournamentBaseSchema.pick({
+      const stepSchema = tournamentBaseSchema.pick({
         venueName: true,
         city: true,
         state: true,
@@ -313,57 +333,22 @@ export default function TournamentWizard({
         organizerEmail: true,
         upiId: true,
       });
+      const result = stepSchema.safeParse(formData);
+      if (!result.success) Object.assign(newErrors, collectErrors(result.error.issues));
     } else if (currentStep === 3) {
-      stepSchema = tournamentBaseSchema.pick({
-        events: true,
-      });
-    }
-
-    if (stepSchema) {
-      // Use the full schema for refinements if it's the last step or we need cross-field validation
-      // But for steps, we can use partials.
-      // Actually, refinements like startDate < endDate need both fields.
       const result = tournamentFormSchema.safeParse(formData);
-
       if (!result.success) {
-        const newErrors: Record<string, string> = {};
-        result.error.issues.forEach((issue) => {
-          // Only show errors for the current step's fields
-          const isStepField =
-            (currentStep === 1 &&
-              ["name", "description", "startDate", "endDate"].includes(
-                issue.path[0] as string,
-              )) ||
-            (currentStep === 2 &&
-              [
-                "venueName",
-                "city",
-                "state",
-                "addressLine",
-                "zipCode",
-                "numCourts",
-                "organizerName",
-                "organizerPhone",
-                "organizerEmail",
-                "upiId",
-              ].includes(issue.path[0] as string)) ||
-            (currentStep === 3 && issue.path[0] === "events");
-
-          if (isStepField) {
-            const path = issue.path.join(".");
-            if (path && !newErrors[path]) {
-              newErrors[path] = issue.message;
-            }
-          }
-        });
-
-        if (Object.keys(newErrors).length > 0) {
-          setErrors(newErrors);
-          return false;
-        }
+        Object.assign(
+          newErrors,
+          collectErrors(
+            result.error.issues.filter((issue) => issue.path[0] === "events"),
+          ),
+        );
       }
     }
-    return true;
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {

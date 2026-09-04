@@ -274,15 +274,37 @@ export const eventApi = {
   },
 
   updateEventDueDate: async (eventId: string, dueDate: string) => {
-    const { error } = await fetchApi(
-      getApiUrl({ path: "/event/update-due-date", param: eventId }),
+    const url = getApiUrl({ path: "/event/update-due-date", param: eventId });
+    console.info("[DueDateDebug] api-update-due-date-request", {
+      eventId,
+      dueDate,
+      url,
+    });
+
+    const { data, error, status } = await fetchApi(
+      url,
       {
         method: "POST",
         contentType: "json",
         body: { dueDate },
       },
     );
-    if (error) throw error;
+    if (error) {
+      console.error("[DueDateDebug] api-update-due-date-failed", {
+        eventId,
+        dueDate,
+        url,
+        status,
+        error,
+      });
+      throw error;
+    }
+
+    console.info("[DueDateDebug] api-update-due-date-success", {
+      eventId,
+      dueDate,
+      response: data ?? null,
+    });
   },
 
   /**
