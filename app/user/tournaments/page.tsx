@@ -268,12 +268,14 @@ export default function UserTournamentsPage() {
         t.events?.some((event) =>
           isEventRegistrationOpen(event.eventState, event.dueDate),
         ) || false;
+      const isWaitingList = t.userRegistrationStatus === "waiting_list";
 
       const subtitle = sports.slice(0, 3).join(" | ") || "Multiple Sports";
 
       let cta: "Register" | "View" | "Chevron" = "Register";
       if (activeTab === "joined") cta = "View";
       else if (activeTab === "history") cta = "Chevron";
+      else if (isWaitingList) cta = "View";
       else if (!isRegistrationOpen) cta = "View";
 
       return {
@@ -287,7 +289,9 @@ export default function UserTournamentsPage() {
         cta,
         statusLabel:
           activeTab === "browse"
-            ? isRegistrationOpen
+            ? isWaitingList
+              ? "In Waiting List"
+              : isRegistrationOpen
               ? "Open"
               : "Registration Closed"
             : activeTab === "joined"

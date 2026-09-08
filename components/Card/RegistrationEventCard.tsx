@@ -25,6 +25,7 @@ type EventStatus =
   | "joined"
   | "live"
   | "joined-live"
+  | "joined-waiting"
   | "waiting"
   | "ended"
   | "open"
@@ -37,6 +38,7 @@ const statusStyles: Record<EventStatus, string> = {
   waiting: "bg-[#FF5058] text-white",
   ended: "bg-[#ff7a1a] text-white",
   "joined-live": "",
+  "joined-waiting": "",
   open: "bg-[#22C86A] text-white",
   closed: "bg-[#FF5058] text-white",
   scheduled: "bg-[#269FF5] text-white",
@@ -48,12 +50,22 @@ const statusColors: Record<EventStatus, string> = {
   waiting: "#FF5058",
   ended: "#ff7a1a",
   "joined-live": "#22C86A",
+  "joined-waiting": "#FF5058",
   open: "#22C86A",
   closed: "#FF5058",
   scheduled: "#269FF5",
 };
 
 function EventStatusTag({ status }: { status: EventStatus }) {
+  if (status === "joined-waiting") {
+    return (
+      <div className="absolute right-0 top-0 flex overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
+        <span className="bg-[#22C86A] px-4 py-1.5">Joined</span>
+        <span className="bg-[#FF5058] px-4 py-1.5">In Waiting List</span>
+      </div>
+    );
+  }
+
   if (status === "joined-live") {
     return (
       <div className="absolute right-0 top-0 flex overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
@@ -63,7 +75,7 @@ function EventStatusTag({ status }: { status: EventStatus }) {
     );
   }
 
-  const labels: Record<Exclude<EventStatus, "joined-live">, string> = {
+  const labels: Record<Exclude<EventStatus, "joined-live" | "joined-waiting">, string> = {
     joined: "Joined",
     live: "Live",
     waiting: "In Waiting List",
@@ -503,12 +515,16 @@ export default function RegistrationEventCard({
 
   const isEnded = event.eventState === "completed" || event.eventState === "round_over";
   const isLive = event.eventState === "in_progress";
-  const isJoined = state === "REGISTERED"; 
-  const isWaitlisted = (team?.teamStatus || team?.status)?.toLowerCase() === "waitlist" || (team?.teamStatus || team?.status)?.toLowerCase() === "waiting";
+  const teamStatus = (team?.teamStatus || team?.status)?.toLowerCase();
+  const isJoined = state === "REGISTERED";
+  const isPendingConfirmation =
+    teamStatus === "registered" ||
+    teamStatus === "waitlist" ||
+    teamStatus === "waiting";
   
   let currentStatus: EventStatus;
-  if (isWaitlisted) {
-    currentStatus = "waiting";
+  if (isJoined && isPendingConfirmation) {
+    currentStatus = "joined-waiting";
   } else if (isJoined && isLive) {
     currentStatus = "joined-live";
   } else if (isJoined) {
@@ -613,7 +629,7 @@ export default function RegistrationEventCard({
               }}
               className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold text-white shadow-lg transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70"
             >
-              {isBusy ? "Registering..." : "Register"}
+              {isBusy ? "Adding..." : "Add"}
             </button>
           )}
 
@@ -659,10 +675,11 @@ export default function RegistrationEventCard({
               }}
               className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full border-2 px-4 text-[16px] font-bold text-white cursor-default"
             >
-              {(team?.teamStatus || team?.status)?.toLowerCase() ===
-              "participating"
+              {teamStatus === "participating"
                 ? "Participating"
-                : "Registered"}
+                : isPendingConfirmation
+                  ? "In Waiting List"
+                  : "Registered"}
             </button>
           )}
 
