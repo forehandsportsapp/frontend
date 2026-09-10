@@ -12,7 +12,7 @@ import { EventData, TeamData, ProfileData } from "@/lib/models";
 import { teamApi } from "@/lib/api/teamApi";
 import { inviteApi } from "@/lib/api/inviteApi";
 import { userApi } from "@/lib/api/userApi";
-import { getEventStatusMeta, isEventRegistrationOpen } from "@/lib/statusLabels";
+import { isEventRegistrationOpen } from "@/lib/statusLabels";
 import { useApp } from "@/components/AppProvider";
 import {
   getCurrentAuthRedirect,
@@ -146,6 +146,22 @@ function getHydratedTeamForUser(
   return { hasHydratedTeams: true, team };
 }
 
+function isEventViewAvailable(event: EventData) {
+  const state = (event.eventState || "").toLowerCase();
+  const postRegistrationStates = [
+    "registration_closed",
+    "participants_finalized",
+    "scheduled",
+    "in_progress",
+    "round_over",
+    "completed",
+    "cancelled",
+  ];
+
+  if (postRegistrationStates.includes(state)) return true;
+  return !isEventRegistrationOpen(event.eventState, event.dueDate);
+}
+
 export default function RegistrationEventCard({
   event,
   onAddedChange,
@@ -162,6 +178,8 @@ export default function RegistrationEventCard({
   const [partnerProfile, setPartnerProfile] =
     useState<Partial<ProfileData> | null>(null);
   const [error, setError] = useState("");
+  const [viewNotice, setViewNotice] = useState("");
+  const viewNoticeTimerRef = useRef<number | null>(null);
 
   const isRegistrationClosed = useMemo(() => {
     return !isEventRegistrationOpen(event.eventState, event.dueDate);
@@ -173,7 +191,10 @@ export default function RegistrationEventCard({
     event.teamTypeCode?.toLowerCase().includes("double") ||
     event.teamType?.label?.toLowerCase().includes("double") ||
     event.name?.toLowerCase().includes("double");
-  const eventStatusMeta = getEventStatusMeta(event.eventState, event.dueDate);
+  const isViewAvailable = useMemo(() => isEventViewAvailable(event), [
+    event.eventState,
+    event.dueDate,
+  ]);
   const useChampionPage =
     event.eventState === "completed" ||
     event.eventState === "round_over" ||
@@ -321,6 +342,14 @@ export default function RegistrationEventCard({
   useEffect(() => {
     loadRegistrationState();
   }, [loadRegistrationState]);
+
+  useEffect(() => {
+    return () => {
+      if (viewNoticeTimerRef.current) {
+        window.clearTimeout(viewNoticeTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleAdd = async () => {
     if (!event.id) return;
@@ -497,6 +526,17 @@ export default function RegistrationEventCard({
     }
   };
 
+  const handleInactiveViewClick = () => {
+    setViewNotice("View will be active after registrations are closed.");
+    if (viewNoticeTimerRef.current) {
+      window.clearTimeout(viewNoticeTimerRef.current);
+    }
+    viewNoticeTimerRef.current = window.setTimeout(() => {
+      setViewNotice("");
+      viewNoticeTimerRef.current = null;
+    }, 3000);
+  };
+
   const formatDate = (value?: string | null) => {
     if (!value) return "TBA";
     const date = new Date(value);
@@ -596,16 +636,31 @@ export default function RegistrationEventCard({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <a
-            href={viewHref}
-            style={{ 
-              borderColor: statusColors[currentStatus],
-              color: statusColors[currentStatus]
-            }}
-            className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold transition-all active:scale-95 dark:bg-white"
-          >
-            View
-          </a>
+          {isViewAvailable ? (
+            <a
+              href={viewHref}
+              style={{
+                borderColor: statusColors[currentStatus],
+                color: statusColors[currentStatus],
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold transition-all active:scale-95 dark:bg-white"
+            >
+              View
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={handleInactiveViewClick}
+              style={{
+                borderColor: statusColors[currentStatus],
+                color: statusColors[currentStatus],
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border-2 bg-[var(--color-surface-elevated)] px-4 text-[16px] font-bold opacity-60 transition-all active:scale-95 dark:bg-white"
+              aria-describedby={viewNotice ? `${event.id}-view-notice` : undefined}
+            >
+              View
+            </button>
+          )}
 
           {(state === "ADDING_PARTNER" ||
             state === "INVITED" ||
@@ -708,6 +763,15 @@ export default function RegistrationEventCard({
         </div>
       </div>
 
+      {viewNotice && (
+        <p
+          id={`${event.id}-view-notice`}
+          className="mt-3 text-[12px] font-medium text-[var(--color-text-secondary)]"
+          role="status"
+        >
+          {viewNotice}
+        </p>
+      )}
 
       {isDoubles &&
         (state === "ADDING_PARTNER" ||
