@@ -9,12 +9,12 @@ import {
   ChevronRightIcon,
   TrashIcon,
   PhoneIcon,
-  MailIcon,
 } from "@/components/Icons";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { useApp } from "@/components/AppProvider";
 import { TournamentData, EventData } from "@/lib/models";
+import { toQuery } from "@/lib/utils";
 import { QRCodeSVG } from "qrcode.react";
 import {
   saveAuthRedirect,
@@ -37,6 +37,8 @@ function getTournamentLogoUrl(tournament?: TournamentData | null) {
 export default function TournamentCheckoutScreen() {
   const [completed, setCompleted] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [removingEventId, setRemovingEventId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: isAuthLoading, userProfile, session } = useApp();
@@ -114,6 +116,49 @@ export default function TournamentCheckoutScreen() {
       { total: 0, online: 0, venue: 0 },
     );
   }, [selectedEvents]);
+
+  const replaceSelectedEvents = (eventIds: string[]) => {
+    router.replace(
+      `/tournaments/checkout${toQuery({
+        id: tournamentId,
+        selected: eventIds.join(","),
+      })}`,
+    );
+  };
+
+  const handleRemoveRegistration = async (eventId: string) => {
+    const userId = session?.user?.id;
+    if (!userId) {
+      const nextPath = saveAuthRedirect("/user/home");
+      router.replace(withAuthRedirect("/login", nextPath));
+      return;
+    }
+
+    try {
+      setRemovingEventId(eventId);
+      setRemoveError("");
+
+      const team = await teamApi.getMyTeam(eventId);
+      if (!team?.id) {
+        replaceSelectedEvents(selectedEventIds.filter((id) => id !== eventId));
+        return;
+      }
+
+      await teamApi.removeParticipant(team.id, userId);
+      replaceSelectedEvents(selectedEventIds.filter((id) => id !== eventId));
+    } catch (err) {
+      console.error("Failed to remove registration", err);
+      setRemoveError(
+        typeof err === "string"
+          ? err
+          : err instanceof Error
+          ? err.message
+          : "Unable to remove this registration. Please try again.",
+      );
+    } finally {
+      setRemovingEventId(null);
+    }
+  };
 
   const upiUrl = useMemo(() => {
     if (!tournament?.upiId || totals.online <= 0) return "";
@@ -263,8 +308,17 @@ export default function TournamentCheckoutScreen() {
             Your Registrations
           </h3>
           <div className="mt-4 space-y-4">
+            {selectedEvents.length === 0 && (
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-4">
+                <p className="text-[15px] font-semibold text-[var(--color-text-secondary)]">
+                  No registrations selected.
+                </p>
+              </div>
+            )}
             {selectedEvents.map((ev) => {
               const online = isOnlinePayment(ev);
+              const eventId = ev.id || "";
+              const isRemoving = removingEventId === eventId;
               return (
                 <div
                   key={ev.id}
@@ -277,8 +331,20 @@ export default function TournamentCheckoutScreen() {
                       {ev.paymentMode?.label ||
                         (online ? "PAY ONLINE" : "PAY AT VENUE")}
                     </span>
-                    <button className="text-[var(--color-text-secondary)] hover:text-red-500 transition-colors opacity-60">
-                      <TrashIcon size={16} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (eventId) void handleRemoveRegistration(eventId);
+                      }}
+                      disabled={!eventId || isRemoving}
+                      aria-label={`Remove ${ev.name} registration`}
+                      className="grid h-8 w-8 place-content-center rounded-full text-[var(--color-text-secondary)] opacity-60 transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-wait disabled:opacity-40"
+                    >
+                      {isRemoving ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <TrashIcon size={16} />
+                      )}
                     </button>
                   </div>
                   <div className="flex items-end justify-between">
@@ -291,6 +357,11 @@ export default function TournamentCheckoutScreen() {
                 </div>
               );
             })}
+            {removeError && (
+              <p className="text-[12px] font-medium text-red-500" role="alert">
+                {removeError}
+              </p>
+            )}
           </div>
         </section>
 
@@ -357,11 +428,17 @@ export default function TournamentCheckoutScreen() {
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-background)] p-5 pb-[max(env(safe-area-inset-bottom),20px)]">
         <button
           onClick={handleConfirmRegistration}
-          disabled={isRegistering}
+          disabled={
+            isRegistering ||
+            removingEventId !== null ||
+            selectedEvents.length === 0
+          }
           className="flex h-16 w-full items-center justify-center rounded-full bg-[#ff811f] text-[20px] font-bold text-white shadow-lg active:scale-[0.98] transition-transform disabled:opacity-70 disabled:active:scale-100"
         >
           {isRegistering ? (
             <div className="h-6 w-6 animate-spin rounded-full border-4 border-white border-t-transparent" />
+          ) : selectedEvents.length === 0 ? (
+            "No Registrations Selected"
           ) : (
             <>
               Confirm Registration
