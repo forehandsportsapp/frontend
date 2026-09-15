@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import Tabs, { type TabItem } from "@/components/Tabs";
 import Link from "next/link";
@@ -17,6 +17,10 @@ import {
 import { toQuery } from "@/lib/utils";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { TournamentData } from "@/lib/models";
+import {
+  belongsToOrganization,
+  getOrgTournamentStatus,
+} from "@/lib/tournamentStatus";
 import OrgTournamentCard from "@/components/OrgTournamentCard";
 import PageHeader from "@/components/PageHeader";
 import TournamentFilterDrawer from "@/components/TournamentFilterDrawer";
@@ -28,6 +32,8 @@ const tabs: TabItem[] = [
   { id: "past", label: "Past" },
   { id: "drafts", label: "Drafts" },
 ];
+const tabIds = new Set(tabs.map((tab) => tab.id));
+
 function formatDate(value?: string | null) {
   if (!value) return "Date TBA";
   const date = new Date(value);
@@ -37,22 +43,6 @@ function formatDate(value?: string | null) {
     month: "short",
     year: "numeric",
   });
-}
-
-function getTournamentStatus(
-  tournament: TournamentData,
-): "live" | "upcoming" | "past" | "drafts" {
-  if (tournament.tournamentState === "drafted") return "drafts";
-  if (tournament.tournamentState === "in_progress") return "live";
-  if (tournament.tournamentState === "published") return "upcoming";
-  if (
-    tournament.tournamentState === "completed" ||
-    tournament.tournamentState === "cancelled"
-  )
-    return "past";
-
-  // Fallback for safety, though states should be well-defined
-  return "upcoming";
 }
 
 function getPrimarySport(tournament: TournamentData) {
@@ -87,36 +77,66 @@ export default function OrgTournamentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const orgId = activeOrgId;
+  const loadRequestRef = useRef(0);
 
-  const loadTournaments = async () => {
+  const loadTournaments = async (requestedOrgId = orgId) => {
+    if (!requestedOrgId) {
+      setTournaments([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const requestId = ++loadRequestRef.current;
+
     try {
       setErrorMessage("");
       setIsLoading(true);
 
       const loadedTournaments = await tournamentApi.getOrganizationTournaments(
-        orgId!,
+        requestedOrgId,
       );
 
+      if (requestId !== loadRequestRef.current) return;
+
       const tList = Array.isArray(loadedTournaments)
-        ? [...loadedTournaments]
+        ? loadedTournaments.filter((tournament) =>
+            belongsToOrganization(tournament, requestedOrgId),
+          )
         : [];
 
       setTournaments(tList);
     } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
       console.error("Failed to load organization tournaments", error);
       setErrorMessage(
         error instanceof Error ? error.message : "Unable to load tournaments.",
       );
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    if (orgId) {
-      void loadTournaments();
+    if (!orgId) {
+      loadRequestRef.current += 1;
+      setTournaments([]);
+      setIsLoading(false);
+      return;
     }
+
+    setTournaments([]);
+    setIsLoading(true);
+    void loadTournaments(orgId);
   }, [orgId]);
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get("tab");
+    if (requestedTab && tabIds.has(requestedTab)) {
+      setActiveTab(requestedTab);
+    }
+  }, []);
 
   const handlePublish = async (tournamentId: string) => {
     try {
@@ -153,7 +173,7 @@ export default function OrgTournamentsPage() {
   const visibleTournaments = useMemo(
     () =>
       tournaments.filter((tournament) => {
-        return getTournamentStatus(tournament) === activeTab;
+        return getOrgTournamentStatus(tournament) === activeTab;
       }),
     [activeTab, tournaments],
   );

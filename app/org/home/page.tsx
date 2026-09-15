@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import HomeHeader from "@/components/HomeHeader";
 import LiveMatchViewerPopup from "@/components/LiveMatchViewerPopup";
 import LiveMatchCard from "@/components/Card/LiveMatchCard";
+import OrgTournamentCard from "@/components/OrgTournamentCard";
 import SwipingDots from "@/components/SwipingDots";
 import { useApp } from "@/components/AppProvider";
 import {
@@ -25,6 +26,12 @@ import { tournamentApi } from "@/lib/api/tournamentApi";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
+import {
+  belongsToOrganization,
+  isOrgTournamentLive,
+  isOrgTournamentPast,
+  isOrgTournamentUpcoming,
+} from "@/lib/tournamentStatus";
 import { toQuery } from "@/lib/utils";
 
 const ORG_TOURNAMENT_REFRESH_MS = 300_000;
@@ -265,29 +272,6 @@ function OrgLiveMatchGroup({
   );
 }
 
-function isLiveTournament(t: TournamentData) {
-  if (t.tournamentState === "in_progress") return true;
-  if (!t.startDate) return false;
-  const now = new Date();
-  const start = new Date(t.startDate);
-  const end = t.endDate ? new Date(t.endDate) : null;
-  return start <= now && (!end || end >= now);
-}
-
-function isCompletedTournament(t: TournamentData) {
-  if (t.tournamentState === "completed") return true;
-  if (!t.endDate) return false;
-  return new Date(t.endDate) < new Date();
-}
-
-function isUpcomingTournament(t: TournamentData) {
-  if (isLiveTournament(t) || isCompletedTournament(t)) return false;
-  if (t.tournamentState === "drafted" || t.tournamentState === "published")
-    return true;
-  if (!t.startDate) return false;
-  return new Date(t.startDate) > new Date();
-}
-
 function formatLiveStage(t: TournamentData) {
   if (!t.startDate || !t.endDate) return "Live";
 
@@ -321,6 +305,36 @@ function toLiveCard(t: TournamentData): LiveTournamentCardData {
     participants: `${t.events?.length || 0} events`,
     subtitle: `${primarySport} - ${category} - ${format}`,
   };
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Date TBA";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getPrimarySport(tournament: TournamentData) {
+  return (
+    tournament.events?.[0]?.sportsOption?.label ||
+    tournament.events?.[0]?.sportsOption?.code ||
+    "No events"
+  );
+}
+
+function getEntryFee(tournament: TournamentData) {
+  const paidEvent = tournament.events?.find(
+    (event) => Number(event.amount) > 0,
+  );
+  return paidEvent ? `Rs. ${paidEvent.amount} Entry` : "Free Entry";
+}
+
+function getPastTournamentDate(tournament: TournamentData) {
+  return tournament.endDate || tournament.startDate;
 }
 
 function getLiveMatchEventId(group: any, match: any) {
@@ -503,11 +517,17 @@ export default function OrgHomePage() {
       return;
     }
 
+    setTournaments([]);
+    setIsLoading(true);
+
     const load = async () => {
       try {
         const rows = await tournamentApi.getOrganizationTournaments(orgId);
         if (!active) return;
-        setTournaments(Array.isArray(rows) ? rows : []);
+        const orgRows = Array.isArray(rows)
+          ? rows.filter((row) => belongsToOrganization(row, orgId))
+          : [];
+        setTournaments(orgRows);
       } catch (error) {
         if (!active) return;
         console.error("Failed to load org tournaments", error);
@@ -530,14 +550,27 @@ export default function OrgHomePage() {
   }, [organization?.id]);
 
   const overview = useMemo(() => {
-    const live = tournaments.filter(isLiveTournament).length;
-    const completed = tournaments.filter(isCompletedTournament).length;
-    const upcoming = tournaments.filter(isUpcomingTournament).length;
+    const live = tournaments.filter(isOrgTournamentLive).length;
+    const completed = tournaments.filter(isOrgTournamentPast).length;
+    const upcoming = tournaments.filter(isOrgTournamentUpcoming).length;
     return { live, completed, upcoming };
   }, [tournaments]);
 
   const liveTournaments = useMemo(
-    () => tournaments.filter(isLiveTournament).map(toLiveCard),
+    () => tournaments.filter(isOrgTournamentLive).map(toLiveCard),
+    [tournaments],
+  );
+
+  const pastTournaments = useMemo(
+    () =>
+      tournaments
+        .filter(isOrgTournamentPast)
+        .sort((a, b) => {
+          const aTime = new Date(getPastTournamentDate(a) || 0).getTime();
+          const bTime = new Date(getPastTournamentDate(b) || 0).getTime();
+          return bTime - aTime;
+        })
+        .slice(0, 3),
     [tournaments],
   );
 
@@ -737,6 +770,78 @@ export default function OrgHomePage() {
                 onSelectMatch={setSelectedLiveMatch}
               />
             ))
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xl font-bold tracking-tight">
+              Past Tournaments
+            </h3>
+            <Link
+              href="/org/tournaments?tab=past"
+              className="text-xs font-medium uppercase text-primary"
+            >
+              See All
+            </Link>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3.5 shadow-sm animate-pulse"
+                >
+                  <div className="flex gap-3">
+                    <div className="h-[42px] w-[42px] rounded-full bg-[var(--color-surface-elevated)]" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-3/4 rounded bg-[var(--color-surface-elevated)]" />
+                      <div className="h-3 w-1/2 rounded bg-[var(--color-surface-elevated)]" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : pastTournaments.length === 0 ? (
+            <div className="card flex flex-col items-center justify-center p-8 text-center bg-[var(--color-surface)] border-dashed border-2">
+              <div className="w-12 h-12 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center mb-3">
+                <TrophyIcon
+                  size={24}
+                  className="text-[var(--color-muted)] opacity-50"
+                />
+              </div>
+              <p className="text-sm font-semibold text-[var(--color-text-secondary)]">
+                No past tournaments
+              </p>
+              <p className="text-xs text-[var(--color-muted)] mt-1">
+                Completed tournaments will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pastTournaments.map((tournament) => (
+                <OrgTournamentCard
+                  key={tournament.id}
+                  id={tournament.id || ""}
+                  name={tournament.name || "Untitled Tournament"}
+                  subtitle={getPrimarySport(tournament)}
+                  badgeLabel="Completed"
+                  location={
+                    [tournament.venueCity, tournament.venueState]
+                      .filter(Boolean)
+                      .join(", ") ||
+                    tournament.venueName ||
+                    "Venue TBA"
+                  }
+                  eventsCount={tournament.events?.length ?? 0}
+                  date={formatDate(getPastTournamentDate(tournament))}
+                  entryFee={getEntryFee(tournament)}
+                  logoUrl={tournament.logoUrl || undefined}
+                  href={`/org/tournaments/detail${toQuery({ t: tournament.id })}`}
+                />
+              ))}
+            </div>
           )}
         </section>
       </div>
