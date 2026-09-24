@@ -7,6 +7,7 @@ import { useApp } from "@/components/AppProvider";
 import {
   EditIcon,
   UserIcon,
+  MailIcon,
   PhoneIcon,
   CalendarIcon,
   HandIcon,
@@ -22,7 +23,7 @@ import DatePicker from "@/components/DatePicker";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { userProfile: profile, isLoading, refreshProfile } = useApp();
+  const { userProfile: profile, session, isLoading, refreshProfile } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -192,6 +193,7 @@ export default function EditProfilePage() {
     .trim()
     .charAt(0)
     .toUpperCase();
+  const loggedInEmail = session?.user?.email ?? "";
 
   return (
     <Layout title="Edit Profile" showBack>
@@ -258,6 +260,31 @@ export default function EditProfilePage() {
               className={`w-full px-4 py-3 rounded-lg bg-[var(--color-surface)] border ${fieldErrors.fullName ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:outline-none`}
             />
             <InputError message={fieldErrors.fullName} />
+          </div>
+
+          <div>
+            <label
+              htmlFor="profile-email"
+              className="block text-sm font-medium mb-2 flex items-center gap-1"
+            >
+              <MailIcon size={14} /> Email Address
+            </label>
+            <input
+              id="profile-email"
+              type="email"
+              value={loggedInEmail}
+              readOnly
+              aria-readonly="true"
+              aria-describedby="profile-email-help"
+              placeholder="Email unavailable"
+              className="w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-muted)] focus:border-primary focus:outline-none"
+            />
+            <p
+              id="profile-email-help"
+              className="mt-1 ml-1 text-xs text-[var(--color-text-muted)]"
+            >
+              Linked to your login and cannot be edited here.
+            </p>
           </div>
 
           <div>

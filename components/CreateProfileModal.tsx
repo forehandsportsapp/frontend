@@ -5,8 +5,6 @@ import Link from "next/link";
 import {
   BuildingIcon,
   ChevronRightIcon,
-  UserIcon,
-  XIcon,
 } from "@/components/Icons";
 
 interface CreateProfileModalProps {
@@ -22,9 +20,11 @@ export default function CreateProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end bg-black/40 backdrop-blur-[3px]"
+      className="fixed inset-0 z-[110] flex items-end bg-black/40 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
+      aria-labelledby="create-profile-title"
+      aria-describedby="create-profile-description"
     >
       <button
         type="button"
@@ -36,15 +36,16 @@ export default function CreateProfileModal({
         <div className="mx-auto h-1.5 w-12 rounded-full bg-[var(--color-muted)] opacity-30" />
 
         <div className="mt-6">
-          <h2 className="text-[24px] font-bold text-[var(--color-text)]">Create Profile</h2>
-          <p className="mt-2 text-[15px] text-[var(--color-text-secondary)]">
+          <h2 id="create-profile-title" className="text-[24px] font-bold text-[var(--color-text)]">Create Profile</h2>
+          <p id="create-profile-description" className="mt-2 text-[15px] text-[var(--color-text-secondary)]">
             Set up an organization profile to start managing tournaments and events.
           </p>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 pb-2">
           <Link
             href="/org/create"
+            aria-label="Create organization profile"
             className="flex items-center gap-4 rounded-[22px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-4 transition-all hover:bg-[var(--color-surface)] shadow-sm active:scale-[0.98]"
             onClick={onClose}
           >

@@ -92,7 +92,9 @@ export default function UserSettingsPage() {
           </button>
 
           <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
+            aria-label="Create organization profile"
             className="w-10 h-10 rounded-full border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text)] hover:bg-[var(--color-surface-elevated)] transition-colors"
           >
             <PlusIcon size={20} />

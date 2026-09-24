@@ -492,8 +492,11 @@ function CreateOrgContent() {
           <div>
             <label className="block text-sm font-medium mb-2">Website</label>
             <input
-              type="url"
-              placeholder="https://example.com"
+              type="text"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="example.com or www.example.com"
               value={formData.website}
               onChange={(e) =>
                 setFormData({ ...formData, website: e.target.value })

@@ -290,7 +290,11 @@ export default function OrgProfileEditPage() {
               Website
             </span>
             <input
-              type="url"
+              type="text"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              placeholder="example.com or www.example.com"
               value={formData.website}
               onChange={(e) =>
                 setFormData({ ...formData, website: e.target.value })
