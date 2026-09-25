@@ -23,6 +23,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     setNextPath(saveAuthRedirect(getAuthRedirectFromUrl()));
+    const params = new URLSearchParams(window.location.search);
+    const oauthError =
+      params.get("error_description") ||
+      params.get("error") ||
+      params.get("error_code");
+    if (oauthError) {
+      const errorCode = params.get("error_code");
+      setError(errorCode ? `${oauthError} (${errorCode})` : oauthError);
+    }
   }, []);
 
   useEffect(() => {
