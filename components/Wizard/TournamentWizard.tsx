@@ -56,6 +56,7 @@ const NativeSelect = ({
   onChange,
   error,
   placeholder,
+  required = true,
 }: {
   label: string;
   value: string;
@@ -63,15 +64,17 @@ const NativeSelect = ({
   onChange: (val: string) => void;
   error?: string;
   placeholder?: string;
+  required?: boolean;
 }) => (
   <div className="relative">
     <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
-      {label}
+      {label} {required && <span className="text-red-500">*</span>}
     </label>
     <div className="relative">
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        required={required}
         className={`w-full px-4 pr-10 py-3 rounded-xl bg-[var(--color-surface-elevated)] border ${error ? "border-red-500" : "border-[var(--color-border)]"} text-[var(--color-text)] focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none cursor-pointer font-medium`}
       >
         <option value="" disabled>
@@ -92,10 +95,20 @@ const NativeSelect = ({
 );
 
 // 2. Clean, Premium Toggle Switch
-const ToggleSwitch = ({ checked, onChange, label }: any) => (
+const ToggleSwitch = ({
+  checked,
+  onChange,
+  label,
+  required = false,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  required?: boolean;
+}) => (
   <div className="flex items-center justify-between py-3">
     <span className="text-sm font-semibold text-[var(--color-text)]">
-      {label}
+      {label} {required && <span className="text-red-500">*</span>}
     </span>
     <button
       type="button"
@@ -1016,6 +1029,7 @@ export default function TournamentWizard({
                         <div className="pt-4 border-t border-[var(--color-border)]">
                           <ToggleSwitch
                             label="Free Entry"
+                            required
                             checked={event.isFree}
                             onChange={(val: boolean) =>
                               updateEvent(index, "isFree", val)
