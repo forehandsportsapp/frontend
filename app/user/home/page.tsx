@@ -591,24 +591,10 @@ export default function UserHomePage() {
             wsUrl = `${protocol}//${host}/ws`;
           }
 
-          const socketUrl = `${wsUrl}?token=${encodeURIComponent(token)}`;
-          socket = new WebSocket(socketUrl);
+          socket = new WebSocket(wsUrl);
 
           socket.onopen = () => {
-            setIsLiveSocketConnected(true);
-            if (match?.id) {
-              socket?.send(
-                JSON.stringify({ type: "SUBSCRIBE_MATCH", matchId: match.id }),
-              );
-            }
-            feed.forEach((group: any) => {
-              socket?.send(
-                JSON.stringify({
-                  type: "SUBSCRIBE_TOURNAMENT",
-                  tournamentId: group.tournamentId,
-                }),
-              );
-            });
+            socket?.send(JSON.stringify({ type: "AUTH", token }));
           };
 
           socket.onmessage = (event) => {
@@ -617,6 +603,27 @@ export default function UserHomePage() {
                 typeof event.data === "string"
                   ? JSON.parse(event.data)
                   : event.data;
+              if (message.type === "AUTH_SUCCESS") {
+                setIsLiveSocketConnected(true);
+                if (match?.id) {
+                  socket?.send(
+                    JSON.stringify({
+                      type: "SUBSCRIBE_MATCH",
+                      matchId: match.id,
+                    }),
+                  );
+                }
+                feed.forEach((group: any) => {
+                  socket?.send(
+                    JSON.stringify({
+                      type: "SUBSCRIBE_TOURNAMENT",
+                      tournamentId: group.tournamentId,
+                    }),
+                  );
+                });
+                return;
+              }
+
               if (message.type === "SCORE_UPDATE") {
                 const {
                   matchId,

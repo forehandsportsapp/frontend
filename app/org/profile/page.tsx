@@ -35,6 +35,24 @@ function getDisplayField(value: string, fallback = "Not added") {
   return value || fallback;
 }
 
+function getSafeExternalUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    const url = new URL(
+      /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)
+        ? trimmed
+        : `https://${trimmed}`,
+    );
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : "";
+  } catch {
+    return "";
+  }
+}
+
 export default function OrgProfilePage() {
   const router = useRouter();
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -69,6 +87,7 @@ export default function OrgProfilePage() {
   const contactEmail = getStringField(organization as any, "contactEmail");
   const contactPhone = getStringField(organization as any, "contactPhone");
   const website = getStringField(organization as any, "website");
+  const safeWebsite = getSafeExternalUrl(website);
   const address = getStringField(organization as any, "address");
   const city = getStringField(organization as any, "city");
   const state = getStringField(organization as any, "state");
@@ -215,9 +234,9 @@ export default function OrgProfilePage() {
                 ) : null}
               </div>
             </div>
-            {website ? (
+            {safeWebsite ? (
               <a
-                href={website}
+                href={safeWebsite}
                 target="_blank"
                 rel="noreferrer"
                 className="block rounded-[var(--radius-button)] border border-[var(--color-border)] px-4 py-3 text-center text-sm font-medium text-primary"

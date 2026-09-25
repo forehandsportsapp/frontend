@@ -13,7 +13,10 @@ import { App, type URLOpenListenerEvent } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import {
+  completeSupabaseAuthFromUrl,
+  getSupabaseBrowserClient,
+} from "@/lib/supabase";
 import { OrganizationData, ProfileData } from "@/lib/models";
 import { organizationApi } from "@/lib/api/organizationApi";
 import { userApi, type UserBootstrapData } from "@/lib/api/userApi";
@@ -415,37 +418,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await resolveSession(currentSession, { force: true });
   }, [resolveSession, setAuthStatus, supabase]);
 
-  const finishNativeAuth = useCallback(
-    async (url: string) => {
-      const parsed = new URL(url);
-      const hashParams = new URLSearchParams(
-        parsed.hash.startsWith("#") ? parsed.hash.slice(1) : parsed.hash,
-      );
-
-      const code = parsed.searchParams.get("code");
-      const accessToken =
-        parsed.searchParams.get("access_token") ??
-        hashParams.get("access_token");
-      const refreshToken =
-        parsed.searchParams.get("refresh_token") ??
-        hashParams.get("refresh_token");
-
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw error;
-      } else if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (error) throw error;
-      } else {
-        throw new Error("Unable to complete sign-in.");
-      }
-    },
-    [supabase],
-  );
-
   const login = useCallback(
     async (next?: string) => {
       const redirectPath = saveAuthRedirect(next);
@@ -582,10 +554,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         async (event: URLOpenListenerEvent) => {
           if (!event.url.startsWith(NATIVE_CALLBACK_URL)) return;
           try {
-            await finishNativeAuth(event.url);
+            await completeSupabaseAuthFromUrl(event.url);
             await Browser.close();
+            await retryAuth();
           } catch (err) {
             console.error("Failed to complete native login", err);
+            setAuthError(getErrorMessage(err));
+            setAuthStatus("error");
+            try {
+              await Browser.close();
+            } catch {
+            }
           }
         },
       ).then((listener) => {
@@ -599,9 +578,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (appUrlOpenListener) void appUrlOpenListener.remove();
     };
   }, [
-    finishNativeAuth,
     resetUserState,
     resolveSession,
+    retryAuth,
     setAuthStatus,
     setSession,
     supabase,

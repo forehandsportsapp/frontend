@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import FullScreenAuthLoader from "@/components/FullScreenAuthLoader";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { completeSupabaseAuthFromUrl } from "@/lib/supabase";
 import {
   getAuthRedirectFromUrl,
   getAuthDestination,
@@ -26,17 +26,10 @@ export default function AuthCallbackPage() {
 
     const completeAuth = async () => {
       try {
-        const supabase = getSupabaseBrowserClient();
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
         const redirectPath = saveAuthRedirect(getAuthRedirectFromUrl());
         setNextPath(redirectPath);
 
-        if (!code) throw new Error("No auth code found in URL.");
-
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) throw error;
-
+        await completeSupabaseAuthFromUrl(window.location.href);
         await retryAuth();
         setHasCompletedExchange(true);
       } catch (cause) {

@@ -395,24 +395,29 @@ export default function OrgHomePage() {
           const wsBase = baseUrl.replace(/^http/, "ws").replace(/\/$/, "");
           const wsUrl = `${wsBase}/ws`;
 
-          socket = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`);
+          socket = new WebSocket(wsUrl);
 
           socket.onopen = () => {
-            if (active) {
-              (feed || []).forEach((group: any) => {
-                socket?.send(
-                  JSON.stringify({
-                    type: "SUBSCRIBE_TOURNAMENT",
-                    tournamentId: group.tournamentId,
-                  }),
-                );
-              });
-            }
+            socket?.send(JSON.stringify({ type: "AUTH", token }));
           };
 
           socket.onmessage = (event) => {
             try {
               const message = JSON.parse(event.data);
+
+              if (message.type === "AUTH_SUCCESS") {
+                if (!active) return;
+                (feed || []).forEach((group: any) => {
+                  socket?.send(
+                    JSON.stringify({
+                      type: "SUBSCRIBE_TOURNAMENT",
+                      tournamentId: group.tournamentId,
+                    }),
+                  );
+                });
+                return;
+              }
+
               if (message.type === "SCORE_UPDATE") {
                 const {
                   matchId,
