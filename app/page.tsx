@@ -12,6 +12,15 @@ export default function LaunchPage() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasOAuthResponse =
+      params.has("code") || params.has("error") || params.has("error_code");
+
+    if (hasOAuthResponse) {
+      router.replace(`/auth/callback${window.location.search}`);
+      return;
+    }
+
     if (authStatus === "ready") {
       router.replace("/user/home");
       return;
@@ -36,16 +45,6 @@ export default function LaunchPage() {
       setIsSigningOut(false);
     }
   };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const hasOAuthResponse =
-      params.has("code") || params.has("error") || params.has("error_code");
-
-    if (hasOAuthResponse) {
-      router.replace(`/auth/callback${window.location.search}`);
-    }
-  }, [router]);
 
   if (authStatus === "error" || authStatus === "access-denied") {
     return (
