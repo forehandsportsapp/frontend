@@ -20,6 +20,7 @@ import SwipingDots from "@/components/SwipingDots";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { userApi } from "@/lib/api/userApi";
+import { getApiWebSocketUrl } from "@/lib/api/interceptor";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
@@ -575,23 +576,7 @@ export default function UserHomePage() {
             ));
 
         if (token && hasLiveSubscriptions) {
-          let wsUrl = "";
-          const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL;
-          const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-          if (wsBaseUrl && wsBaseUrl.startsWith("ws")) {
-            wsUrl = wsBaseUrl.replace(/\/$/, "");
-          } else if (baseUrl && baseUrl.startsWith("http")) {
-            wsUrl = baseUrl.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-          } else {
-            // Fallback to current origin if baseUrl is relative or missing
-            const protocol =
-              window.location.protocol === "https:" ? "wss:" : "ws:";
-            const host = window.location.host;
-            wsUrl = `${protocol}//${host}/ws`;
-          }
-
-          socket = new WebSocket(wsUrl);
+          socket = new WebSocket(getApiWebSocketUrl());
 
           socket.onopen = () => {
             socket?.send(JSON.stringify({ type: "AUTH", token }));

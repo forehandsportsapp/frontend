@@ -14,12 +14,35 @@ type ParsedRespone = {
 
 const TOKEN_REFRESH_BUFFER_MS = 30_000;
 const NO_SESSION_CACHE_MS = 5_000;
+const PROXIED_API_BASE_PATH = "/api/backend/v1";
 
 let cachedAccessToken: string | null | undefined;
 let cachedAccessTokenExpiresAtMs = 0;
 let pendingAccessToken: Promise<string | null> | null = null;
 let authListenerInitialized = false;
 const pendingGetRequests = new Map<string, Promise<ParsedRespone>>();
+
+function isLocalApiBaseUrl(value: string) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value);
+}
+
+function getPublicApiBaseUrl() {
+  const useDirectApi = process.env.NEXT_PUBLIC_USE_DIRECT_API === "true";
+  const configuredBaseUrl = useDirectApi
+    ? process.env.NEXT_PUBLIC_DIRECT_API_BASE_URL || ""
+    : "";
+
+  if (!configuredBaseUrl) return "";
+  if (useDirectApi || isLocalApiBaseUrl(configuredBaseUrl)) {
+    return configuredBaseUrl;
+  }
+
+  return "";
+}
+
+export function getApiBaseUrl() {
+  return getPublicApiBaseUrl() || PROXIED_API_BASE_PATH;
+}
 
 function cacheSessionToken(
   session?: { access_token?: string; expires_at?: number | null } | null,
@@ -101,11 +124,34 @@ export function getApiUrl({
     return `${cleanPath}${cleanParam}`;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = getApiBaseUrl();
   const cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const cleanParam = param ? `/${param}` : "";
   return `${cleanBaseUrl}${cleanPath}${cleanParam}`;
+}
+
+export function getApiWebSocketUrl() {
+  const useDirectApi = process.env.NEXT_PUBLIC_USE_DIRECT_API === "true";
+  const configuredWsUrl = useDirectApi
+    ? process.env.NEXT_PUBLIC_DIRECT_WS_URL || ""
+    : "";
+
+  if (useDirectApi && configuredWsUrl.startsWith("ws")) {
+    return configuredWsUrl.replace(/\/$/, "");
+  }
+
+  const baseUrl = getApiBaseUrl().replace(/\/$/, "");
+
+  if (/^https?:\/\//i.test(baseUrl)) {
+    return `${baseUrl.replace(/^http/i, "ws")}/ws`;
+  }
+
+  if (typeof window === "undefined") return `${baseUrl}/ws`;
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const cleanBasePath = baseUrl.startsWith("/") ? baseUrl : `/${baseUrl}`;
+  return `${protocol}//${window.location.host}${cleanBasePath}/ws`;
 }
 
 /**
@@ -202,7 +248,7 @@ const fetchApiUncached = async (
         result?.message ||
         result?.summary ||
         (result?.errors ? JSON.stringify(result.errors) : null) ||
-        `HTTP ${res.status} ${res.statusText} for ${path}`;
+        `HTTP ${res.status} ${res.statusText}`;
 
       return {
         error: errorMessage,

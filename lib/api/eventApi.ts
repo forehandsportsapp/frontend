@@ -278,7 +278,6 @@ export const eventApi = {
     console.info("[DueDateDebug] api-update-due-date-request", {
       eventId,
       dueDate,
-      url,
     });
 
     const { data, error, status } = await fetchApi(
@@ -293,7 +292,6 @@ export const eventApi = {
       console.error("[DueDateDebug] api-update-due-date-failed", {
         eventId,
         dueDate,
-        url,
         status,
         error,
       });

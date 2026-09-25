@@ -24,6 +24,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { organizationApi } from "@/lib/api/organizationApi";
+import { getApiWebSocketUrl } from "@/lib/api/interceptor";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { TournamentData } from "@/lib/models";
 import {
@@ -390,12 +391,7 @@ export default function OrgHomePage() {
         const token = data.session?.access_token;
 
         if (token) {
-          const baseUrl =
-            process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
-          const wsBase = baseUrl.replace(/^http/, "ws").replace(/\/$/, "");
-          const wsUrl = `${wsBase}/ws`;
-
-          socket = new WebSocket(wsUrl);
+          socket = new WebSocket(getApiWebSocketUrl());
 
           socket.onopen = () => {
             socket?.send(JSON.stringify({ type: "AUTH", token }));
