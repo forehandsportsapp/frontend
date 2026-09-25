@@ -29,19 +29,8 @@ export default function AuthCallbackPage() {
         const supabase = getSupabaseBrowserClient();
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
-        const oauthError =
-          url.searchParams.get("error_description") ||
-          url.searchParams.get("error") ||
-          url.searchParams.get("error_code");
         const redirectPath = saveAuthRedirect(getAuthRedirectFromUrl());
         setNextPath(redirectPath);
-
-        if (oauthError) {
-          const errorCode = url.searchParams.get("error_code");
-          throw new Error(
-            errorCode ? `${oauthError} (${errorCode})` : oauthError,
-          );
-        }
 
         if (!code) throw new Error("No auth code found in URL.");
 

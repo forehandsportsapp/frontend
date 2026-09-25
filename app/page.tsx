@@ -37,6 +37,16 @@ export default function LaunchPage() {
     }
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasOAuthResponse =
+      params.has("code") || params.has("error") || params.has("error_code");
+
+    if (hasOAuthResponse) {
+      router.replace(`/auth/callback${window.location.search}`);
+    }
+  }, [router]);
+
   if (authStatus === "error" || authStatus === "access-denied") {
     return (
       <FullScreenAuthLoader
