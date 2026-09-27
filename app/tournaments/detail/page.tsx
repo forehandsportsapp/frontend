@@ -17,6 +17,7 @@ import {
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { TournamentData, EventData } from "@/lib/models";
 import { toQuery } from "@/lib/utils";
+import { isEventRegistrationOpen } from "@/lib/statusLabels";
 import { useApp } from "@/components/AppProvider";
 import RegistrationEventCard from "@/components/Card/RegistrationEventCard";
 
@@ -56,18 +57,6 @@ function getTournamentLogoUrl(tournament: TournamentData) {
     raw?.image ||
     null
   );
-}
-
-function isEventRegistrationOpen(event?: EventData | null) {
-  if (!event) return false;
-  if (event.eventState === "registration_closed") return false;
-  if (!event.dueDate) return true;
-
-  const dueDate = new Date(event.dueDate);
-  if (Number.isNaN(dueDate.getTime())) return true;
-
-  dueDate.setHours(23, 59, 59, 999);
-  return Date.now() <= dueDate.getTime();
 }
 
 function isEventEligibleForUser(event: EventData, userGender?: string | null) {
@@ -193,7 +182,9 @@ function TournamentDetailContent() {
 
   const isRegistrationOpen = useMemo(() => {
     const events = tournament?.events ?? [];
-    return events.some((event) => isEventRegistrationOpen(event));
+    return events.some((event) =>
+      isEventRegistrationOpen(event.eventState, event.dueDate),
+    );
   }, [tournament?.events]);
 
   const handleAddedChange = useCallback((eventId: string, isAdded: boolean) => {

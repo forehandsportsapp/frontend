@@ -34,6 +34,20 @@ function getTournamentLogoUrl(tournament?: TournamentData | null) {
   );
 }
 
+function isDoublesEvent(event: EventData) {
+  const code =
+    event.teamTypeCode?.toLowerCase() || event.teamType?.code?.toLowerCase() || "";
+  const label = event.teamType?.label?.toLowerCase() || "";
+  return code.includes("double") || label.includes("double") || event.teamTypeId === 2;
+}
+
+function isSinglesEvent(event: EventData) {
+  const code =
+    event.teamTypeCode?.toLowerCase() || event.teamType?.code?.toLowerCase() || "";
+  const label = event.teamType?.label?.toLowerCase() || "";
+  return code.includes("single") || label.includes("single") || event.teamTypeId === 1;
+}
+
 export default function TournamentCheckoutScreen() {
   const [completed, setCompleted] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -195,8 +209,21 @@ export default function TournamentCheckoutScreen() {
         const team = await teamApi.getMyTeam(ev.id).catch(() => null);
 
         if (!team || !team.id) {
-          console.error(`No team found for event ${ev.name}`);
-          continue; // Skip if no team found, or throw if mandatory
+          throw new Error(`Please add ${ev.name} again before confirming registration.`);
+        }
+
+        const participantCount = Array.isArray(team.participants)
+          ? team.participants.length
+          : 0;
+
+        if (isSinglesEvent(ev) && participantCount !== 1) {
+          throw new Error(`${ev.name} requires exactly 1 participant.`);
+        }
+
+        if (isDoublesEvent(ev) && participantCount !== 2) {
+          throw new Error(
+            `${ev.name} requires 2 participants. Invite and confirm your partner before checkout.`,
+          );
         }
 
         // Update the team state to registered

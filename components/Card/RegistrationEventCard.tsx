@@ -19,7 +19,7 @@ import {
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
-import { toQuery } from "@/lib/utils";
+import { formatDateOnlyDisplay, toQuery } from "@/lib/utils";
 
 type EventStatus =
   | "joined"
@@ -162,6 +162,12 @@ function isEventViewAvailable(event: EventData) {
   return !isEventRegistrationOpen(event.eventState, event.dueDate);
 }
 
+function isDoublesEvent(event: EventData) {
+  const code = event.teamTypeCode?.toLowerCase() || event.teamType?.code?.toLowerCase() || "";
+  const label = event.teamType?.label?.toLowerCase() || "";
+  return code.includes("double") || label.includes("double") || event.teamTypeId === 2;
+}
+
 export default function RegistrationEventCard({
   event,
   onAddedChange,
@@ -186,11 +192,7 @@ export default function RegistrationEventCard({
   }, [event.eventState, event.dueDate]);
 
   const isEligible = !event.gender || event.gender === userProfile?.gender;
-  const isDoubles =
-    event.teamTypeId === 2 ||
-    event.teamTypeCode?.toLowerCase().includes("double") ||
-    event.teamType?.label?.toLowerCase().includes("double") ||
-    event.name?.toLowerCase().includes("double");
+  const isDoubles = isDoublesEvent(event);
   const isViewAvailable = useMemo(() => isEventViewAvailable(event), [
     event.eventState,
     event.dueDate,
@@ -296,7 +298,7 @@ export default function RegistrationEventCard({
             } else {
               setState("ADDING_PARTNER");
             }
-          } else if (participantsCount === 2) {
+          } else if (participantsCount >= 2) {
             // If it's already 'created' but has 2 people, check if it was already "confirmed" (Added)
             // For now, let's assume if it has 2 people it's either PAIRED or ADDED
             // We can use isInitiallyAdded to distinguish
@@ -537,16 +539,6 @@ export default function RegistrationEventCard({
     }, 3000);
   };
 
-  const formatDate = (value?: string | null) => {
-    if (!value) return "TBA";
-    const date = new Date(value);
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
   if (state === "LOADING") {
     return (
       <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-5 animate-pulse h-40" />
@@ -603,11 +595,11 @@ export default function RegistrationEventCard({
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[max-content_max-content] sm:gap-x-6">
             <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)]">
               <CalendarIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
-              <span className="leading-snug">Starts: {formatDate(event.startDate)}</span>
+              <span className="leading-snug">Starts: {formatDateOnlyDisplay(event.startDate)}</span>
             </div>
             <div className="flex items-start gap-2.5 text-[13px] text-[var(--color-text-secondary)]">
               <TimerIcon size={14} className="mt-0.5 text-[#ff7a1a]" />
-              <span className="leading-snug">Closes: {formatDate(event.dueDate)}</span>
+              <span className="leading-snug">Closes: {formatDateOnlyDisplay(event.dueDate)}</span>
             </div>
           </div>
         </div>

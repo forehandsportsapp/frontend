@@ -26,7 +26,7 @@ import {
   TimerIcon,
   XIcon,
 } from "@/components/Icons";
-import { toQuery } from "@/lib/utils";
+import { getDateOnlyEndTime, toQuery } from "@/lib/utils";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
 import {
@@ -103,11 +103,9 @@ function isEventRegistrationOpen(
   if (event.eventState === "registration_closed") return false;
   if (!event.dueDate) return true;
 
-  const dueDate = new Date(event.dueDate);
-  if (Number.isNaN(dueDate.getTime())) return true;
-
-  dueDate.setHours(23, 59, 59, 999);
-  return Date.now() <= dueDate.getTime();
+  const dueDateEndTime = getDateOnlyEndTime(event.dueDate);
+  if (dueDateEndTime === null) return true;
+  return Date.now() <= dueDateEndTime;
 }
 
 // ==========================================
@@ -1432,8 +1430,8 @@ const SummaryTab = ({
       event.eventState === "in_progress"
         ? `${liveMatches} live | ${completedMatches}/${totalMatches} completed`
         : isEventRegistrationOpen(event)
-          ? `Closes ${formatDate(event.dueDate)}`
-          : `Closed ${formatDate(event.dueDate)}`;
+          ? `Closes ${formatDateOnly(event.dueDate)}`
+          : `Closed ${formatDateOnly(event.dueDate)}`;
 
     const detailItems = [
       {

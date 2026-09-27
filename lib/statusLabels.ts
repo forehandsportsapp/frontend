@@ -1,3 +1,5 @@
+import { getDateOnlyEndTime } from "@/lib/utils";
+
 type StatusMeta = {
   label: string;
   className: string;
@@ -92,8 +94,7 @@ export function isEventRegistrationOpen(
   const normalized = (state || "").toLowerCase();
   if (normalized === "registration_closed") return false;
   if (!dueDate) return true;
-  const date = new Date(dueDate);
-  if (Number.isNaN(date.getTime())) return true;
-  date.setHours(23, 59, 59, 999);
-  return Date.now() <= date.getTime();
+  const dueDateEndTime = getDateOnlyEndTime(dueDate);
+  if (dueDateEndTime === null) return true;
+  return Date.now() <= dueDateEndTime;
 }
