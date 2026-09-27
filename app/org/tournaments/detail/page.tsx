@@ -26,7 +26,7 @@ import {
   TimerIcon,
   XIcon,
 } from "@/components/Icons";
-import { getDateOnlyEndTime, toQuery } from "@/lib/utils";
+import { getDateOnlyEndTime, parseDateOnlyLocal, toQuery } from "@/lib/utils";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { eventApi } from "@/lib/api/eventApi";
 import {
@@ -100,7 +100,14 @@ function isEventRegistrationOpen(
   event?: { eventState?: string | null; dueDate?: string | null } | null,
 ) {
   if (!event) return false;
-  if (event.eventState === "registration_closed") return false;
+  if (event.eventState === "registration_closed") {
+    const dueDateOnly = parseDateOnlyLocal(event.dueDate);
+    if (!dueDateOnly) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDateOnly.getTime() > today.getTime();
+  }
   if (!event.dueDate) return true;
 
   const dueDateEndTime = getDateOnlyEndTime(event.dueDate);

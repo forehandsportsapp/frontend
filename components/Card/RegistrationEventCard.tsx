@@ -148,8 +148,11 @@ function getHydratedTeamForUser(
 
 function isEventViewAvailable(event: EventData) {
   const state = (event.eventState || "").toLowerCase();
+  const registrationOpen = isEventRegistrationOpen(
+    event.eventState,
+    event.dueDate,
+  );
   const postRegistrationStates = [
-    "registration_closed",
     "participants_finalized",
     "scheduled",
     "in_progress",
@@ -158,8 +161,9 @@ function isEventViewAvailable(event: EventData) {
     "cancelled",
   ];
 
+  if (state === "registration_closed") return !registrationOpen;
   if (postRegistrationStates.includes(state)) return true;
-  return !isEventRegistrationOpen(event.eventState, event.dueDate);
+  return !registrationOpen;
 }
 
 function isDoublesEvent(event: EventData) {
