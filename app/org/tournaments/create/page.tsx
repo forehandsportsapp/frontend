@@ -42,6 +42,8 @@ export default function CreateOrgTournamentPage() {
     tournament: TournamentFormData,
     state: "created" | "draft",
   ) => {
+    if (isPublishing) return;
+
     if (!activeOrgId) {
       alert("No active organization selected.");
       return;
@@ -103,7 +105,7 @@ export default function CreateOrgTournamentPage() {
 
       // 4. Publish if requested
       if (state === "created") {
-        await tournamentApi.updateTournamentState(tournamentId, "published");
+        await tournamentApi.publishTournament(tournamentId);
       }
 
       router.push("/org/tournaments");
