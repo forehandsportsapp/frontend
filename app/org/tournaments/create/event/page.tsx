@@ -111,6 +111,21 @@ export default function CreateEventPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-2">
+                                Event Start Date *
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.eventStartDate}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, eventStartDate: e.target.value })
+                                }
+                                min={new Date().toISOString().split("T")[0]}
+                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-2">
                                 Registration Due Date *
                             </label>
                             <input
@@ -120,21 +135,7 @@ export default function CreateEventPage() {
                                     setFormData({ ...formData, registrationDueDate: e.target.value })
                                 }
                                 min={new Date().toISOString().split("T")[0]}
-                                className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-2">
-                                Event Start Date *
-                            </label>
-                            <input
-                                type="date"
-                                value={formData.eventStartDate}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, eventStartDate: e.target.value })
-                                }
-                                min={formData.registrationDueDate || new Date().toISOString().split("T")[0]}
+                                max={formData.eventStartDate || undefined}
                                 className="native-select w-full px-4 py-3 rounded-lg bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] focus:border-primary focus:outline-none"
                             />
                         </div>

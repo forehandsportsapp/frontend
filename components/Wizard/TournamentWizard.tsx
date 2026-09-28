@@ -971,6 +971,21 @@ export default function TournamentWizard({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                           <div>
                             <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
+                              Event Start Date{" "}
+                              <span className="text-red-500">*</span>
+                            </label>
+                            <CustomDatePicker
+                              value={event.startDate}
+                              onChange={(date: string) =>
+                                updateEvent(index, "startDate", date)
+                              }
+                              placeholder="Select Start Date"
+                              error={errors[`events.${index}.startDate`]}
+                              minDate={formData.startDate || new Date().toISOString().split("T")[0]}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
                               Reg. Due Date{" "}
                               <span className="text-red-500">*</span>
                             </label>
@@ -982,21 +997,7 @@ export default function TournamentWizard({
                               placeholder="Select Due Date"
                               error={errors[`events.${index}.regDueDate`]}
                               minDate={new Date().toISOString().split("T")[0]}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-semibold text-[var(--color-text)] mb-2">
-                              Event Start Date{" "}
-                              <span className="text-red-500">*</span>
-                            </label>
-                            <CustomDatePicker
-                              value={event.startDate}
-                              onChange={(date: string) =>
-                                updateEvent(index, "startDate", date)
-                              }
-                              placeholder="Select Start Date"
-                              error={errors[`events.${index}.startDate`]}
-                              minDate={event.regDueDate || formData.startDate || new Date().toISOString().split("T")[0]}
+                              maxDate={event.startDate || undefined}
                             />
                           </div>
                         </div>
