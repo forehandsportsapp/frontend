@@ -425,7 +425,7 @@ export default function OrgTournamentsPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <Link
-                      href={`/org/tournaments/detail${toQuery({ t: t.id })}`}
+                      href={`/org/tournaments/create${toQuery({ draftId: t.id })}`}
                       className="flex items-center justify-center gap-2 py-3 px-4 rounded-[var(--radius-button)] bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text)] font-semibold hover:border-primary transition-colors"
                     >
                       <EditIcon size={18} />

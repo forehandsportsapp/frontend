@@ -18,7 +18,7 @@ function codeSchema<T extends readonly string[]>(
 }
 
 export const eventSchema = z.object({
-  id: z.number().optional(),
+  id: z.union([z.string(), z.number()]).optional(),
   name: z
     .string()
     .min(2, "Event name is too short")

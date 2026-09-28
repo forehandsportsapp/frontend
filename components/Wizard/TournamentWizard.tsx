@@ -139,6 +139,8 @@ const CustomDatePicker = (props: any) => {
 
 interface TournamentWizardProps {
   isPublishing?: boolean;
+  initialData?: TournamentFormData | null;
+  initialStep?: number;
   onComplete: (
     tournament: TournamentFormData,
     state: "created" | "draft",
@@ -148,10 +150,13 @@ interface TournamentWizardProps {
 
 export default function TournamentWizard({
   isPublishing = false,
+  initialData = null,
+  initialStep,
   onComplete,
   onClose,
 }: TournamentWizardProps) {
   const [step, setStep] = useState(() => {
+    if (initialStep) return initialStep;
     if (typeof window !== "undefined") {
       const saved = sessionStorage.getItem("tournamentWizardStep");
       return saved ? parseInt(saved, 10) : 1;
@@ -185,6 +190,9 @@ export default function TournamentWizard({
       // Step 3
       events: [],
     };
+    if (initialData) {
+      return { ...initial, ...initialData, logo: null };
+    }
     if (typeof window !== "undefined") {
       const saved = sessionStorage.getItem("tournamentWizardData");
       if (saved) {
@@ -198,6 +206,15 @@ export default function TournamentWizard({
     }
     return initial;
   });
+
+  useEffect(() => {
+    if (!initialData) return;
+    setFormData({ ...initialData, logo: null });
+    setStep(initialStep || 4);
+    setErrors({});
+    sessionStorage.removeItem("tournamentWizardStep");
+    sessionStorage.removeItem("tournamentWizardData");
+  }, [initialData, initialStep]);
 
   useEffect(() => {
     sessionStorage.setItem("tournamentWizardStep", step.toString());

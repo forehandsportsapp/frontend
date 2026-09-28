@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/components/AppProvider";
 import TournamentWizard from "@/components/Wizard/TournamentWizard";
@@ -32,12 +32,115 @@ function mapPaymentModeCode(value: string | null | undefined, isFree: boolean) {
   return value || null;
 }
 
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  const isoDate = value.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function mapTournamentToFormData(tournament: TournamentData): TournamentFormData {
+  return {
+    name: tournament.name || "",
+    description: tournament.description || "",
+    startDate: toDateInputValue(tournament.startDate),
+    endDate: toDateInputValue(tournament.endDate),
+    logo: null,
+    venueName: tournament.venueName || "",
+    city: tournament.venueCity || "",
+    state: tournament.venueState || "",
+    addressLine: tournament.venueAddress || "",
+    zipCode: tournament.venuePostalCode || "",
+    numCourts: Number(tournament.venueCourts || 1),
+    organizerName: tournament.contactName || "",
+    organizerPhone: tournament.contactPhone || "",
+    organizerEmail: tournament.contactEmail || "",
+    upiId: tournament.upiId || "",
+    events: (tournament.events ?? []).map((event) => ({
+      id: event.id || undefined,
+      name: event.name || "",
+      sport: event.sportsOptionCode || event.sportsOption?.code || "",
+      format: event.eventFormatCode || event.eventFormat?.code || "",
+      regDueDate: toDateInputValue(event.dueDate),
+      startDate: toDateInputValue(event.startDate),
+      gender: event.gender || "mixed",
+      partType: event.teamTypeCode || event.teamType?.code || "",
+      sets: String(event.setsPerMatch || ""),
+      points: String(event.pointsPerSet || ""),
+      ageRestricted: toDateInputValue(event.playerBornAfter),
+      isFree: Number(event.amount || 0) <= 0,
+      paymentOption:
+        Number(event.amount || 0) <= 0
+          ? ""
+          : event.paymentModeCode || event.paymentMode?.code || "",
+      fee: String(event.amount || 0),
+    })),
+  };
+}
+
 export default function CreateOrgTournamentPage() {
   const router = useRouter();
   const { activeOrganization } = useApp();
   const activeOrgId = activeOrganization?.id ?? null;
   const [isPublishing, setIsPublishing] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftTournament, setDraftTournament] = useState<TournamentData | null>(
+    null,
+  );
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState("");
   const submitInFlightRef = useRef(false);
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("draftId");
+    setDraftId(id);
+  }, []);
+
+  useEffect(() => {
+    if (!draftId) return;
+
+    let active = true;
+    const loadDraft = async () => {
+      try {
+        setIsLoadingDraft(true);
+        setDraftLoadError("");
+        const tournament = await tournamentApi.getInfo(draftId);
+        if (!active) return;
+
+        if (tournament.tournamentState !== "drafted") {
+          setDraftLoadError("Only drafted tournaments can be completed here.");
+          setDraftTournament(null);
+          return;
+        }
+
+        setDraftTournament(tournament);
+      } catch (error) {
+        if (!active) return;
+        console.error("Failed to load draft tournament", error);
+        setDraftLoadError(
+          error instanceof Error ? error.message : "Unable to load draft.",
+        );
+      } finally {
+        if (active) setIsLoadingDraft(false);
+      }
+    };
+
+    void loadDraft();
+    return () => {
+      active = false;
+    };
+  }, [draftId]);
+
+  const draftInitialData = useMemo(
+    () => (draftTournament ? mapTournamentToFormData(draftTournament) : null),
+    [draftTournament],
+  );
 
   const handleComplete = async (
     tournament: TournamentFormData,
@@ -74,7 +177,26 @@ export default function CreateOrgTournamentPage() {
         tournamentState: "drafted",
       };
 
-      const tournamentId = await tournamentApi.createTournament(tournamentData);
+      const tournamentId = draftId || (await tournamentApi.createTournament(tournamentData));
+
+      if (draftId) {
+        await tournamentApi.updateTournament(draftId, {
+          name: tournamentData.name,
+          description: tournamentData.description,
+          startDate: tournamentData.startDate,
+          endDate: tournamentData.endDate,
+          venueName: tournamentData.venueName,
+          venueAddress: tournamentData.venueAddress,
+          venueCity: tournamentData.venueCity,
+          venueState: tournamentData.venueState,
+          venuePostalCode: tournamentData.venuePostalCode,
+          venueCourts: tournamentData.venueCourts,
+          contactName: tournamentData.contactName,
+          contactEmail: tournamentData.contactEmail,
+          contactPhone: tournamentData.contactPhone,
+          upiId: tournamentData.upiId,
+        });
+      }
 
       // 2. Upload logo if provided
       if (tournament.logo && tournament.logo instanceof File) {
@@ -102,7 +224,36 @@ export default function CreateOrgTournamentPage() {
           amount: event.isFree ? 0 : Number(event.fee || 0),
         }));
 
-        await eventApi.createEvents(eventsData);
+        const existingEventIds = new Set(
+          (draftTournament?.events ?? [])
+            .map((event) => event.id)
+            .filter(Boolean) as string[],
+        );
+        const submittedEventIds = new Set(
+          tournament.events
+            .map((event) => (typeof event.id === "string" ? event.id : null))
+            .filter(Boolean) as string[],
+        );
+
+        if (draftId) {
+          await Promise.all(
+            [...existingEventIds]
+              .filter((eventId) => !submittedEventIds.has(eventId))
+              .map((eventId) => eventApi.deleteEvent(eventId)),
+          );
+
+          await Promise.all(
+            tournament.events.map((event, index) => {
+              const eventPayload = eventsData[index];
+              if (typeof event.id === "string") {
+                return eventApi.updateEvent(event.id, eventPayload);
+              }
+              return eventApi.createEvents([eventPayload]);
+            }),
+          );
+        } else {
+          await eventApi.createEvents(eventsData);
+        }
       }
 
       // 4. Publish if requested
@@ -125,10 +276,30 @@ export default function CreateOrgTournamentPage() {
     router.push("/org/tournaments");
   };
 
+  if (isLoadingDraft) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)] flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (draftLoadError) {
+    return (
+      <div className="min-h-screen bg-[var(--color-background)] p-6">
+        <p className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400">
+          {draftLoadError}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--color-background)]">
       <TournamentWizard
         isPublishing={isPublishing}
+        initialData={draftInitialData}
+        initialStep={draftInitialData ? 4 : undefined}
         onComplete={handleComplete}
         onClose={handleClose}
       />
