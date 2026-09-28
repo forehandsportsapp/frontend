@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -110,6 +110,7 @@ function EventParticipantsContent() {
   }).length;
 
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const finalizeInFlightRef = useRef(false);
 
   const handleUpdateStatus = async (
     teamId: string,
@@ -154,6 +155,8 @@ function EventParticipantsContent() {
   };
 
   const handleProceed = async () => {
+    if (finalizeInFlightRef.current) return;
+
     const participatingTeamsCount = teams.filter((t) => {
       const rawStatus = t.teamStatus || t.teamState || t.status || "";
       const status = String(rawStatus).toLowerCase();
@@ -191,6 +194,7 @@ function EventParticipantsContent() {
     }
 
     try {
+      finalizeInFlightRef.current = true;
       setIsFinalizing(true);
       // 1. Finalize the current event (locks participants, sets round 1, handles statuses)
       await eventApi.finalizeParticipants(eventId);
@@ -204,6 +208,7 @@ function EventParticipantsContent() {
       console.error("Failed to finalize participants", error);
       alert("Failed to finalize participants. Please try again.");
     } finally {
+      finalizeInFlightRef.current = false;
       setIsFinalizing(false);
     }
   };

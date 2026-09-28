@@ -76,6 +76,9 @@ export default function OrgTournamentsPage() {
   const [tournaments, setTournaments] = useState<TournamentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [publishingTournamentIds, setPublishingTournamentIds] = useState<
+    Set<string>
+  >(() => new Set());
   const orgId = activeOrgId;
   const loadRequestRef = useRef(0);
 
@@ -139,7 +142,14 @@ export default function OrgTournamentsPage() {
   }, []);
 
   const handlePublish = async (tournamentId: string) => {
+    if (publishingTournamentIds.has(tournamentId)) return;
+
     try {
+      setPublishingTournamentIds((current) => {
+        const next = new Set(current);
+        next.add(tournamentId);
+        return next;
+      });
       await tournamentApi.publishTournament(tournamentId);
       await loadTournaments();
       setActiveTab("upcoming");
@@ -148,6 +158,12 @@ export default function OrgTournamentsPage() {
       alert(
         error instanceof Error ? error.message : "Failed to publish tournament",
       );
+    } finally {
+      setPublishingTournamentIds((current) => {
+        const next = new Set(current);
+        next.delete(tournamentId);
+        return next;
+      });
     }
   };
 
@@ -354,7 +370,12 @@ export default function OrgTournamentsPage() {
                 </p>
               </div>
             ) : (
-              visibleTournaments.map((t) => (
+              visibleTournaments.map((t) => {
+                const isPublishingTournament = t.id
+                  ? publishingTournamentIds.has(t.id)
+                  : false;
+
+                return (
                 <div
                   key={t.id}
                   className="relative block p-5 bg-[var(--color-surface)] border-2 border-dashed border-[var(--color-border)] rounded-[var(--radius-card)]"
@@ -412,14 +433,18 @@ export default function OrgTournamentsPage() {
                     </Link>
                     <button
                       onClick={() => handlePublish(t.id!)}
-                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-[var(--radius-button)] bg-primary text-white font-semibold hover:opacity-90 transition-opacity"
+                      disabled={!t.id || isPublishingTournament}
+                      className="flex items-center justify-center gap-2 py-3 px-4 rounded-[var(--radius-button)] bg-primary text-white font-semibold hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <TrophyIcon size={18} />
-                      <span>Publish</span>
+                      <span>
+                        {isPublishingTournament ? "Publishing..." : "Publish"}
+                      </span>
                     </button>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import TournamentWizard from "@/components/Wizard/TournamentWizard";
@@ -37,12 +37,13 @@ export default function CreateTournamentPage() {
   const router = useRouter();
   const { activeOrganization } = useApp();
   const [isPublishing, setIsPublishing] = useState(false);
+  const submitInFlightRef = useRef(false);
 
   const handleComplete = async (
     form: TournamentFormData,
     state: "created" | "draft",
   ) => {
-    if (isPublishing) return;
+    if (submitInFlightRef.current) return;
 
     if (!activeOrganization?.id) {
       alert("Please select an organization first.");
@@ -50,6 +51,7 @@ export default function CreateTournamentPage() {
     }
 
     try {
+      submitInFlightRef.current = true;
       setIsPublishing(true);
 
       const tournamentData: TournamentData = {
@@ -111,6 +113,7 @@ export default function CreateTournamentPage() {
         error instanceof Error ? error.message : "Failed to create tournament",
       );
     } finally {
+      submitInFlightRef.current = false;
       setIsPublishing(false);
     }
   };

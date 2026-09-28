@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
@@ -72,6 +72,7 @@ function FixtureSetupContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showByeModal, setShowByeModal] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const publishInFlightRef = useRef(false);
   const minStartTime = getMinStartTimeValue();
   const canManage =
     pathname.startsWith("/user/manage/") ||
@@ -281,7 +282,10 @@ function FixtureSetupContent() {
   };
 
   const handleConfirmPublish = async () => {
+    if (publishInFlightRef.current) return;
+
     try {
+      publishInFlightRef.current = true;
       setIsPublishing(true);
 
       const matchesToCreate = matches
@@ -312,6 +316,7 @@ function FixtureSetupContent() {
       console.error("Failed to publish matches", error);
       alert("Failed to publish fixtures. Please try again.");
     } finally {
+      publishInFlightRef.current = false;
       setIsPublishing(false);
       setShowByeModal(false);
     }
