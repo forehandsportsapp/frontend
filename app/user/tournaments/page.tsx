@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { FilterIcon, SearchIcon, SlidersIcon } from "@/components/Icons";
+import { SearchIcon, SlidersIcon } from "@/components/Icons";
 import BottomNav from "@/components/BottomNav";
 import NotificationsSlideOver, {
   type NotificationItem,
@@ -13,12 +13,10 @@ import TournamentListCard, {
 import { useApp } from "@/components/AppProvider";
 import { notificationApi } from "@/lib/api/notificationApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
-import { matchApi } from "@/lib/api/matchApi";
 import { isEventRegistrationOpen } from "@/lib/statusLabels";
 import { TournamentData } from "@/lib/models";
-import { toQuery } from "@/lib/utils";
+import { parseDateOnlyLocal } from "@/lib/utils";
 import TournamentFilterDrawer from "@/components/TournamentFilterDrawer";
-import TeamLogo from "@/components/TeamLogo";
 
 const NOTIFICATIONS_REFRESH_MS = 60_000;
 
@@ -92,6 +90,71 @@ function TournamentCardSkeleton() {
 
 type TopTab = "browse" | "joined" | "history";
 type FormatTab = "all" | "singles" | "doubles";
+type TournamentTimelineState = "live" | "upcoming" | "history";
+
+const TOP_TABS: TopTab[] = ["browse", "joined", "history"];
+
+function getTopTabFromParam(value?: string | null): TopTab | null {
+  return TOP_TABS.includes(value as TopTab) ? (value as TopTab) : null;
+}
+
+function getDateBoundaryTime(
+  value?: string | Date | null,
+  boundary: "start" | "end" = "start",
+) {
+  const date = parseDateOnlyLocal(value);
+  if (!date) return null;
+  if (boundary === "start") date.setHours(0, 0, 0, 0);
+  else date.setHours(23, 59, 59, 999);
+  return date.getTime();
+}
+
+function getFallbackSortTime(tournament: TournamentData) {
+  const raw = tournament as any;
+  const candidate = raw?.updatedAt || raw?.createdAt || "";
+  const timestamp = new Date(candidate).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getTournamentTimelineState(
+  tournament: TournamentData,
+  now = new Date(),
+): TournamentTimelineState {
+  const state = tournament.tournamentState?.toLowerCase();
+  if (state === "completed" || state === "cancelled") return "history";
+
+  const nowTime = now.getTime();
+  const startTime = getDateBoundaryTime(tournament.startDate, "start");
+  const endTime = getDateBoundaryTime(tournament.endDate, "end");
+
+  if (endTime !== null && endTime < nowTime) return "history";
+  if (
+    state === "in_progress" ||
+    (startTime !== null &&
+      startTime <= nowTime &&
+      (endTime === null || endTime >= nowTime))
+  ) {
+    return "live";
+  }
+
+  return "upcoming";
+}
+
+function getActiveSortTime(tournament: TournamentData) {
+  return (
+    getDateBoundaryTime(tournament.startDate, "start") ??
+    getDateBoundaryTime(tournament.endDate, "end") ??
+    Number.MAX_SAFE_INTEGER - getFallbackSortTime(tournament)
+  );
+}
+
+function getHistorySortTime(tournament: TournamentData) {
+  return (
+    getDateBoundaryTime(tournament.endDate, "end") ??
+    getDateBoundaryTime(tournament.startDate, "start") ??
+    getFallbackSortTime(tournament)
+  );
+}
 
 export default function UserTournamentsPage() {
   const { userProfile } = useApp();
@@ -103,6 +166,13 @@ export default function UserTournamentsPage() {
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [tournaments, setTournaments] = useState<TournamentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const tab = getTopTabFromParam(
+      new URLSearchParams(window.location.search).get("tab"),
+    );
+    if (tab) setActiveTab(tab);
+  }, []);
 
   const attachActions = (items: NotificationItem[]) =>
     items.map((item) => ({
@@ -232,21 +302,20 @@ export default function UserTournamentsPage() {
       return true;
     });
 
-    const getTournamentSortTime = (tournament: TournamentData) => {
-      const raw = tournament as any;
-      const candidate =
-        raw?.createdAt ||
-        raw?.updatedAt ||
-        raw?.startDate ||
-        raw?.endDate ||
-        "";
-      const timestamp = new Date(candidate).getTime();
-      return Number.isNaN(timestamp) ? 0 : timestamp;
-    };
-
     const sortedTournaments = [...filteredTournaments].sort((a, b) => {
-      if (activeTab !== "browse") {
-        return getTournamentSortTime(b) - getTournamentSortTime(a);
+      if (activeTab === "history") {
+        return getHistorySortTime(b) - getHistorySortTime(a);
+      }
+
+      const aTimeline = getTournamentTimelineState(a);
+      const bTimeline = getTournamentTimelineState(b);
+
+      if (activeTab === "joined") {
+        if (aTimeline !== bTimeline) {
+          if (aTimeline === "live") return -1;
+          if (bTimeline === "live") return 1;
+        }
+        return getActiveSortTime(a) - getActiveSortTime(b);
       }
 
       const aOpen = a.events?.some((event) =>
@@ -257,7 +326,11 @@ export default function UserTournamentsPage() {
       );
 
       if (aOpen !== bOpen) return aOpen ? -1 : 1;
-      return getTournamentSortTime(b) - getTournamentSortTime(a);
+      if (aTimeline !== bTimeline) {
+        if (aTimeline === "live") return -1;
+        if (bTimeline === "live") return 1;
+      }
+      return getActiveSortTime(a) - getActiveSortTime(b);
     });
 
     return sortedTournaments.map((t): TournamentListItem => {
@@ -269,6 +342,9 @@ export default function UserTournamentsPage() {
           isEventRegistrationOpen(event.eventState, event.dueDate),
         ) || false;
       const isWaitingList = t.userRegistrationStatus === "waiting_list";
+      const timelineState = getTournamentTimelineState(t);
+      const historyStatus =
+        t.tournamentState === "cancelled" ? "Cancelled" : "Completed";
 
       const subtitle = sports.slice(0, 3).join(" | ") || "Multiple Sports";
 
@@ -291,17 +367,23 @@ export default function UserTournamentsPage() {
           activeTab === "browse"
             ? isWaitingList
               ? "In Waiting List"
+              : timelineState === "live"
+              ? "Live"
               : isRegistrationOpen
               ? "Open"
               : "Registration Closed"
             : activeTab === "joined"
-              ? "Joined"
-              : "History",
+              ? timelineState === "live"
+                ? "Live"
+                : "Joined"
+              : historyStatus,
         joinedStatus:
           activeTab === "history"
-            ? "Completed"
+            ? historyStatus
             : activeTab === "joined"
-              ? "Joined"
+              ? timelineState === "live"
+                ? "Live"
+                : "Upcoming"
               : undefined,
         logoUrl: getTournamentLogoUrl(t),
       };
@@ -375,7 +457,7 @@ export default function UserTournamentsPage() {
 
           {/* Centered Tabs */}
           <div className="flex items-center justify-center gap-6 sm:gap-10 overflow-x-auto overflow-y-hidden no-scrollbar px-2">
-            {(["browse", "joined", "history"] as TopTab[]).map((tab) => (
+            {TOP_TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
