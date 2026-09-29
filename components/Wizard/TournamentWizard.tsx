@@ -166,7 +166,16 @@ export default function TournamentWizard({
   const totalSteps = 4;
 
   const [showEventWarning, setShowEventWarning] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [hasSeenEventWarning, setHasSeenEventWarning] = useState(false);
+  const isLeavingRef = React.useRef(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [step]);
 
   const [formData, setFormData] = useState<TournamentFormData>(() => {
     const initial = {
@@ -215,6 +224,32 @@ export default function TournamentWizard({
     sessionStorage.removeItem("tournamentWizardStep");
     sessionStorage.removeItem("tournamentWizardData");
   }, [initialData, initialStep]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.history.pushState({ tournamentWizardGuard: true }, "", window.location.href);
+
+    const handlePopState = () => {
+      if (isLeavingRef.current) return;
+      setShowExitConfirm(true);
+      window.history.pushState({ tournamentWizardGuard: true }, "", window.location.href);
+    };
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isLeavingRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem("tournamentWizardStep", step.toString());
@@ -429,6 +464,25 @@ export default function TournamentWizard({
     onComplete(result.data, state);
   };
 
+  const requestClose = () => {
+    if (isPublishing) return;
+    setShowExitConfirm(true);
+  };
+
+  const handleSaveProgressAndLeave = () => {
+    isLeavingRef.current = true;
+    setShowExitConfirm(false);
+    onClose();
+  };
+
+  const handleDiscardAndLeave = () => {
+    isLeavingRef.current = true;
+    sessionStorage.removeItem("tournamentWizardStep");
+    sessionStorage.removeItem("tournamentWizardData");
+    setShowExitConfirm(false);
+    onClose();
+  };
+
   const addEvent = () => {
     setFormData((prev) => ({
       ...prev,
@@ -476,7 +530,7 @@ export default function TournamentWizard({
             Create Tournament
           </h1>
           <button
-            onClick={onClose}
+            onClick={requestClose}
             className="p-2 bg-[var(--color-surface-elevated)] text-[var(--color-muted)] hover:text-[var(--color-text)] rounded-full transition-colors"
           >
             <XIcon size={18} />
@@ -499,7 +553,7 @@ export default function TournamentWizard({
         </div>
 
         {/* SCROLLABLE CONTENT */}
-        <div className="flex-1 overflow-y-auto p-6 pb-32 space-y-8 animate-in fade-in duration-300 relative">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 pb-32 space-y-8 animate-in fade-in duration-300 relative">
           {/* STEP 1: Tournament Info */}
           {step === 1 && (
             <div className="space-y-8 pb-4">
@@ -1321,6 +1375,51 @@ export default function TournamentWizard({
               style={{ background: "var(--gradient-orange)" }}
             >
               I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[4px] animate-in fade-in duration-300">
+          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] w-full max-w-md rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/10 text-orange-500">
+              <InfoIcon size={32} />
+            </div>
+
+            <h2 className="mb-3 text-xl font-bold text-[var(--color-text)]">
+              Leave Tournament Setup?
+            </h2>
+
+            <p className="mb-6 text-sm leading-relaxed text-[var(--color-muted)]">
+              Do you want to save your current progress and continue from this
+              step later, or discard this tournament setup?
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={handleDiscardAndLeave}
+                className="h-12 rounded-2xl border border-red-500/50 bg-red-500/10 px-4 text-sm font-bold text-red-600 transition active:scale-[0.98] dark:text-red-300"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProgressAndLeave}
+                className="h-12 rounded-2xl px-4 text-sm font-bold text-white shadow-md transition active:scale-[0.98]"
+                style={{ background: "var(--gradient-orange)" }}
+              >
+                Save Progress
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowExitConfirm(false)}
+              className="mt-4 text-sm font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+            >
+              Continue editing
             </button>
           </div>
         </div>

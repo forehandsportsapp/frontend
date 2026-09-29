@@ -19,7 +19,10 @@ import {
   saveAuthRedirect,
   withAuthRedirect,
 } from "@/lib/authRedirect";
-import { formatDateOnlyDisplay, toQuery } from "@/lib/utils";
+import {
+  formatDateOnlyDisplay,
+  toQuery,
+} from "@/lib/utils";
 
 type EventStatus =
   | "joined"
@@ -591,7 +594,7 @@ export default function RegistrationEventCard({
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             {state === "INELIGIBLE" && (
-              <span className="inline-flex rounded-full border border-red-300 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-100">
+              <span className="inline-flex rounded-full border border-red-500/60 bg-red-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-red-700 shadow-sm dark:border-red-300/70 dark:bg-red-500/20 dark:text-red-100">
                 {event.gender} only
               </span>
             )}

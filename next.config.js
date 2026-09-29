@@ -13,6 +13,7 @@ const nextConfig = {
     unoptimized: true,
   },
   trailingSlash: true,
+  skipTrailingSlashRedirect: true,
   allowedDevOrigins: ['192.168.1.8'],
   async rewrites() {
     if (!apiProxyBaseUrl || shouldExport) return [];

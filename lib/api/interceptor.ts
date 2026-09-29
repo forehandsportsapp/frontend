@@ -258,7 +258,10 @@ const fetchApiUncached = async (
 
     if (result && typeof result === "object" && "success" in result) {
       if (!result.success) {
-        throw new Error(result.message || "Call completed unsuccessfully");
+        return {
+          error: result.message || "Call completed unsuccessfully",
+          status: res.status,
+        };
       }
 
       // If it's a GET request and data is missing, we likely want to return null/undefined
