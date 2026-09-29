@@ -383,9 +383,22 @@ export default function RegistrationEventCard({
       setError("");
       const existingTeam = await teamApi.getMyTeam(event.id).catch(() => null);
       if (existingTeam?.id) {
+        const status = (existingTeam.teamStatus || existingTeam.status)?.toLowerCase();
         setTeam(existingTeam);
         setError("");
-        setState("REGISTERED");
+
+        if (status && status !== "created") {
+          setState("REGISTERED");
+          return;
+        }
+
+        if (isDoubles) {
+          const participantsCount = existingTeam.participants?.length || 0;
+          setState(participantsCount >= 2 ? "ADDED" : "ADDING_PARTNER");
+        } else {
+          setState("ADDED");
+        }
+
         onAddedChange(event.id, true);
         return;
       }

@@ -172,9 +172,10 @@ export default function TournamentWizard({
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
+    const frame = window.requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [step]);
 
   const [formData, setFormData] = useState<TournamentFormData>(() => {

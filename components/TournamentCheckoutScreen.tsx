@@ -73,7 +73,7 @@ export default function TournamentCheckoutScreen() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const data = await tournamentApi.getInfo(tournamentId);
+        const data = await tournamentApi.getRegistrationInfo(tournamentId);
         setTournament(data);
       } catch (err) {
         console.error("Failed to load checkout data", err);
