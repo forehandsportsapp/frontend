@@ -74,7 +74,7 @@ export interface TournamentData {
   upiId?: string | null;
 
   tournamentState?: TournamentState | null;
-  userRegistrationStatus?: "waiting_list" | null;
+  userRegistrationStatus?: "waiting_list" | "rejected" | null;
   events?: EventData[] | null;
 }
 

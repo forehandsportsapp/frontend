@@ -344,6 +344,7 @@ export default function UserTournamentsPage() {
           isEventRegistrationOpen(event.eventState, event.dueDate),
         ) || false;
       const isWaitingList = t.userRegistrationStatus === "waiting_list";
+      const isRejected = t.userRegistrationStatus === "rejected";
       const timelineState = getTournamentTimelineState(t);
       const historyStatus =
         t.tournamentState === "cancelled" ? "Cancelled" : "Completed";
@@ -353,7 +354,7 @@ export default function UserTournamentsPage() {
       let cta: "Register" | "View" | "Chevron" = "Register";
       if (activeTab === "joined") cta = "View";
       else if (activeTab === "history") cta = "Chevron";
-      else if (isWaitingList) cta = "View";
+      else if (isWaitingList || isRejected) cta = "View";
       else if (!isRegistrationOpen) cta = "View";
 
       return {
@@ -369,6 +370,8 @@ export default function UserTournamentsPage() {
           activeTab === "browse"
             ? isWaitingList
               ? "In Waiting List"
+              : isRejected
+              ? "Rejected"
               : timelineState === "live"
               ? "Live"
               : isRegistrationOpen

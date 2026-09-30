@@ -84,7 +84,8 @@ export default function TournamentListCard({
         ? "Joined"
         : "Registered");
   const statusClass =
-    statusLabel.toLowerCase().includes("waiting")
+    statusLabel.toLowerCase().includes("waiting") ||
+    statusLabel.toLowerCase() === "rejected"
       ? "bg-[#FF5058]/15 text-[#FF5058] border-[#FF5058]/30"
       : statusLabel.toLowerCase() === "completed" || statusLabel.toLowerCase() === "history"
       ? "bg-green-500/15 text-green-600 border-green-200"

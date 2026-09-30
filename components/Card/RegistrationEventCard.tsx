@@ -30,6 +30,7 @@ type EventStatus =
   | "joined-live"
   | "joined-waiting"
   | "waiting"
+  | "rejected"
   | "ended"
   | "open"
   | "closed"
@@ -39,6 +40,7 @@ const statusStyles: Record<EventStatus, string> = {
   joined: "bg-[#22C86A] text-white",
   live: "bg-[#269FF5] text-white",
   waiting: "bg-[#FF5058] text-white",
+  rejected: "bg-[#FF5058] text-white",
   ended: "bg-[#ff7a1a] text-white",
   "joined-live": "",
   "joined-waiting": "",
@@ -51,6 +53,7 @@ const statusColors: Record<EventStatus, string> = {
   joined: "#22C86A",
   live: "#269FF5",
   waiting: "#FF5058",
+  rejected: "#FF5058",
   ended: "#ff7a1a",
   "joined-live": "#22C86A",
   "joined-waiting": "#FF5058",
@@ -82,6 +85,7 @@ function EventStatusTag({ status }: { status: EventStatus }) {
     joined: "Joined",
     live: "Live",
     waiting: "In Waiting List",
+    rejected: "Rejected",
     ended: "Event Ended",
     open: "Open",
     closed: "Registration Closed",
@@ -577,7 +581,9 @@ export default function RegistrationEventCard({
     teamStatus === "waiting";
   
   let currentStatus: EventStatus;
-  if (isJoined && isPendingConfirmation) {
+  if (isJoined && teamStatus === "rejected") {
+    currentStatus = "rejected";
+  } else if (isJoined && isPendingConfirmation) {
     currentStatus = "joined-waiting";
   } else if (isJoined && isLive) {
     currentStatus = "joined-live";
@@ -747,6 +753,8 @@ export default function RegistrationEventCard({
             >
               {teamStatus === "participating"
                 ? "Participating"
+                : teamStatus === "rejected"
+                  ? "Rejected"
                 : isPendingConfirmation
                   ? "In Waiting List"
                   : "Registered"}
