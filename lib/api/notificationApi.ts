@@ -129,7 +129,9 @@ export const notificationApi = {
 
     const rows = Array.isArray(data) ? data : [];
     return rows.map((row: any) => {
-      const inviteState = row.inviteState || "pending";
+      const notificationType = row.type || "invite";
+      const inviteState =
+        row.inviteState || (notificationType === "invite" ? "pending" : undefined);
       const timeSource =
         inviteState === "accepted" || inviteState === "rejected"
           ? row.updatedAt || row.createdAt
@@ -141,7 +143,7 @@ export const notificationApi = {
       return {
         id: String(row.id),
         inviteId: row.inviteId || row.id,
-        type: row.type || "invite",
+        type: notificationType,
         inviteState,
         contextType: row.contextType,
         organizationId: row.organizationId,
@@ -154,7 +156,10 @@ export const notificationApi = {
         body: row.body || "",
         source: row.source || "",
         timeAgo: formatRelativeTime(timeSource),
-        unread: inviteState === "pending" && Boolean(row.unread),
+        unread:
+          notificationType === "invite"
+            ? inviteState === "pending" && Boolean(row.unread)
+            : Boolean(row.unread),
       } as NotificationItem;
     });
   },

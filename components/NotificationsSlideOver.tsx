@@ -71,7 +71,8 @@ export default function NotificationsSlideOver({
   if (!open) return null;
 
   const isPreviousInvite = (item: NotificationItem) =>
-    item.inviteState === "accepted" || item.inviteState === "rejected";
+    item.type === "invite" &&
+    (item.inviteState === "accepted" || item.inviteState === "rejected");
   const inboxItems = items.filter(
     (item) =>
       !isPreviousInvite(item) ||
