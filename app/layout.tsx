@@ -13,7 +13,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Forehand – Tournament Hub",
+  applicationName: "Forehand : Own Your Game",
+  title: "Forehand : Own Your Game",
   description: "Your all-in-one tournament hub. Manage. Play. Compete.",
   manifest: "/manifest.json",
   icons: {
@@ -69,3 +70,4 @@ export default function RootLayout({
     </html>
   );
 }
+

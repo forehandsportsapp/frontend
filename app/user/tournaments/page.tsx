@@ -121,7 +121,10 @@ function getTournamentTimelineState(
   now = new Date(),
 ): TournamentTimelineState {
   const state = tournament.tournamentState?.toLowerCase();
+  if (state === "drafted") return "upcoming";
   if (state === "completed" || state === "cancelled") return "history";
+  if (state === "in_progress") return "live";
+  if (state === "published") return "upcoming";
 
   const nowTime = now.getTime();
   const startTime = getDateBoundaryTime(tournament.startDate, "start");
@@ -129,10 +132,9 @@ function getTournamentTimelineState(
 
   if (endTime !== null && endTime < nowTime) return "history";
   if (
-    state === "in_progress" ||
-    (startTime !== null &&
-      startTime <= nowTime &&
-      (endTime === null || endTime >= nowTime))
+    startTime !== null &&
+    startTime <= nowTime &&
+    (endTime === null || endTime >= nowTime)
   ) {
     return "live";
   }

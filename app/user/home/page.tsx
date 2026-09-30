@@ -195,19 +195,79 @@ function normalizeTeam(team: any) {
   };
 }
 
+function parseDateOnlyLocal(value?: string | Date | null) {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new Date(value);
+  }
+
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDateBoundaryTime(
+  value?: string | Date | null,
+  boundary: "start" | "end" = "start",
+) {
+  const date = parseDateOnlyLocal(value);
+  if (!date) return null;
+  if (boundary === "start") date.setHours(0, 0, 0, 0);
+  else date.setHours(23, 59, 59, 999);
+  return date.getTime();
+}
+
+function getFallbackSortTime(tournament: TournamentData) {
+  const raw = tournament as any;
+  const timestamp = new Date(raw?.updatedAt || raw?.createdAt || "").getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
 function isLiveTournament(t: TournamentData) {
-  if (t.tournamentState === "in_progress") return true;
-  if (!t.startDate) return false;
-  const now = new Date();
-  const start = new Date(t.startDate);
-  const end = t.endDate ? new Date(t.endDate) : null;
-  return start <= now && (!end || end >= now);
+  const state = t.tournamentState?.toLowerCase();
+  if (state === "in_progress") return true;
+  if (state === "published" || state === "drafted") return false;
+  if (state === "completed" || state === "cancelled") return false;
+
+  const nowTime = Date.now();
+  const startTime = getDateBoundaryTime(t.startDate, "start");
+  const endTime = getDateBoundaryTime(t.endDate, "end");
+  return (
+    startTime !== null &&
+    startTime <= nowTime &&
+    (endTime === null || endTime >= nowTime)
+  );
 }
 
 function isUpcomingTournament(t: TournamentData) {
   if (isLiveTournament(t)) return false;
-  if (!t.startDate) return false;
-  return new Date(t.startDate) > new Date();
+  const state = t.tournamentState?.toLowerCase();
+  if (state === "drafted" || state === "completed" || state === "cancelled") {
+    return false;
+  }
+  if (state === "published") return true;
+
+  const startTime = getDateBoundaryTime(t.startDate, "start");
+  return startTime === null || startTime > Date.now();
+}
+
+function getUpcomingSortTime(tournament: TournamentData) {
+  return (
+    getDateBoundaryTime(tournament.startDate, "start") ??
+    Number.MAX_SAFE_INTEGER - getFallbackSortTime(tournament)
+  );
+}
+
+function getOngoingSortTime(tournament: TournamentData) {
+  return (
+    getDateBoundaryTime(tournament.startDate, "start") ??
+    getFallbackSortTime(tournament)
+  );
 }
 
 function normalizeMatchSets(sets: any[] = []) {
@@ -790,14 +850,7 @@ export default function UserHomePage() {
           ? homeTournaments.joined
           : [];
 
-        const combinedById = new Map<string, TournamentData>();
-        [...joined, ...browse].forEach((tournament, index) => {
-          const key = tournament?.id || `fallback-${index}`;
-          const existing = combinedById.get(key);
-          combinedById.set(key, { ...(existing || {}), ...tournament } as TournamentData);
-        });
-
-        setTournaments(Array.from(combinedById.values()));
+        setTournaments(browse);
         setJoinedTournaments(joined);
       } catch (error) {
         if (!active) return;
@@ -837,6 +890,7 @@ export default function UserHomePage() {
     () =>
       tournaments
         .filter(isUpcomingTournament)
+        .sort((a, b) => getUpcomingSortTime(a) - getUpcomingSortTime(b))
         .slice(0, 8)
         .map((t, idx) => ({
           id: t.id || `upcoming-${idx}`,
@@ -859,6 +913,7 @@ export default function UserHomePage() {
     () =>
       tournaments
         .filter(isLiveTournament)
+        .sort((a, b) => getOngoingSortTime(b) - getOngoingSortTime(a))
         .slice(0, 8)
         .map((t, idx) => ({
           id: t.id || `ongoing-${idx}`,
