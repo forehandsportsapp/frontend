@@ -62,18 +62,18 @@ const statusColors: Record<EventStatus, string> = {
 function EventStatusTag({ status }: { status: EventStatus }) {
   if (status === "joined-waiting") {
     return (
-      <div className="absolute right-0 top-0 flex overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
-        <span className="bg-[#22C86A] px-4 py-1.5">Joined</span>
-        <span className="bg-[#FF5058] px-4 py-1.5">In Waiting List</span>
+      <div className="absolute right-0 top-0 flex max-w-[88%] overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
+        <span className="whitespace-nowrap bg-[#22C86A] px-4 py-1.5">Joined</span>
+        <span className="truncate whitespace-nowrap bg-[#FF5058] px-4 py-1.5">In Waiting List</span>
       </div>
     );
   }
 
   if (status === "joined-live") {
     return (
-      <div className="absolute right-0 top-0 flex overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
-        <span className="bg-[#22C86A] px-4 py-1.5">Joined</span>
-        <span className="bg-[#269FF5] px-4 py-1.5">Live</span>
+      <div className="absolute right-0 top-0 flex max-w-[88%] overflow-hidden rounded-bl-xl text-[12px] font-bold text-white shadow-sm">
+        <span className="whitespace-nowrap bg-[#22C86A] px-4 py-1.5">Joined</span>
+        <span className="whitespace-nowrap bg-[#269FF5] px-4 py-1.5">Live</span>
       </div>
     );
   }
@@ -93,10 +93,12 @@ function EventStatusTag({ status }: { status: EventStatus }) {
       className={`
         absolute right-0 top-0
         rounded-bl-xl
-        max-w-[70%]
+        max-w-[88%]
         px-3 py-1.5
         text-center text-[11px] font-bold uppercase tracking-wide
         shadow-sm
+        whitespace-nowrap
+        truncate
         ${statusStyles[status]}
       `}
     >
@@ -597,11 +599,12 @@ export default function RegistrationEventCard({
     <section className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 shadow-lg transition-all dark:border-white/30 dark:bg-[#563F70]">
       <EventStatusTag status={currentStatus} />
       
-      <div className="flex items-start justify-between">
-        <div className="pr-16">
+      <div className="flex items-start justify-between pt-8">
+        <div className="min-w-0 flex-1">
           <h3 
-            className="text-[20px] font-bold"
+            className="truncate text-[20px] font-bold"
             style={{ color: statusColors[currentStatus] || "#ffffff" }}
+            title={event.name}
           >
             {event.name}
           </h3>
