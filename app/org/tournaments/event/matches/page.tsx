@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -462,6 +462,30 @@ function OrgManageMatchesContent() {
   const fixturePath = isUserManageRoute
     ? "/user/manage/tournament/event/fixture"
     : "/org/tournaments/event/fixture";
+  const refreshEventState = useCallback(async () => {
+    if (!eventId || !tournamentId) return;
+
+    try {
+      const eventResult = await eventApi.getEventByIdSafe(eventId, tournamentId);
+      setTournament((eventResult.tournament as TournamentData) || null);
+      setEvent(eventResult.event || null);
+      if (eventResult.event?.activeRound) {
+        setActiveRound(eventResult.event.activeRound);
+      }
+      console.info("[RoundProgressDebug] frontend-event-state-refresh", {
+        eventId,
+        tournamentId,
+        eventState: eventResult.event?.eventState || null,
+        activeRound: eventResult.event?.activeRound || null,
+      });
+    } catch (error) {
+      console.error("[RoundProgressDebug] frontend-event-state-refresh-failed", {
+        eventId,
+        tournamentId,
+        error,
+      });
+    }
+  }, [eventId, tournamentId]);
 
   useEffect(() => {
     if (!requestedViewOnly || isUserViewerRoute || !tournamentId) return;
@@ -672,6 +696,11 @@ function OrgManageMatchesContent() {
     if (matches.length === 0) return false;
     return matches.every((m) => m.status === "ended");
   }, [matches]);
+  const canSetupNextRound = event?.eventState === "round_over";
+  const completedRoundNumber = canSetupNextRound
+    ? Math.max(1, activeRound - 1)
+    : activeRound;
+  const setupRoundNumber = activeRound;
 
   const handleNextRound = async () => {
     if (!tournamentId || !eventId) return;
@@ -850,11 +879,11 @@ function OrgManageMatchesContent() {
 
       <div className="flex-1 p-4 space-y-4 pb-24">
         {/* ── Round Over Banner ── */}
-        {!viewOnly && isRoundOver && event?.eventState !== "completed" && (
+        {!viewOnly && canSetupNextRound && (
           <div className="bg-green-100 border border-green-200 rounded-2xl p-4 flex flex-col items-center gap-3">
             <div className="flex items-center gap-2 text-green-800">
               <CheckIcon size={20} className="text-green-600" />
-              <span className="font-bold">Round {activeRound} Complete!</span>
+              <span className="font-bold">Round {completedRoundNumber} Complete!</span>
             </div>
             <p className="text-sm text-green-700 text-center">
               All matches for this round have finished. You can now set up
@@ -864,10 +893,32 @@ function OrgManageMatchesContent() {
               onClick={handleNextRound}
               className="w-full py-3 bg-green-600 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all"
             >
-              Set Up Round {activeRound + 1}
+              Set Up Round {setupRoundNumber}
             </button>
           </div>
         )}
+
+        {!viewOnly &&
+          !canSetupNextRound &&
+          isRoundOver &&
+          event?.eventState !== "completed" && (
+            <div className="bg-amber-100 border border-amber-200 rounded-2xl p-4 flex flex-col items-center gap-3">
+              <div className="flex items-center gap-2 text-amber-800">
+                <CheckIcon size={20} className="text-amber-600" />
+                <span className="font-bold">Round {activeRound} Scores Complete</span>
+              </div>
+              <p className="text-sm text-amber-700 text-center">
+                Waiting for the round status to update before opening the next
+                fixture setup.
+              </p>
+              <button
+                onClick={() => void refreshEventState()}
+                className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all"
+              >
+                Refresh Round Status
+              </button>
+            </div>
+          )}
 
         {/* ── Tournament Info Card ── */}
         <div className="bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] shadow-sm p-4 flex items-center gap-3">

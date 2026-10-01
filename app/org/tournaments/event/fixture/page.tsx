@@ -14,6 +14,7 @@ import {
 } from "@/components/Icons";
 import { toQuery } from "@/lib/utils";
 import { eventApi } from "@/lib/api/eventApi";
+import { matchApi } from "@/lib/api/matchApi";
 import { tournamentApi } from "@/lib/api/tournamentApi";
 import { teamApi } from "@/lib/api/teamApi";
 import { TournamentData, EventData } from "@/lib/models";
@@ -44,6 +45,47 @@ function getMinStartTimeValue() {
 function isPastStartTime(value: string) {
   if (!value) return false;
   return new Date(value).getTime() <= Date.now();
+}
+
+const editableScheduleStates = [
+  "created",
+  "registration_closed",
+  "participants_finalized",
+  "round_over",
+];
+
+const fixtureLogPrefix = "[FixturePublishDebug]";
+
+function getErrorDebug(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    name: typeof error,
+    message: String(error),
+    raw: error,
+  };
+}
+
+function getMatchTeam(match: any, winnerId: string) {
+  if (match.teamA === winnerId) return match.teamAData || null;
+  if (match.teamB === winnerId) return match.teamBData || null;
+  return null;
+}
+
+function normalizePublishedMatch(match: any): FixtureMatch {
+  return {
+    id: match.id,
+    teamA: match.teamAData || null,
+    teamB: match.teamBData || null,
+    state: "upcoming",
+    startTime: match.startTime ? toDateTimeLocalValue(new Date(match.startTime)) : "",
+  };
 }
 
 function FixtureSetupContent() {
@@ -117,10 +159,76 @@ function FixtureSetupContent() {
               )
           : [];
 
+        const activeRound = Number(eventResult.event?.activeRound || 1);
+        const eventState = eventResult.event?.eventState || "created";
+        const canEditSchedule = editableScheduleStates.includes(eventState);
+
+        console.info(`${fixtureLogPrefix} frontend-load`, {
+          tournamentId,
+          eventId,
+          eventState,
+          activeRound,
+          canEditSchedule,
+          participatingTeamCount: participatingTeams.length,
+        });
+
+        if (!canEditSchedule) {
+          const publishedMatches = await matchApi.getMatchesByEventAndRound(
+            eventId,
+            activeRound,
+          );
+          console.info(`${fixtureLogPrefix} frontend-loaded-published-round`, {
+            eventId,
+            activeRound,
+            matchCount: Array.isArray(publishedMatches)
+              ? publishedMatches.length
+              : 0,
+          });
+          setTeams(participatingTeams);
+          setUnassigned([]);
+          setMatches(
+            Array.isArray(publishedMatches)
+              ? publishedMatches.map(normalizePublishedMatch)
+              : [],
+          );
+          return;
+        }
+
+        if (activeRound > 1) {
+          const previousRoundMatches = await matchApi.getMatchesByEventAndRound(
+            eventId,
+            activeRound - 1,
+          );
+          const advancingTeams = Array.isArray(previousRoundMatches)
+            ? previousRoundMatches
+                .filter((match: any) => match.winnerId)
+                .map((match: any) => getMatchTeam(match, match.winnerId))
+                .filter(Boolean)
+            : [];
+
+          console.info(`${fixtureLogPrefix} frontend-loaded-advancing-teams`, {
+            eventId,
+            activeRound,
+            previousRound: activeRound - 1,
+            previousMatchCount: Array.isArray(previousRoundMatches)
+              ? previousRoundMatches.length
+              : 0,
+            advancingTeamCount: advancingTeams.length,
+          });
+
+          setTeams(advancingTeams);
+          autoPair(advancingTeams);
+          return;
+        }
+
         setTeams(participatingTeams);
         autoPair(participatingTeams);
       } catch (error) {
-        console.error("Failed to load data", error);
+        console.error(`${fixtureLogPrefix} frontend-load-failed`, {
+          tournamentId,
+          eventId,
+          error,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -137,35 +245,33 @@ function FixtureSetupContent() {
     }
 
     const shuffled = [...teamList].sort(() => Math.random() - 0.5);
-    const N = shuffled.length;
-    const matchCount = N - 1;
+    const matchCount = Math.floor(shuffled.length / 2);
 
     const newMatches: FixtureMatch[] = [];
-    // We can only pair N/2 matches initially
-    const initialPairCount = Math.floor(N / 2);
 
     for (let i = 0; i < matchCount; i++) {
-      if (i < initialPairCount) {
-        newMatches.push({
-          id: `m-${Date.now()}-${i}`,
-          teamA: shuffled.pop(),
-          teamB: shuffled.pop(),
-          state: "upcoming",
-          startTime: "",
-        });
-      } else {
-        newMatches.push({
-          id: `m-${Date.now()}-${i}`,
-          teamA: null,
-          teamB: null,
-          state: "empty",
-          startTime: "",
-        });
-      }
+      newMatches.push({
+        id: `m-${Date.now()}-${i}`,
+        teamA: shuffled.pop(),
+        teamB: shuffled.pop(),
+        state: "upcoming",
+        startTime: "",
+      });
     }
 
+    console.info(`${fixtureLogPrefix} frontend-auto-pair`, {
+      teamCount: teamList.length,
+      matchCount: newMatches.length,
+      byeCount: shuffled.length,
+      matchTeamIds: newMatches.map((match) => ({
+        teamA: match.teamA?.id || null,
+        teamB: match.teamB?.id || null,
+      })),
+      byeTeamIds: shuffled.map((team) => team?.id).filter(Boolean),
+    });
+
     setMatches(newMatches);
-    setUnassigned(shuffled); // Remaining teams (if N was odd)
+    setUnassigned(shuffled);
   };
 
   const handleResetBrackets = () => {
@@ -300,21 +406,76 @@ function FixtureSetupContent() {
           startTime: new Date(m.startTime).toISOString(),
         }));
 
+      console.info(`${fixtureLogPrefix} frontend-publish-start`, {
+        tournamentId,
+        eventId,
+        eventState: event?.eventState || null,
+        activeRound: event?.activeRound || 1,
+        sourceMatchCount: matches.length,
+        createMatchCount: matchesToCreate.length,
+        unassignedTeamCount: unassigned.length,
+        payload: matchesToCreate,
+      });
+
       if (matchesToCreate.length > 0) {
         // Use the atomic finalizeSchedule pipeline
-        await eventApi.finalizeSchedule(eventId, matchesToCreate);
+        const finalizeResponse = await eventApi.finalizeSchedule(
+          eventId,
+          matchesToCreate,
+        );
+        console.info(`${fixtureLogPrefix} frontend-finalize-schedule-success`, {
+          eventId,
+          activeRound: event?.activeRound || 1,
+          createMatchCount: matchesToCreate.length,
+          response: finalizeResponse ?? null,
+        });
+
+        const [freshEventResult, freshRoundMatches] = await Promise.all([
+          eventApi.getEventByIdSafe(eventId, tournamentId),
+          matchApi.getMatchesByEventAndRound(
+            eventId,
+            Number(event?.activeRound || 1),
+          ),
+        ]);
+        console.info(`${fixtureLogPrefix} frontend-post-finalize-readback`, {
+          tournamentId,
+          eventId,
+          eventState: freshEventResult.event?.eventState || null,
+          activeRound: freshEventResult.event?.activeRound || null,
+          roundMatchCount: Array.isArray(freshRoundMatches)
+            ? freshRoundMatches.length
+            : 0,
+          roundMatches: freshRoundMatches,
+        });
       } else {
         // Fallback for edge cases if matches are already created or not needed
         await eventApi.updateEventState(eventId, "scheduled");
+        console.info(`${fixtureLogPrefix} frontend-update-state-success`, {
+          eventId,
+          state: "scheduled",
+        });
       }
 
       // Sync tournament status
       await tournamentApi.syncTournamentStatus(tournamentId);
+      console.info(`${fixtureLogPrefix} frontend-sync-status-success`, {
+        tournamentId,
+      });
 
       router.push(`${detailPath}${toQuery({ t: tournamentId })}`);
     } catch (error) {
-      console.error("Failed to publish matches", error);
-      alert("Failed to publish fixtures. Please try again.");
+      const errorDebug = getErrorDebug(error);
+      console.error(`${fixtureLogPrefix} frontend-publish-failed-message`, errorDebug.message);
+      console.error(`${fixtureLogPrefix} frontend-publish-failed`, {
+        tournamentId,
+        eventId,
+        eventState: event?.eventState || null,
+        activeRound: event?.activeRound || 1,
+        matches,
+        unassigned,
+        error: errorDebug,
+      });
+      alert(`Failed to publish fixtures: ${errorDebug.message}`);
     } finally {
       publishInFlightRef.current = false;
       setIsPublishing(false);
@@ -323,10 +484,7 @@ function FixtureSetupContent() {
   };
 
   const isAlreadyScheduled = !!(
-    event?.eventState &&
-    !["created", "registration_closed", "participants_finalized"].includes(
-      event.eventState,
-    )
+    event?.eventState && !editableScheduleStates.includes(event.eventState)
   );
 
   const filteredUnassigned = unassigned.filter((t) => {

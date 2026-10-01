@@ -1964,9 +1964,34 @@ export default function TournamentEventDetailsPage() {
         tournamentData = await tournamentApi.getInfo(tournamentId);
       }
 
+      console.info("[FixturePublishDebug] frontend-detail-load", {
+        tournamentId,
+        tournamentState: tournamentData?.tournamentState || null,
+        eventCount: Array.isArray(tournamentData?.events)
+          ? tournamentData.events.length
+          : 0,
+        events: Array.isArray(tournamentData?.events)
+          ? tournamentData.events.map((event: any) => ({
+              id: event.id,
+              name: event.name,
+              eventState: event.eventState,
+              activeRound: event.activeRound,
+              matchCount: Array.isArray(event.matches)
+                ? event.matches.length
+                : undefined,
+              teamsCount: Array.isArray(event.teams)
+                ? event.teams.length
+                : undefined,
+            }))
+          : [],
+      });
+
       setTournament(tournamentData ?? null);
     } catch (error) {
-      console.error("Failed to load tournament", error);
+      console.error("[FixturePublishDebug] frontend-detail-load-failed", {
+        tournamentId,
+        error,
+      });
       const message =
         error instanceof Error ? error.message : "Unable to load tournament.";
       const unauthorized =

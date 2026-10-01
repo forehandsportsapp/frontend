@@ -148,6 +148,7 @@ export default function OrgMatchSetupPage() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const matchId = searchParams.get("matchId");
+  const returnTab = searchParams.get("returnTab");
   const liveMatchPath = pathname.startsWith("/user/manage/")
     ? "/user/manage/tournament/event/match/live"
     : "/org/tournaments/event/match/live";
@@ -343,7 +344,7 @@ export default function OrgMatchSetupPage() {
     }
     router.replace(
       liveMatchPath +
-        toQuery({ tournamentId, eventId, matchId }),
+        toQuery({ tournamentId, eventId, matchId, returnTab }),
     );
   };
 

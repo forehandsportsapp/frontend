@@ -44,6 +44,7 @@ export default function OrgMatchResultPage() {
   const tournamentId = searchParams.get("tournamentId");
   const matchId = searchParams.get("matchId");
   const eventId = searchParams.get("eventId");
+  const returnTab = searchParams.get("returnTab");
   const isUserManageRoute = pathname.startsWith("/user/manage/");
   const isUserViewerRoute =
     pathname.startsWith("/user/") && !isUserManageRoute;
@@ -59,6 +60,8 @@ export default function OrgMatchResultPage() {
   const detailPath = isUserManageRoute
     ? "/user/manage/tournament/detail"
     : "/org/tournaments/detail";
+  const manageReturnPath =
+    returnTab === "scorer" ? "/user/manage?tab=scorer" : "/user/manage?tab=admin";
   const viewerMatchesQuery = {
     tournamentId,
     eventId,
@@ -140,7 +143,9 @@ export default function OrgMatchResultPage() {
         router.replace(
           viewOnly
             ? viewerMatchesPath + toQuery(viewerMatchesQuery)
-            : detailPath + toQuery({ t: tournamentId }),
+            : isUserManageRoute
+              ? manageReturnPath
+              : detailPath + toQuery({ t: tournamentId }),
         )
       }
     >
@@ -211,7 +216,9 @@ export default function OrgMatchResultPage() {
               onClick={() => {
                 if (matchId) removeItem(`match:${matchId}:state`);
                 router.replace(
-                  detailPath + toQuery({ t: tournamentId }),
+                  isUserManageRoute
+                    ? manageReturnPath
+                    : detailPath + toQuery({ t: tournamentId }),
                 );
               }}
               className="w-full rounded-2xl bg-primary py-4 text-base font-semibold text-white shadow-lg active:scale-[0.98] transition"

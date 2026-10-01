@@ -263,6 +263,8 @@ export default function ScorerLiveMatchPage() {
   const [showSwitchSides, setShowSwitchSides] = useState(false);
   const [matchWinner, setMatchWinner] = useState<0 | 1 | null>(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const submittedScoreKeysRef = React.useRef<Set<string>>(new Set());
+  const completedMatchIdsRef = React.useRef<Set<string>>(new Set());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -307,6 +309,7 @@ export default function ScorerLiveMatchPage() {
 
   const syncMatchUpdate = useCallback(
     async (previous: LiveMatchStateData, next: LiveMatchStateData, winner: 0 | 1 | null) => {
+      let scoreSubmissionKey: string | null = null;
       try {
         const updatedSetIndex = previous.currentSet;
         const setScore = next.setScores[updatedSetIndex] || [0, 0];
@@ -330,7 +333,7 @@ export default function ScorerLiveMatchPage() {
         }
 
         if (matchId) {
-          await matchApi.updateScore({
+          const scorePayload = {
             matchId,
             setNumber: updatedSetIndex + 1,
             teamAScore: setScore[0] ?? 0,
@@ -341,22 +344,48 @@ export default function ScorerLiveMatchPage() {
             matchWinnerId,
             teamAId: teamIds.a,
             teamBId: teamIds.b,
+          } as const;
+
+          scoreSubmissionKey = JSON.stringify(scorePayload);
+          if (submittedScoreKeysRef.current.has(scoreSubmissionKey)) {
+            console.info("[MatchSubmitDebug] scorer-live-sync-score-deduped", {
+              scorePayload,
+            });
+            return;
+          }
+          submittedScoreKeysRef.current.add(scoreSubmissionKey);
+
+          console.info("[MatchSubmitDebug] scorer-live-sync-score-payload", {
+            previous,
+            next,
+            winner,
+            teamIds,
+            scorePayload,
           });
+
+          await matchApi.updateScore(scorePayload);
         }
 
         if (winner != null && matchId) {
-          try {
-            if (matchWinnerId) {
-              await matchApi.completeMatch(matchId, matchWinnerId);
-            } else {
-              await matchApi.updateMatchState(matchId, "completed", null);
-            }
-          } catch (err) {
-            console.error("[ScorerLive] Match completion failed", err);
-          }
+          completedMatchIdsRef.current.add(matchId);
+          console.info("[MatchSubmitDebug] scorer-live-complete-handled-by-score", {
+            matchId,
+            matchWinnerId,
+          });
         }
       } catch (error) {
-        console.error("[ScorerLive] Failed to sync match update", error);
+        if (scoreSubmissionKey) {
+          submittedScoreKeysRef.current.delete(scoreSubmissionKey);
+        }
+        if (matchId) completedMatchIdsRef.current.delete(matchId);
+        console.error("[MatchSubmitDebug] scorer-live-sync-failed", {
+          matchId,
+          previous,
+          next,
+          winner,
+          teamIds,
+          error,
+        });
       }
     },
     [matchId, teamIds.a, teamIds.b]

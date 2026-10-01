@@ -99,6 +99,11 @@ export const matchApi = {
     state: "scheduled" | "in_progress" | "completed" | "abandoned" | "walkover",
     winnerId?: string | null,
   ) => {
+    console.info("[MatchSubmitDebug] frontend-update-match-state-start", {
+      matchId,
+      state,
+      winnerId: nullableId(winnerId),
+    });
     const { error } = await fetchApi(
       getApiUrl({ path: "/match/update-state", param: matchId }),
       {
@@ -107,7 +112,19 @@ export const matchApi = {
         body: { state, winnerId },
       },
     );
-    if (error) throw error;
+    if (error) {
+      console.error("[MatchSubmitDebug] frontend-update-match-state-failed", {
+        matchId,
+        state,
+        winnerId: nullableId(winnerId),
+        error,
+      });
+      throw error;
+    }
+    console.info("[MatchSubmitDebug] frontend-update-match-state-success", {
+      matchId,
+      state,
+    });
   },
 
   /**
@@ -126,19 +143,32 @@ export const matchApi = {
    * @returns A promise that resolves when the score update is successful.
    */
   updateScore: async (payload: UpdateScorePayload) => {
+    const body = {
+      ...payload,
+      winnerId: nullableId(payload.winnerId),
+      matchWinnerId: nullableId(payload.matchWinnerId),
+    };
+    console.info("[MatchSubmitDebug] frontend-update-score-start", body);
     const { error } = await fetchApi(
       getApiUrl({ path: "/match/update-score" }),
       {
         method: "POST",
         contentType: "json",
-        body: {
-          ...payload,
-          winnerId: nullableId(payload.winnerId),
-          matchWinnerId: nullableId(payload.matchWinnerId),
-        },
+        body,
       },
     );
-    if (error) throw error;
+    if (error) {
+      console.error("[MatchSubmitDebug] frontend-update-score-failed", {
+        payload: body,
+        error,
+      });
+      throw error;
+    }
+    console.info("[MatchSubmitDebug] frontend-update-score-success", {
+      matchId: payload.matchId,
+      setNumber: payload.setNumber,
+      matchFinished: payload.matchFinished,
+    });
   },
 
   /**
@@ -299,6 +329,10 @@ export const matchApi = {
    * @returns A promise resolving when the match is completed.
    */
   completeMatch: async (matchId: string, winnerId: string) => {
+    console.info("[MatchSubmitDebug] frontend-complete-match-start", {
+      matchId,
+      winnerId,
+    });
     const { error } = await fetchApi(
       getApiUrl({ path: "/match/complete", param: matchId }),
       {
@@ -307,7 +341,18 @@ export const matchApi = {
         body: { winnerId },
       },
     );
-    if (error) throw error;
+    if (error) {
+      console.error("[MatchSubmitDebug] frontend-complete-match-failed", {
+        matchId,
+        winnerId,
+        error,
+      });
+      throw error;
+    }
+    console.info("[MatchSubmitDebug] frontend-complete-match-success", {
+      matchId,
+      winnerId,
+    });
   },
 
   /**

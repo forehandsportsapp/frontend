@@ -182,6 +182,7 @@ export default function OrgLiveMatchPage() {
   const tournamentId = searchParams.get("tournamentId");
   const eventId = searchParams.get("eventId");
   const matchId = searchParams.get("matchId");
+  const returnTab = searchParams.get("returnTab");
   const isUserManageRoute = pathname.startsWith("/user/manage/");
   const isUserViewerRoute =
     pathname.startsWith("/user/") && !isUserManageRoute;
@@ -258,6 +259,8 @@ export default function OrgLiveMatchPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [matchScorerName, setMatchScorerName] = useState("Match Scorer");
   const [teamIds, setTeamIds] = useState<{ a?: string; b?: string }>({});
+  const submittedScoreKeysRef = React.useRef<Set<string>>(new Set());
+  const completedMatchIdsRef = React.useRef<Set<string>>(new Set());
 
   const isDoubles = config.format === "doubles";
   const sideALabel = isDoubles
@@ -355,6 +358,7 @@ export default function OrgLiveMatchPage() {
       next: LiveMatchStateData,
       winner: 0 | 1 | null,
     ) => {
+      let scoreSubmissionKey: string | null = null;
       try {
         const updatedSetIndex = previous.currentSet;
         const setScore = next.setScores[updatedSetIndex] || [0, 0];
@@ -400,22 +404,34 @@ export default function OrgLiveMatchPage() {
           if (teamIds.a) scorePayload.teamAId = teamIds.a;
           if (teamIds.b) scorePayload.teamBId = teamIds.b;
 
+          scoreSubmissionKey = JSON.stringify(scorePayload);
+          if (submittedScoreKeysRef.current.has(scoreSubmissionKey)) {
+            console.info("[MatchSubmitDebug] org-live-sync-score-deduped", {
+              scorePayload,
+            });
+            return;
+          }
+          submittedScoreKeysRef.current.add(scoreSubmissionKey);
+
+          console.info("[MatchSubmitDebug] org-live-sync-score-payload", {
+            previous,
+            next,
+            winner,
+            teamIds,
+            scorePayload,
+          });
+
           await matchApi.updateScore({
             ...scorePayload,
           });
         }
 
         if (winner != null && matchId) {
-          // Final match state update via specialized complete endpoint
-          try {
-            if (matchWinnerId) {
-              await matchApi.completeMatch(matchId, matchWinnerId);
-            } else {
-              await matchApi.updateMatchState(matchId, "completed", null);
-            }
-          } catch (err) {
-            console.error("Match completion failed", err);
-          }
+          completedMatchIdsRef.current.add(matchId);
+          console.info("[MatchSubmitDebug] org-live-complete-handled-by-score", {
+            matchId,
+            matchWinnerId,
+          });
 
           // Sync tournament and event status after match completion
           if (tournamentId) {
@@ -426,7 +442,18 @@ export default function OrgLiveMatchPage() {
           }
         }
       } catch (error) {
-        console.error("Failed to sync live match update", error);
+        if (scoreSubmissionKey) {
+          submittedScoreKeysRef.current.delete(scoreSubmissionKey);
+        }
+        if (matchId) completedMatchIdsRef.current.delete(matchId);
+        console.error("[MatchSubmitDebug] org-live-sync-failed", {
+          matchId,
+          previous,
+          next,
+          winner,
+          teamIds,
+          error,
+        });
       }
     },
     [matchId, tournamentId, teamIds.a, teamIds.b],
@@ -558,7 +585,7 @@ export default function OrgLiveMatchPage() {
       onConfirmExit={() =>
         router.replace(
           setupMatchPath +
-            toQuery({ tournamentId, eventId, matchId }),
+            toQuery({ tournamentId, eventId, matchId, returnTab }),
         )
       }
       onCloseExitConfirm={() => setShowExitConfirm(false)}
@@ -579,7 +606,7 @@ export default function OrgLiveMatchPage() {
       onConfirmWinner={() =>
         router.replace(
           resultMatchPath +
-            toQuery({ tournamentId, eventId, matchId }),
+            toQuery({ tournamentId, eventId, matchId, returnTab }),
         )
       }
       winnerName={matchWinner === 1 ? sideBActionLabel : sideAActionLabel}

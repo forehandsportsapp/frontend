@@ -91,6 +91,17 @@ export const organizationApi = {
       { silent: true },
     );
     if (error) throw error;
+    console.info("[LiveMatchesDebug] org-live-matches", {
+      orgId,
+      groupCount: Array.isArray(data) ? data.length : 0,
+      matchCount: Array.isArray(data)
+        ? data.reduce(
+            (total: number, group: any) =>
+              total + (Array.isArray(group?.matches) ? group.matches.length : 0),
+            0,
+          )
+        : 0,
+    });
     return data as any[];
   },
 };

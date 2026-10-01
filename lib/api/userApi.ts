@@ -255,6 +255,19 @@ export const userApi = {
     const path = getApiUrl({ path: "/user/matches/live-summary" });
     const { data, error } = await fetchApi(path, { silent: true });
     if (!error) {
+      console.info("[LiveMatchesDebug] user-live-summary", {
+        path,
+        hasMatch: Boolean(data?.match),
+        feedGroupCount: Array.isArray(data?.feed) ? data.feed.length : 0,
+        feedMatchCount: Array.isArray(data?.feed)
+          ? data.feed.reduce(
+              (total: number, group: any) =>
+                total + (Array.isArray(group?.matches) ? group.matches.length : 0),
+              0,
+            )
+          : 0,
+        debug: data?.debug ?? null,
+      });
       return {
         match: data?.match ?? null,
         feed: Array.isArray(data?.feed) ? data.feed : [],

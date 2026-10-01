@@ -34,11 +34,11 @@ export default function ScorerMatchCard({ match }: { match: any }) {
 
   const setupHref =
     `/user/manage/tournament/event/match/setup` +
-    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}`;
+    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}&returnTab=scorer`;
 
   const liveHref =
     `/user/manage/tournament/event/match/live` +
-    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}`;
+    `?tournamentId=${tournamentId}&eventId=${eventId}&matchId=${matchId}&returnTab=scorer`;
 
   const ctaHref = isLive ? liveHref : setupHref;
   const ctaLabel = isLive ? "Score Match" : "Start Scoring";

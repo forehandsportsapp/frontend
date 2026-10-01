@@ -362,7 +362,7 @@ function normalizeLiveFeed(feed: any[]) {
           const state = String(
             match?.matchState ?? match?.state ?? match?.status ?? "",
           ).toLowerCase();
-          return !["completed", "abandoned", "walkover"].includes(state);
+          return state === "in_progress";
         });
 
       return {

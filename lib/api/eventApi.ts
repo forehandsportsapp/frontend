@@ -335,7 +335,7 @@ export const eventApi = {
     eventId: string,
     matches: FinalizeScheduleMatchPayload[],
   ) => {
-    const { error } = await fetchApi(
+    const { data, error } = await fetchApi(
       getApiUrl({
         path: "/event/finalize-schedule",
         param: eventId,
@@ -347,6 +347,7 @@ export const eventApi = {
       },
     );
     if (error) throw error;
+    return data;
   },
 
   /**
