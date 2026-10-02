@@ -34,19 +34,6 @@ function formatDate(value?: string | null) {
   });
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "TBA";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function getTournamentLogoUrl(tournament: TournamentData) {
   const raw = tournament as any;
   return (
@@ -311,7 +298,7 @@ function TournamentDetailContent() {
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-[var(--color-text)]">
-                    {formatDateTime(tournament.startDate)}
+                    {formatDate(tournament.startDate)}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3">
@@ -322,7 +309,7 @@ function TournamentDetailContent() {
                     </span>
                   </div>
                   <p className="text-[13px] font-bold text-[var(--color-text)]">
-                    {formatDateTime(tournament.endDate)}
+                    {formatDate(tournament.endDate)}
                   </p>
                 </div>
               </div>
